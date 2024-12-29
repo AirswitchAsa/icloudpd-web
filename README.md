@@ -11,7 +11,7 @@
 ### Architecture
 
 - [ Browser ] <--WebSocket--> [ Server ] <--Spawn/Stream--> [ icloudpd CLI ]
-- The `Next.js` application that provides a web UI and handles the WebSocket connection for real-time updates.
+- The `Next.js` application provides a web UI and handles the WebSocket connection for real-time updates.
 - The server manages CLI process interaction through `node-pty`.
 - The server stores policy specs in toml files and manages the states of active policies.
 
