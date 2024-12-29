@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   Modal,
   ModalOverlay,
@@ -9,12 +8,11 @@ import {
   FormControl,
   FormLabel,
   Input,
+  VStack,
   Select,
   Button,
-  VStack,
+  ModalFooter,
 } from '@chakra-ui/react';
-import { useSocket } from '@/hooks/useSocket';
-import { CreatePolicyInput } from '@/types';
 
 interface CreatePolicyModalProps {
   isOpen: boolean;
@@ -22,70 +20,68 @@ interface CreatePolicyModalProps {
 }
 
 export function CreatePolicyModal({ isOpen, onClose }: CreatePolicyModalProps) {
-  const socket = useSocket();
-  const [formData, setFormData] = useState<CreatePolicyInput>({
-    username: '',
-    directory: '',
-    syncMode: 'download',
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    socket?.emit('createPolicy', formData);
-    onClose();
-  };
-
   return (
-    <Modal isOpen={isOpen} onClose={onClose}>
+    <Modal 
+      isOpen={isOpen} 
+      onClose={onClose} 
+      size="full"
+    >
       <ModalOverlay />
-      <ModalContent>
-        <ModalHeader>Create New Policy</ModalHeader>
-        <ModalCloseButton />
-        <ModalBody>
-          <form onSubmit={handleSubmit}>
-            <VStack spacing={4}>
-              <FormControl isRequired>
-                <FormLabel>iCloud Username</FormLabel>
-                <Input
-                  value={formData.username}
-                  onChange={(e) =>
-                    setFormData({ ...formData, username: e.target.value })
-                  }
-                />
-              </FormControl>
+      <ModalContent
+        maxW="30%"
+        h="80vh"
+        my="auto"
+        bg="white"
+        position="fixed"
+        top="10%"
+        left="35%"
+        borderRadius="2xl"
+        overflow="hidden"
+      >
+        <ModalHeader fontFamily="Inter, sans-serif" >New Policy</ModalHeader>
+        <ModalBody pb={6} overflowY="auto">
+          <VStack spacing={4}>
+            <FormControl>
+              <FormLabel fontFamily="Inter, sans-serif">Policy Name</FormLabel>
+              <Input placeholder="Enter policy name" />
+            </FormControl>
 
-              <FormControl isRequired>
-                <FormLabel>Download Directory</FormLabel>
-                <Input
-                  value={formData.directory}
-                  onChange={(e) =>
-                    setFormData({ ...formData, directory: e.target.value })
-                  }
-                />
-              </FormControl>
+            <FormControl>
+              <FormLabel fontFamily="Inter, sans-serif">iCloud Account</FormLabel>
+              <Select placeholder="Select account">
+                <option>account1@icloud.com</option>
+                <option>account2@icloud.com</option>
+              </Select>
+            </FormControl>
 
-              <FormControl isRequired>
-                <FormLabel>Sync Mode</FormLabel>
-                <Select
-                  value={formData.syncMode}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      syncMode: e.target.value as 'download' | 'sync',
-                    })
-                  }
-                >
-                  <option value="download">Download Only</option>
-                  <option value="sync">Sync</option>
-                </Select>
-              </FormControl>
+            <FormControl>
+              <FormLabel fontFamily="Inter, sans-serif">Album</FormLabel>
+              <Select placeholder="Select album">
+                <option>All Photos</option>
+                <option>Favorites</option>
+                <option>Recents</option>
+              </Select>
+            </FormControl>
 
-              <Button type="submit" colorScheme="blue" width="100%">
-                Create Policy
-              </Button>
-            </VStack>
-          </form>
+            <FormControl>
+              <FormLabel fontFamily="Inter, sans-serif">Download Location</FormLabel>
+              <Input placeholder="Select folder location" />
+            </FormControl>
+          </VStack>
         </ModalBody>
+        <ModalFooter>
+          <Button
+            bg="black"
+            color="white"
+            _hover={{ bg: 'gray.800' }}
+            mr={3}
+            borderRadius="xl"
+            fontFamily="Inter, sans-serif"
+          >
+            Create Policy
+          </Button>
+          <Button onClick={onClose} borderRadius="xl" fontFamily="Inter, sans-serif">Cancel</Button>
+        </ModalFooter>
       </ModalContent>
     </Modal>
   );
