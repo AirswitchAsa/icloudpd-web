@@ -10,17 +10,16 @@
 
 ### Architecture
 
-- [ Browser ] <--WebSocket--> [ Server ] <--Spawn/Stream--> [ icloudpd CLI ]
-- The `Next.js` application provides a web UI and handles the WebSocket connection for real-time updates.
-- The server manages CLI process interaction through `node-pty`.
-- The server stores policy specs in toml files and manages the states of active policies.
+- [ Browser ] <--HTTP--> [ Application ] <--Spawn/Stream--> [ icloudpd CLI ]
+- The `Next.js` application provides a web UI and handles interaction with the CLI program.
+- The application stores policy specs in toml files and manages the states of active policies.
 
 ### Policy Management
 
-- Server creates and updates policy specs as toml files (without passwords)
-- Server loads policy specs from toml files upon server start
+- The application creates and updates policy specs as toml files (without passwords)
+- The application loads policy specs from toml files upon server start
 - All loaded and created policies are visible at the landing page
-- User is required to input the icloud password to activate a policy
+- User is required to provide the icloud password to activate a policy
 
 ## User Flow
 

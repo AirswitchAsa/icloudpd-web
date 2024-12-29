@@ -9,26 +9,15 @@ import {
   Flex,
   useDisclosure,
 } from '@chakra-ui/react';
-import { PolicyList } from '@/components/PolicyList';
 import { CreatePolicyModal } from '@/components/CreatePolicyModal';
 import { Banner } from '@/components/Banner';
 import { Panel } from '@/components/Panel';
-import { useSocket } from '@/hooks/useSocket';
 import { PolicySpec } from '@/types';
 
 export default function Home() {
   const [policies, setPolicies] = useState<PolicySpec[]>([]);
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const socket = useSocket();
 
-  useEffect(() => {
-    if (socket) {
-      socket.emit('getPolicies');
-      socket.on('policies', (policies: PolicySpec[]) => {
-        setPolicies(policies);
-      });
-    }
-  }, [socket]);
 
   return (
     <Box bg="gray.200" minH="100vh">

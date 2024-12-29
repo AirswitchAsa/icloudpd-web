@@ -1,4 +1,3 @@
-import { Server } from 'socket.io';
 import { IPty, spawn } from 'node-pty';
 import * as TOML from '@iarna/toml';
 import * as fs from 'fs';
@@ -12,25 +11,10 @@ interface PolicySpec {
   interval?: number;
 }
 
-class ICloudPDServer {
-  private io: Server;
+class PolicyHandler {
   private activePolicies: Map<string, IPty> = new Map();
   private policySpecs: Map<string, PolicySpec> = new Map();
 
-  constructor(server: any) {
-    this.io = new Server(server);
-    this.setupWebSocket();
-    this.loadPolicySpecs();
-  }
-
-  private setupWebSocket() {
-    this.io.on('connection', (socket) => {
-      socket.on('createPolicy', this.handleCreatePolicy.bind(this));
-      socket.on('startPolicy', this.handleStartPolicy.bind(this));
-      socket.on('stopPolicy', this.handleStopPolicy.bind(this));
-      socket.on('getPolicies', this.handleGetPolicies.bind(this));
-    });
-  }
 
   private loadPolicySpecs() {
     const policyDir = path.join(process.cwd(), 'policies');
@@ -57,4 +41,4 @@ class ICloudPDServer {
   }
 }
 
-export default ICloudPDServer; 
+export default PolicyHandler;
