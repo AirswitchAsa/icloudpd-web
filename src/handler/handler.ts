@@ -1,44 +1,82 @@
-import { IPty, spawn } from 'node-pty';
-import * as TOML from '@iarna/toml';
-import * as fs from 'fs';
-import * as path from 'path';
+import { parse, stringify } from '@iarna/toml';
+import { readFileSync, writeFileSync } from 'fs';
+import { join } from 'path';
 
-interface PolicySpec {
-  id: string;
-  username: string;
+export interface Policy {
+  name: string;
+  account: string;
+  album: string;
   directory: string;
-  syncMode: 'download' | 'sync';
-  interval?: number;
+  status: 'active' | 'inactive';
 }
 
-class PolicyHandler {
-  private activePolicies: Map<string, IPty> = new Map();
-  private policySpecs: Map<string, PolicySpec> = new Map();
+interface PolicyFile {
+  policies: Policy[];
+  [key: string]: unknown;
+}
 
+export class PolicyHandler {
+  private policies: Policy[] = [];
+  private filePath: string;
 
-  private loadPolicySpecs() {
-    const policyDir = path.join(process.cwd(), 'policies');
-    if (!fs.existsSync(policyDir)) {
-      fs.mkdirSync(policyDir);
+  constructor() {
+    this.filePath = join(process.cwd(), 'src/data/policies.toml');
+    this.loadPolicies();
+  }
+
+  private loadPolicies() {
+    try {
+      const fileContent = readFileSync(this.filePath, 'utf-8');
+      const data = parse(fileContent) as unknown as PolicyFile;
+      this.policies = data.policies || [];
+    } catch (error) {
+      console.error('Error loading policies:', error);
+      this.policies = [];
     }
-    // Load policy specs from TOML files
   }
 
-  private handleCreatePolicy(policySpec: PolicySpec) {
-    // Create new policy spec and save to TOML
+  private savePolicies() {
+    try {
+      const data = { policies: this.policies };
+      const tomlString = stringify(data as unknown as Record<string, unknown>);
+      writeFileSync(this.filePath, tomlString);
+    } catch (error) {
+      console.error('Error saving policies:', error);
+    }
   }
 
-  private handleStartPolicy(id: string, password: string) {
-    // Start icloudpd process with the given policy
+  getPolicies(): Policy[] {
+    return this.policies;
   }
 
-  private handleStopPolicy(id: string) {
-    // Stop the running policy process
+  addPolicy(policy: Omit<Policy, 'status'>): Policy {
+    const newPolicy: Policy = {
+      ...policy,
+      status: 'inactive'
+    };
+    
+    this.policies.push(newPolicy);
+    this.savePolicies();
+    return newPolicy;
   }
 
-  private handleGetPolicies() {
-    // Return list of policy specs
+  updatePolicyStatus(name: string, status: 'active' | 'inactive'): Policy | null {
+    const policy = this.policies.find(p => p.name === name);
+    if (policy) {
+      policy.status = status;
+      this.savePolicies();
+      return policy;
+    }
+    return null;
+  }
+
+  deletePolicy(name: string): boolean {
+    const index = this.policies.findIndex(p => p.name === name);
+    if (index !== -1) {
+      this.policies.splice(index, 1);
+      this.savePolicies();
+      return true;
+    }
+    return false;
   }
 }
-
-export default PolicyHandler;

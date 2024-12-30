@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   Modal,
   ModalOverlay,
@@ -12,60 +13,112 @@ import {
   Select,
   Button,
   ModalFooter,
+  useToast,
 } from '@chakra-ui/react';
+import { PolicyHandler, Policy } from '@/handler/handler';
 
 interface CreatePolicyModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onPolicyCreated?: (policy: Policy) => void;
 }
 
-export function CreatePolicyModal({ isOpen, onClose }: CreatePolicyModalProps) {
+export function CreatePolicyModal({ isOpen, onClose, onPolicyCreated }: CreatePolicyModalProps) {
+  const toast = useToast();
+  const [formData, setFormData] = useState({
+    name: '',
+    account: '',
+    album: '',
+    directory: '',
+  });
+
+  const handleSubmit = () => {
+    try {
+      const handler = new PolicyHandler();
+      const newPolicy = handler.addPolicy(formData);
+      
+      toast({
+        title: 'Policy created.',
+        description: `Successfully created policy: ${formData.name}`,
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+
+      onPolicyCreated?.(newPolicy);
+      onClose();
+    } catch (error) {
+      toast({
+        title: 'Error creating policy.',
+        description: 'Something went wrong while creating the policy.',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
   return (
     <Modal 
       isOpen={isOpen} 
       onClose={onClose} 
-      size="full"
+      isCentered
+      motionPreset="slideInBottom"
     >
-      <ModalOverlay />
+      <ModalOverlay backdropFilter="blur(4px)" />
       <ModalContent
-        maxW="30%"
-        h="80vh"
-        my="auto"
+        maxW="500px"
+        w="90%"
         bg="white"
-        position="fixed"
-        top="10%"
-        left="35%"
         borderRadius="2xl"
-        overflow="hidden"
+        boxShadow="xl"
       >
-        <ModalHeader fontFamily="Inter, sans-serif" >New Policy</ModalHeader>
-        <ModalBody pb={6} overflowY="auto">
+        <ModalHeader fontFamily="Inter, sans-serif">Create New Policy</ModalHeader>
+        <ModalCloseButton />
+        <ModalBody pb={6}>
           <VStack spacing={4}>
-            <FormControl>
+            <FormControl isRequired>
               <FormLabel fontFamily="Inter, sans-serif">Policy Name</FormLabel>
-              <Input placeholder="Enter policy name" />
+              <Input 
+                placeholder="Enter policy name"
+                borderRadius="xl"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              />
             </FormControl>
 
-            <FormControl>
+            <FormControl isRequired>
               <FormLabel fontFamily="Inter, sans-serif">iCloud Account</FormLabel>
-              <Select placeholder="Select account">
-                <option>account1@icloud.com</option>
-                <option>account2@icloud.com</option>
-              </Select>
+              <Input 
+                placeholder="Enter iCloud email"
+                borderRadius="xl"
+                value={formData.account}
+                onChange={(e) => setFormData({ ...formData, account: e.target.value })}
+              />
             </FormControl>
 
-            <FormControl>
+            <FormControl isRequired>
               <FormLabel fontFamily="Inter, sans-serif">Album</FormLabel>
-              <Select placeholder="Select album">
-                <option>All Photos</option>
-                <option>Favorites</option>
-                <option>Recents</option>
+              <Select 
+                placeholder="Select album"
+                borderRadius="xl"
+                value={formData.album}
+                onChange={(e) => setFormData({ ...formData, album: e.target.value })}
+              >
+                <option value="All Photos">All Photos</option>
+                <option value="Favorites">Favorites</option>
+                <option value="Recents">Recents</option>
               </Select>
             </FormControl>
 
-            <FormControl>
+            <FormControl isRequired>
               <FormLabel fontFamily="Inter, sans-serif">Download Location</FormLabel>
-              <Input placeholder="Select folder location" />
+              <Input 
+                placeholder="Select folder location"
+                borderRadius="xl"
+                value={formData.directory}
+                onChange={(e) => setFormData({ ...formData, directory: e.target.value })}
+              />
             </FormControl>
           </VStack>
         </ModalBody>
@@ -77,10 +130,20 @@ export function CreatePolicyModal({ isOpen, onClose }: CreatePolicyModalProps) {
             mr={3}
             borderRadius="xl"
             fontFamily="Inter, sans-serif"
+            onClick={handleSubmit}
+            isDisabled={!formData.name || !formData.account || !formData.album || !formData.directory}
           >
             Create Policy
           </Button>
-          <Button onClick={onClose} borderRadius="xl" fontFamily="Inter, sans-serif">Cancel</Button>
+          <Button 
+            onClick={onClose} 
+            borderRadius="xl" 
+            fontFamily="Inter, sans-serif"
+            variant="ghost"
+            _hover={{ bg: 'gray.100' }}
+          >
+            Cancel
+          </Button>
         </ModalFooter>
       </ModalContent>
     </Modal>
