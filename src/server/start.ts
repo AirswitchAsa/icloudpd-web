@@ -9,4 +9,4 @@ process.on('SIGINT', () => {
 process.on('SIGTERM', () => {
   console.log('Shutting down server...');
   process.exit(0);
-}); 
+});

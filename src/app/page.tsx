@@ -9,39 +9,42 @@ import {
   Flex,
   useDisclosure,
   Text,
+  useToast,
 } from '@chakra-ui/react';
 import { CreatePolicyModal } from '@/components/CreatePolicyModal';
 import { Banner } from '@/components/Banner';
 import { Panel } from '@/components/Panel';
-import { Policy } from '@/server/handler';
 import { useSocket } from '@/hooks/useSocket';
+import { Policy } from '@/server/handler';
 
 export default function Home() {
   const [policies, setPolicies] = useState<Policy[]>([]);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [activePolicies, setActivePolicies] = useState<Policy[]>([]);
   const socket = useSocket();
+  const toast = useToast();
 
   useEffect(() => {
     if (!socket) return;
 
-    // Initial load of policies
+    // Request initial policies
     socket.emit('getPolicies');
 
     // Set up event listeners
-    socket.on('policies', (loadedPolicies) => {
+    socket.on('policies', (loadedPolicies: Policy[]) => {
+      console.log('Received policies:', loadedPolicies);
       setPolicies(loadedPolicies);
       setActivePolicies(loadedPolicies.filter(p => p.status === 'active'));
     });
 
-    socket.on('policyAdded', (newPolicy) => {
+    socket.on('policyAdded', (newPolicy: Policy) => {
       setPolicies(prev => [...prev, newPolicy]);
       if (newPolicy.status === 'active') {
         setActivePolicies(prev => [...prev, newPolicy]);
       }
     });
 
-    socket.on('policyUpdated', (updatedPolicy) => {
+    socket.on('policyUpdated', (updatedPolicy: Policy) => {
       setPolicies(prev => prev.map(p => p.name === updatedPolicy.name ? updatedPolicy : p));
       setActivePolicies(prev => {
         const newActive = prev.filter(p => p.name !== updatedPolicy.name);
@@ -52,9 +55,19 @@ export default function Home() {
       });
     });
 
-    socket.on('policyDeleted', (name) => {
+    socket.on('policyDeleted', (name: string) => {
       setPolicies(prev => prev.filter(p => p.name !== name));
       setActivePolicies(prev => prev.filter(p => p.name !== name));
+    });
+
+    socket.on('connect_error', () => {
+      toast({
+        title: 'Connection Error',
+        description: 'Failed to connect to server. Please check if the server is running.',
+        status: 'error',
+        duration: null,
+        isClosable: true,
+      });
     });
 
     // Cleanup
@@ -63,11 +76,15 @@ export default function Home() {
       socket.off('policyAdded');
       socket.off('policyUpdated');
       socket.off('policyDeleted');
+      socket.off('connect_error');
     };
-  }, [socket]);
+  }, [socket, toast]);
 
   const handlePolicyCreated = (newPolicy: Policy) => {
-    // No need to manually update state here as it will be handled by the socket events
+    setPolicies(prev => [...prev, newPolicy]);
+    if (newPolicy.status === 'active') {
+      setActivePolicies(prev => [...prev, newPolicy]);
+    }
   };
 
   return (
@@ -77,37 +94,6 @@ export default function Home() {
       {/* Main Content */}
       <Container maxW="container.xl" py={8}>
         <VStack spacing={8} align="center" width="100%">
-          {/* Recents and Running Panels in a row */}
-          <Flex width="61.8%" gap={8}>
-            <Panel title="Recents" width="50%">
-              {policies.slice(0, 5).map((policy, index) => (
-                <Text
-                  key={index}
-                  p={2}
-                  borderBottom="1px"
-                  borderColor="gray.100"
-                  fontSize="14px"
-                  fontFamily="Inter, sans-serif"
-                >
-                  {policy.name}
-                </Text>
-              ))}
-            </Panel>
-            <Panel title="Running" width="50%">
-              {activePolicies.map((policy, index) => (
-                <Text
-                  key={index}
-                  p={2}
-                  borderBottom="1px"
-                  borderColor="gray.100"
-                  fontSize="14px"
-                  fontFamily="Inter, sans-serif"
-                >
-                  {policy.name}
-                </Text>
-              ))}
-            </Panel>
-          </Flex>
 
           {/* All Policies Panel */}
           <Box width="61.8%">
@@ -124,44 +110,55 @@ export default function Home() {
                   fontSize="14px"
                   onClick={onOpen}
                 >
-                  Create New Policy
+                  Add
                 </Button>
               }
             >
-              {policies.map((policy, index) => (
-                <Flex
-                  key={index}
-                  p={4}
-                  borderBottom="1px"
-                  borderColor="gray.100"
-                  justify="space-between"
-                  align="center"
-                >
-                  <Box>
-                    <Text
-                      fontSize="16px"
-                      fontWeight="medium"
-                      fontFamily="Inter, sans-serif"
-                    >
-                      {policy.name}
-                    </Text>
+              {policies.length > 0 ? (
+                policies.map((policy, index) => (
+                  <Flex
+                    key={policy.name}
+                    p={4}
+                    borderBottom="1px"
+                    borderColor="gray.100"
+                    justify="space-between"
+                    align="center"
+                  >
+                    <Box>
+                      <Text
+                        fontSize="16px"
+                        fontWeight="medium"
+                        fontFamily="Inter, sans-serif"
+                      >
+                        {policy.name}
+                      </Text>
+                      <Text
+                        fontSize="14px"
+                        color="gray.500"
+                        fontFamily="Inter, sans-serif"
+                      >
+                        {policy.account} • {policy.album}
+                      </Text>
+                    </Box>
                     <Text
                       fontSize="14px"
-                      color="gray.500"
+                      color={policy.status === 'active' ? 'green.500' : 'gray.500'}
                       fontFamily="Inter, sans-serif"
                     >
-                      {policy.account} • {policy.album}
+                      {policy.status}
                     </Text>
-                  </Box>
-                  <Text
-                    fontSize="14px"
-                    color={policy.status === 'active' ? 'green.500' : 'gray.500'}
-                    fontFamily="Inter, sans-serif"
-                  >
-                    {policy.status}
-                  </Text>
-                </Flex>
-              ))}
+                  </Flex>
+                ))
+              ) : (
+                <Text
+                  color="gray.500"
+                  textAlign="center"
+                  fontFamily="Inter, sans-serif"
+                  fontSize="14px"
+                >
+                  No policies created yet
+                </Text>
+              )}
             </Panel>
           </Box>
         </VStack>

@@ -10,14 +10,14 @@
 
 ### Architecture
 
-- [ Next.js web ] <--Websocket--> [ Next.js server ] <--Spawn/Stream--> [ icloudpd CLI ]
-- The `Next.js` application provides a web UI and a server that handles interaction with the CLI program.
-- The application stores policy specs in toml files and manages the states of active policies.
+- [ Next.js web ] <--Websocket--> [ Python server ] <--wrapper--> [ icloudpd Python code ]
+- The `Next.js` application provides a web UI and the python server handles the icloudpd logic through a wrapper.
+- The server stores policy specs in toml files and manages the states of active policies.
 
 ### Policy Management
 
-- The application creates and updates policy specs as toml files (without passwords)
-- The application loads policy specs from toml files upon server start
+- The server creates and updates policy specs as toml files (without passwords)
+- The server loads policy specs from toml files upon server start
 - All loaded and created policies are visible at the landing page
 - User is required to provide the icloud password to activate a policy
 
