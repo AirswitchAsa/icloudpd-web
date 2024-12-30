@@ -2,10 +2,14 @@
   "name": "icloudpd-ui",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "next dev",
+    "dev": "concurrently \"npm run dev:client\" \"npm run dev:server\"",
+    "dev:client": "next dev",
+    "dev:server": "ts-node-dev --esm --respawn --transpile-only src/server/start.ts",
     "build": "next build",
-    "start": "next start",
+    "build:server": "tsc --project tsconfig.server.json",
+    "start": "concurrently \"next start\" \"node dist/server/start.js\"",
     "lint": "next lint"
   },
   "dependencies": {
@@ -26,6 +30,8 @@
     "@types/react": "^18.2.0",
     "typescript": "^5.0.0",
     "eslint": "^8.0.0",
-    "eslint-config-next": "^14.0.0"
+    "eslint-config-next": "^14.0.0",
+    "ts-node-dev": "^2.0.0",
+    "concurrently": "^8.0.0"
   }
 } 

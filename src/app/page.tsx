@@ -13,22 +13,61 @@ import {
 import { CreatePolicyModal } from '@/components/CreatePolicyModal';
 import { Banner } from '@/components/Banner';
 import { Panel } from '@/components/Panel';
-import { PolicyHandler, Policy } from '@/handler/handler';
+import { Policy } from '@/server/handler';
+import { useSocket } from '@/hooks/useSocket';
 
 export default function Home() {
   const [policies, setPolicies] = useState<Policy[]>([]);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [activePolicies, setActivePolicies] = useState<Policy[]>([]);
+  const socket = useSocket();
 
   useEffect(() => {
-    const handler = new PolicyHandler();
-    const allPolicies = handler.getPolicies();
-    setPolicies(allPolicies);
-    setActivePolicies(allPolicies.filter(p => p.status === 'active'));
-  }, []);
+    if (!socket) return;
+
+    // Initial load of policies
+    socket.emit('getPolicies');
+
+    // Set up event listeners
+    socket.on('policies', (loadedPolicies) => {
+      setPolicies(loadedPolicies);
+      setActivePolicies(loadedPolicies.filter(p => p.status === 'active'));
+    });
+
+    socket.on('policyAdded', (newPolicy) => {
+      setPolicies(prev => [...prev, newPolicy]);
+      if (newPolicy.status === 'active') {
+        setActivePolicies(prev => [...prev, newPolicy]);
+      }
+    });
+
+    socket.on('policyUpdated', (updatedPolicy) => {
+      setPolicies(prev => prev.map(p => p.name === updatedPolicy.name ? updatedPolicy : p));
+      setActivePolicies(prev => {
+        const newActive = prev.filter(p => p.name !== updatedPolicy.name);
+        if (updatedPolicy.status === 'active') {
+          newActive.push(updatedPolicy);
+        }
+        return newActive;
+      });
+    });
+
+    socket.on('policyDeleted', (name) => {
+      setPolicies(prev => prev.filter(p => p.name !== name));
+      setActivePolicies(prev => prev.filter(p => p.name !== name));
+    });
+
+    // Cleanup
+    return () => {
+      socket.off('policies');
+      socket.off('policyAdded');
+      socket.off('policyUpdated');
+      socket.off('policyDeleted');
+    };
+  }, [socket]);
 
   const handlePolicyCreated = (newPolicy: Policy) => {
-    setPolicies(prev => [...prev, newPolicy]);
+    // No need to manually update state here as it will be handled by the socket events
   };
 
   return (

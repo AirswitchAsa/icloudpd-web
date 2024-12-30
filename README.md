@@ -10,8 +10,8 @@
 
 ### Architecture
 
-- [ Browser ] <--HTTP--> [ Application ] <--Spawn/Stream--> [ icloudpd CLI ]
-- The `Next.js` application provides a web UI and handles interaction with the CLI program.
+- [ Next.js web ] <--Websocket--> [ Next.js server ] <--Spawn/Stream--> [ icloudpd CLI ]
+- The `Next.js` application provides a web UI and a server that handles interaction with the CLI program.
 - The application stores policy specs in toml files and manages the states of active policies.
 
 ### Policy Management

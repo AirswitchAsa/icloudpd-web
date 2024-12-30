@@ -20,7 +20,7 @@ export class PolicyHandler {
   private filePath: string;
 
   constructor() {
-    this.filePath = join(process.cwd(), 'src/data/policies.toml');
+    this.filePath = join(process.cwd(), 'policy/example.toml');
     this.loadPolicies();
   }
 
@@ -28,7 +28,7 @@ export class PolicyHandler {
     try {
       const fileContent = readFileSync(this.filePath, 'utf-8');
       const data = parse(fileContent) as unknown as PolicyFile;
-      this.policies = data.policies || [];
+      this.policies = data.policies;
     } catch (error) {
       console.error('Error loading policies:', error);
       this.policies = [];
