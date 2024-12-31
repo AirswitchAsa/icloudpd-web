@@ -1,0 +1,28 @@
+[project]
+name = "icloudpd-api"
+version = "0.1.0"
+description = "API for iCloud Photos Downloader"
+requires-python = ">3.9, <=3.13"
+dependencies = [
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "icloudpd",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.ruff]
+line-length = 100
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.2.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]

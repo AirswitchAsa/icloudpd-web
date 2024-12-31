@@ -19,8 +19,9 @@
           buildInputs = with pkgs; [
             # Node.js and npm
             nodejs_20
-            # Python for node-gyp
+            # Python and package management
             python3
+            uv
             # Build tools
             pkg-config
             # Required for node-pty

@@ -15,8 +15,7 @@ import {
   ModalFooter,
   useToast,
 } from '@chakra-ui/react';
-import { Policy } from '@/server/handler';
-import { useSocket } from '@/hooks/useSocket';
+import { useSocket, Policy } from '@/hooks/useSocket';
 
 interface CreatePolicyModalProps {
   isOpen: boolean;
@@ -47,12 +46,12 @@ export function CreatePolicyModal({ isOpen, onClose, onPolicyCreated }: CreatePo
     }
 
     try {
-      socket.emit('addPolicy', formData);
+      socket.emit('create_policy', formData);
       
       // Listen for the response
-      socket.once('policyAdded', (newPolicy) => {
+      socket.once('policy_created', (newPolicy: Policy) => {
         toast({
-          title: 'Policy created.',
+          title: 'Policy created',
           description: `Successfully created policy: ${formData.name}`,
           status: 'success',
           duration: 3000,
@@ -61,12 +60,13 @@ export function CreatePolicyModal({ isOpen, onClose, onPolicyCreated }: CreatePo
 
         onPolicyCreated?.(newPolicy);
         onClose();
+        setFormData({ name: '', account: '', album: '', directory: '' });
       });
 
-      socket.once('error', (error) => {
+      socket.once('error', (error: { message: string }) => {
         toast({
-          title: 'Error creating policy.',
-          description: error.message || 'Something went wrong while creating the policy.',
+          title: 'Error creating policy',
+          description: error.message || 'Failed to create policy',
           status: 'error',
           duration: 3000,
           isClosable: true,
@@ -74,8 +74,8 @@ export function CreatePolicyModal({ isOpen, onClose, onPolicyCreated }: CreatePo
       });
     } catch (error) {
       toast({
-        title: 'Error creating policy.',
-        description: 'Something went wrong while creating the policy.',
+        title: 'Error creating policy',
+        description: 'Something went wrong while creating the policy',
         status: 'error',
         duration: 3000,
         isClosable: true,
