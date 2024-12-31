@@ -15,7 +15,7 @@ import { CreatePolicyModal } from '@/components/CreatePolicyModal';
 import { Banner } from '@/components/Banner';
 import { Panel } from '@/components/Panel';
 import { useSocket } from '@/hooks/useSocket';
-import { Policy } from '@/server/handler';
+import { Policy } from '@/types/index';
 
 export default function Home() {
   const [policies, setPolicies] = useState<Policy[]>([]);

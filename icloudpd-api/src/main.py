@@ -1,31 +1,47 @@
-from fastapi import FastAPI, WebSocket, Path
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .websockets import handle_websocket
+import socketio
 
-app = FastAPI(
-    title="iCloudPD API",
-    description="API for iCloud Photos Downloader",
-    version="0.1.0"
-)
+# Create Socket.IO server
+sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins=["http://localhost:3000"])
 
-# Configure CORS
+# Create FastAPI app
+app = FastAPI(title="iCloudPD API", description="API for iCloud Photos Downloader", version="0.1.0")
+
+
+# Configure CORS for REST endpoints
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # TODO: Configure this for production
+    allow_origins=["http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Create ASGI app by wrapping FastAPI with Socket.IO
+socket_app = socketio.ASGIApp(sio, app)
+
+
+@sio.event
+async def connect(sid, environ):
+    print(f"Client connected: {sid}")
+
+
+@sio.event
+async def disconnect(sid):
+    print(f"Client disconnected: {sid}")
+
+
+@sio.event
+async def getPolicies(sid):
+    # Example response
+    policies = [
+        {"name": "Test", "account": "test@example.com", "album": "Test Album", "status": "active"}
+    ]
+    await sio.emit("policies", policies, to=sid)
+
+
 @app.get("/")
 async def root():
     """Root endpoint to verify API is running."""
     return {"status": "ok", "message": "iCloudPD API is running"}
-
-@app.websocket("/ws/{client_id}")
-async def websocket_endpoint(
-    websocket: WebSocket,
-    client_id: str = Path(..., description="Unique identifier for the client")
-):
-    """WebSocket endpoint for real-time communication."""
-    await handle_websocket(websocket, client_id) 

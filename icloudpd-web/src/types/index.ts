@@ -1,3 +1,11 @@
+export interface Policy {
+  name: string;
+  account: string;
+  album: string;
+  directory: string;
+  status: 'active' | 'inactive';
+}
+
 export interface PolicySpec {
   id: string;
   username: string;

@@ -7,6 +7,7 @@ dependencies = [
     "fastapi>=0.109.0",
     "uvicorn[standard]>=0.27.0",
     "icloudpd",
+    "python-socketio[async]",
 ]
 
 [build-system]
