@@ -1,3 +1,0 @@
-[submodule "icloud_photos_downloader"]
-	path = icloud_photos_downloader
-	url = https://github.com/icloud-photos-downloader/icloud_photos_downloader.git
