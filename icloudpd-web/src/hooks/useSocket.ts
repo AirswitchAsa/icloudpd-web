@@ -15,7 +15,7 @@ export function useSocket() {
   useEffect(() => {
     console.log('Attempting to connect to WebSocket server...');
     
-    const newSocket = io('http://localhost:5000', {
+    const newSocket = io('http://pulse.local:5000', {
       transports: ['websocket'],
       reconnection: true,
       reconnectionAttempts: 5,
@@ -43,4 +43,4 @@ export function useSocket() {
   }, []);
 
   return socket;
-} 
+}
