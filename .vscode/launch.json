@@ -1,0 +1,22 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch icloudpd-api Server",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/icloudpd-api/",
+      "args": [
+        "icloudpd_api.main:socket_app",
+        "--host", "0.0.0.0",
+        "--port", "5000",
+        "--reload"
+      ],
+    }
+  ]
+}

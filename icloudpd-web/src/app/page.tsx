@@ -20,7 +20,6 @@ import { Policy } from '@/types/index';
 export default function Home() {
   const [policies, setPolicies] = useState<Policy[]>([]);
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const [activePolicies, setActivePolicies] = useState<Policy[]>([]);
   const socket = useSocket();
   const toast = useToast();
 
@@ -34,30 +33,6 @@ export default function Home() {
     socket.on('policies', (loadedPolicies: Policy[]) => {
       console.log('Received policies:', loadedPolicies);
       setPolicies(loadedPolicies);
-      setActivePolicies(loadedPolicies.filter(p => p.status === 'active'));
-    });
-
-    socket.on('policyAdded', (newPolicy: Policy) => {
-      setPolicies(prev => [...prev, newPolicy]);
-      if (newPolicy.status === 'active') {
-        setActivePolicies(prev => [...prev, newPolicy]);
-      }
-    });
-
-    socket.on('policyUpdated', (updatedPolicy: Policy) => {
-      setPolicies(prev => prev.map(p => p.name === updatedPolicy.name ? updatedPolicy : p));
-      setActivePolicies(prev => {
-        const newActive = prev.filter(p => p.name !== updatedPolicy.name);
-        if (updatedPolicy.status === 'active') {
-          newActive.push(updatedPolicy);
-        }
-        return newActive;
-      });
-    });
-
-    socket.on('policyDeleted', (name: string) => {
-      setPolicies(prev => prev.filter(p => p.name !== name));
-      setActivePolicies(prev => prev.filter(p => p.name !== name));
     });
 
     socket.on('connect_error', () => {
@@ -82,9 +57,6 @@ export default function Home() {
 
   const handlePolicyCreated = (newPolicy: Policy) => {
     setPolicies(prev => [...prev, newPolicy]);
-    if (newPolicy.status === 'active') {
-      setActivePolicies(prev => [...prev, newPolicy]);
-    }
   };
 
   return (
@@ -137,16 +109,9 @@ export default function Home() {
                         color="gray.500"
                         fontFamily="Inter, sans-serif"
                       >
-                        {policy.account} • {policy.album}
+                        {policy.username} • {policy.directory}
                       </Text>
                     </Box>
-                    <Text
-                      fontSize="14px"
-                      color={policy.status === 'active' ? 'green.500' : 'gray.500'}
-                      fontFamily="Inter, sans-serif"
-                    >
-                      {policy.status}
-                    </Text>
                   </Flex>
                 ))
               ) : (

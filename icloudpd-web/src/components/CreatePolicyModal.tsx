@@ -15,12 +15,12 @@ import {
   ModalFooter,
   useToast,
 } from '@chakra-ui/react';
-import { useSocket, Policy } from '@/hooks/useSocket';
-
+import { useSocket } from '@/hooks/useSocket';
+import { Policy } from '@/types';
 interface CreatePolicyModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onPolicyCreated?: (policy: Policy) => void;
+  onPolicyCreated?: (newPolicy: Policy) => void;
 }
 
 export function CreatePolicyModal({ isOpen, onClose, onPolicyCreated }: CreatePolicyModalProps) {
