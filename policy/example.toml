@@ -1,11 +1,9 @@
 [[policy]]
-name = "Daily Photos"
+name = "Test Policy"
 username = "demo@icloud.com"
-album = "All Photos"
 directory = "~/Photos/Daily"
 
 [[policy]]
 name = "Favorites Backup"
 username = "demo@icloud.com"
-album = "Favorites"
 directory = "~/Photos/Favorites"

@@ -1,4 +1,6 @@
 from icloudpd_api.policy_handler import PolicyHandler
+from icloudpd_api.data_models import NON_POLICY_FIELDS
+
 import toml
 import os
 
@@ -11,9 +13,9 @@ class SessionHandler:
     def __init__(self, saved_policies_path: str):
         self._policies: list[PolicyHandler] = []
         self._saved_policies_path: str = saved_policies_path
-        self.load_policies()
+        self._load_policies()
 
-    def load_policies(self):
+    def _load_policies(self):
         """
         Load the policies from the file if it exists.
         """
@@ -23,6 +25,16 @@ class SessionHandler:
                 for policy in saved_policies:
                     assert "name" in policy, "Policy must have a name"
                     self._policies.append(PolicyHandler(**policy))
+
+    def _save_policies(self):
+        """
+        Save the policies to a toml file at the given path.
+        """
+        with open(self._saved_policies_path, "w") as file:
+            policies_to_save = {
+                "policy": [policy.dump(excludes=NON_POLICY_FIELDS) for policy in self._policies]
+            }
+            toml.dump(policies_to_save, file)
 
     def get_policy(self, name: str) -> PolicyHandler | None:
         """
@@ -42,14 +54,4 @@ class SessionHandler:
             policy.update(**kwargs)
         else:
             self._policies.append(PolicyHandler(name=policy_name, **kwargs))
-        self._save_policies(self._saved_policies_path)
-
-    def _save_policies(self):
-        """
-        Save the policies to a toml file at the given path.
-        """
-        with open(self._saved_policies_path, "w") as file:
-            policies_to_save = [
-                policy.dump(excludes=["status", "progress"]) for policy in self._policies
-            ]
-            toml.dump(policies_to_save, file)
+        self._save_policies()

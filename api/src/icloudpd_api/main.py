@@ -1,5 +1,5 @@
 from icloudpd_api.session_handler import SessionHandler
-
+from icloudpd_api.data_models import AuthenticationResult
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import socketio
@@ -49,9 +49,35 @@ async def getPolicies(sid):
 
 
 @sio.event
-async def savePolicy(sid, policy_name, **kwargs):
+async def savePolicy(sid, policy_name, policy_update):
     if handler := handler_manager.get(sid):
-        handler.save_policy(policy_name, **kwargs)
+        handler.save_policy(policy_name, **policy_update)
+
+
+@sio.event
+async def authenticate(sid, policy_name, password):
+    if handler := handler_manager.get(sid):
+        if policy := handler.get_policy(policy_name):
+            result, msg = policy.authenticate(password)
+            match result:
+                case AuthenticationResult.SUCCESS:
+                    await sio.emit("authenticated", msg, to=sid)
+                case AuthenticationResult.FAILED:
+                    await sio.emit("authentication_failed", msg, to=sid)
+                case AuthenticationResult.MFA_REQUIRED:
+                    await sio.emit("mfa_required", msg, to=sid)
+
+
+@sio.event
+async def provideMFA(sid, policy_name, mfa_code):
+    if handler := handler_manager.get(sid):
+        if policy := handler.get_policy(policy_name):
+            result, msg = policy.provide_mfa(mfa_code)
+            match result:
+                case AuthenticationResult.SUCCESS:
+                    await sio.emit("authenticated", msg, to=sid)
+                case AuthenticationResult.MFA_REQUIRED:
+                    await sio.emit("mfa_required", msg, to=sid)
 
 
 @app.get("/")

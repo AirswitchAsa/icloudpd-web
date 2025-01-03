@@ -10,7 +10,7 @@
       "request": "launch",
       "module": "uvicorn",
       "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}/icloudpd-api/",
+      "cwd": "${workspaceFolder}/api/",
       "args": [
         "icloudpd_api.main:socket_app",
         "--host", "0.0.0.0",
