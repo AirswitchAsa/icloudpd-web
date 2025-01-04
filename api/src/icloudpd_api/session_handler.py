@@ -51,7 +51,7 @@ class SessionHandler:
         Create a new policy if it does not exist.
         """
         if policy := self.get_policy(policy_name):
-            policy.update(**kwargs)
+            policy.update(config_updates=kwargs)
         else:
             self._policies.append(PolicyHandler(name=policy_name, **kwargs))
         self._save_policies()

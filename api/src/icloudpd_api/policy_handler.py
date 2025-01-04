@@ -3,14 +3,19 @@ from icloudpd_api.icloud_helper import (
     build_filename_cleaner,
     build_lp_filename_generator,
     file_match_policy_generator,
+    build_raw_policy,
+    build_downloader_builder_args,
 )
+from icloudpd_api.logger import build_logger_level
 
 from pyicloud_ipd.base import PyiCloudService
 from pyicloud_ipd.exceptions import PyiCloudFailedLoginException
+from icloudpd.base import download_builder, delete_photo
 
 from enum import Enum
 
 import asyncio
+import logging
 
 
 class PolicyStatus(Enum):
@@ -53,6 +58,24 @@ class PolicyHandler:
             and not self._icloud.requires_2fa
         )
 
+    @property
+    def albums(self) -> list[str]:
+        """
+        Return a list of all albums available to the user.
+        """
+        if not self.authenticated:
+            return []
+        libraries = list(self._icloud.photos.libraries.keys())
+        shared_library_name = next((lib for lib in libraries if "SharedSync" in lib), None)
+        if libraries and self._configs.library == "Personal Library":
+            library = "PrimarySync"
+        elif shared_library_name and self._configs.library == "Shared Library":
+            library = shared_library_name
+        else:
+            return []
+
+        return [str(a) for a in self._icloud.photos.libraries[library].albums.values()]
+
     def __init__(self, name: str, **kwargs):
         self._name = name
         self._configs = PolicyConfigs(**kwargs)  # validate the configs and fill-in defaults
@@ -66,19 +89,21 @@ class PolicyHandler:
             "status": self._status.value,
             "progress": self._progress,
             "authenticated": self.authenticated,
+            "albums": self.albums,
             **self._configs.model_dump(),
         }
         for exclude in excludes:
             policy_dict.pop(exclude, None)
         return policy_dict
 
-    def update(self, **kwargs):
+    def update(self, config_updates: dict):
         """
         Update the policy configs. Should only be called when status is STOPPED.
         """
         assert self._status == PolicyStatus.STOPPED, "Can only update policy when policy is stopped"
-
-        self._configs = self._configs.model_copy(update=kwargs)
+        new_config_args = self._configs.model_dump()
+        new_config_args.update(config_updates)
+        self._configs = PolicyConfigs(**new_config_args)
 
     def authenticate(self, password: str):
         """
@@ -93,7 +118,7 @@ class PolicyHandler:
                     self._configs.live_photo_mov_filename_policy
                 ),
                 domain=self._configs.domain,
-                raw_policy=self._configs.align_raw,
+                raw_policy=build_raw_policy(self._configs.align_raw),
                 file_match_policy=file_match_policy_generator(self._configs.file_match_policy),
                 apple_id=self._configs.username,
                 password=password,
@@ -117,16 +142,20 @@ class PolicyHandler:
             self._status = PolicyStatus.STOPPED
             return AuthenticationResult.SUCCESS, "Authenticated."
 
-    async def download(self):
+    async def start(self, logger: logging.Logger):
         """
         Start running the policy for download.
         """
+        assert self.authenticated, "Can only start when authenticated"
         self._status = PolicyStatus.RUNNING
+        logger.setLevel(build_logger_level(self._configs.log_level))
+        await asyncio.sleep(1)
 
-        # TODO: Implement the function
-        while self.progress < 100:
-            await asyncio.sleep(1)
-            self.progress += 1
-            if self.progress >= 100:
-                break
-        self._status = PolicyStatus.STOPPED
+        try:
+            downloader = download_builder(
+                logger=logger, **build_downloader_builder_args(self._configs)
+            )(self._icloud)
+        except Exception as e:
+            logger.error(f"Error running policy {self._name}, terminating...")
+            self._status = PolicyStatus.STOPPED
+            raise e

@@ -35,19 +35,34 @@ socket.on('mfa_required', (data) => {
   console.log('Received mfa_required:', data);
 });
 
+socket.on('save_policy_failed', (data) => {
+  console.log('Received save_policy_failed:', data);
+});
+
+socket.on('download_progress', (data) => {
+  console.log('Received download_progress:', data);
+});
+
+socket.on('download_finished', (data) => {
+  console.log('Received download_finished:', data);
+});
+
+socket.on('download_failed', (data) => {
+  console.log('Received download_failed:', data);
+});
 
 socket.emit('getPolicies');
 
 // Test updating a policy
 function testUpdatePolicy() {
-  const policyName = 'Favorites Backup';
+  const policyName = 'New Policy';
   const policyUpdate = {
-    username: 'fav@icloud.com',
-    directory: '~/Photos/fav'
-  };
+    username: 'new@icloud.com',
+    directory: '~/Photos/New',
+    };
 
   socket.emit('savePolicy', policyName, policyUpdate);
-  socket.emit('getPolicies');
+  // socket.emit('getPolicies');
 }
 // testUpdatePolicy();
 
@@ -56,6 +71,14 @@ function testAuthenticate() {
   const password = '114514';
 
   socket.emit('authenticate', policyName, password);
-  socket.emit('provideMFA', policyName, '114514');
+  // socket.emit('provideMFA', policyName, '114514');
+  socket.emit('getPolicies');
 }
-testAuthenticate();
+// testAuthenticate();
+
+function testStart() {
+  testAuthenticate();
+  const policyName = 'Test Policy';
+  socket.emit('start', policyName);
+}
+testStart();
