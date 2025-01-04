@@ -55,3 +55,19 @@ class SessionHandler:
         else:
             self._policies.append(PolicyHandler(name=policy_name, **kwargs))
         self._save_policies()
+
+    def delete_policy(self, policy_name: str):
+        """
+        Delete the policy with the given name.
+        """
+        policy_names = [policy.name for policy in self._policies]
+        assert policy_name in policy_names, f"Policy {policy_name} does not exist"
+        self._policies = [policy for policy in self._policies if policy.name != policy_name]
+        self._save_policies()
+
+    def replace_policies(self, policies: list[dict]):
+        """
+        Replace the current policies with the policies defined in the list of dictionaries.
+        """
+        self._policies = [PolicyHandler(**policy) for policy in policies]
+        self._save_policies()

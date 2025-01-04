@@ -64,8 +64,13 @@ def check_folder_structure(logger: logging.Logger, directory: str, folder_struct
     """
     Check if there exists a .folderstructure file in the directory. If not, create it.
     If the file exists, check if the folder structure is the same as the one in the file.
+
     Return if the folder structure is the same or the folder is newly created.
-    Raise an error if the folder structure is different or there are files in the directory without the folder structure.
+    Raise an error if the folder structure is different or there are files in the directory without
+    the folder structure.
+
+    Note that this check cannot prevent the user from altering the structure file manually with the
+    .folderstructure file in place.
     """
 
     def write_structure_file(structure_file_path: str, folder_structure: str) -> None:

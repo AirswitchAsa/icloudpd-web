@@ -170,7 +170,7 @@ class PolicyHandler:
         logger.setLevel(build_logger_level(self._configs.log_level))
 
         try:
-            logger.info(f"Starting policy {self._name}...")
+            logger.info(f"Starting policy: {self._name}...")
 
             download_photo: Callable = download_builder(
                 logger=logger, **build_downloader_builder_args(self._configs)
@@ -204,6 +204,9 @@ class PolicyHandler:
             photos_counter = 0
             while True:
                 try:
+                    if self._status == PolicyStatus.STOPPED:  # policy is interrupted
+                        logger.info(f"Policy: {self._name} is interrupted by user. Exiting.")
+                        break
                     if should_break(consecutive_files_found, self._configs.until_found):
                         logger.info(
                             "Found %s consecutive previously downloaded photos. Exiting",
@@ -239,7 +242,7 @@ class PolicyHandler:
                     primary_sizes=self._configs.size,
                 )
         except Exception as e:
-            logger.error(f"Error running policy {self._name}, terminating...")
+            logger.error(f"Error running policy: {self._name}. Exiting.")
             self._status = PolicyStatus.STOPPED
             self._progress = 0
             raise e
@@ -249,3 +252,6 @@ class PolicyHandler:
         )
         self._status = PolicyStatus.STOPPED
         self._progress = 0
+
+    def interrupt(self):
+        self._status = PolicyStatus.STOPPED

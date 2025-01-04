@@ -45,6 +45,13 @@ async def disconnect(sid):
 
 
 @sio.event
+async def uploadPolicies(sid, policies):
+    if handler := handler_manager.get(sid):
+        handler.replace_policies(policies)
+        await sio.emit("policies", handler.policies, to=sid)
+
+
+@sio.event
 async def getPolicies(sid):
     if handler := handler_manager.get(sid):
         await sio.emit("policies", handler.policies, to=sid)
@@ -59,6 +66,14 @@ async def savePolicy(sid, policy_name, policy_update):
             await sio.emit(
                 "save_policy_failed", {"policy_name": policy_name, "error": str(e)}, to=sid
             )
+        await sio.emit("policies", handler.policies, to=sid)
+
+
+@sio.event
+async def deletePolicy(sid, policy_name):
+    if handler := handler_manager.get(sid):
+        handler.delete_policy(policy_name)
+        await sio.emit("policies", handler.policies, to=sid)
 
 
 @sio.event
@@ -131,6 +146,13 @@ async def start(sid, policy_name):
                 },
                 to=sid,
             )
+
+
+@sio.event
+async def interrupt(sid, policy_name):
+    if handler := handler_manager.get(sid):
+        if policy := handler.get_policy(policy_name):
+            policy.interrupt()
 
 
 @app.get("/")
