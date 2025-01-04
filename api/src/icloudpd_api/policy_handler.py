@@ -11,6 +11,7 @@ from icloudpd_api.download_option_utils import (
     handle_recent_until_found,
     log_at_download_start,
     should_break,
+    check_folder_structure,
 )
 from pyicloud_ipd.base import PyiCloudService
 from pyicloud_ipd.exceptions import PyiCloudFailedLoginException
@@ -167,7 +168,6 @@ class PolicyHandler:
         assert self.authenticated, "Can only start when authenticated"
         self._status = PolicyStatus.RUNNING
         logger.setLevel(build_logger_level(self._configs.log_level))
-        await asyncio.sleep(1)
 
         try:
             logger.info(f"Starting policy {self._name}...")
@@ -181,6 +181,7 @@ class PolicyHandler:
                 return await loop.run_in_executor(None, download_photo, *args, **kwargs)
 
             directory = os.path.normpath(cast(str, self._configs.directory))
+            check_folder_structure(logger, directory, self._configs.folder_structure)
 
             if (library_name := self.library_name) is None:
                 raise ValueError(f"Unavailable library: {self._configs.library}")
