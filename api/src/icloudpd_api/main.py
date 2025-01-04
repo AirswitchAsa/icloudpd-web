@@ -95,20 +95,22 @@ async def start(sid, policy_name):
             logger, log_capture_stream = build_logger(policy_name)
 
             task = asyncio.create_task(policy.start(logger))
-
+            last_progress = 0
             while not task.done():
                 await asyncio.sleep(1)
-                if policy.status == PolicyStatus.RUNNING:
+                if policy.status == PolicyStatus.RUNNING and (
+                    logs := log_capture_stream.read_new_lines() or policy.progress != last_progress
+                ):
                     await sio.emit(
                         "download_progress",
                         {
                             "policy_name": policy_name,
                             "progress": policy.progress,
-                            "logs": log_capture_stream.read_new_lines(),
+                            "logs": logs,
                         },
                         to=sid,
                     )
-
+                    last_progress = policy.progress
             if task.exception() is not None:
                 await sio.emit(
                     "download_failed",
@@ -121,7 +123,14 @@ async def start(sid, policy_name):
                 )
                 return
 
-            await sio.emit("download_finished", {"policy_name": policy_name}, to=sid)
+            await sio.emit(
+                "download_finished",
+                {
+                    "policy_name": policy_name,
+                    "logs": log_capture_stream.read_new_lines(),
+                },
+                to=sid,
+            )
 
 
 @app.get("/")

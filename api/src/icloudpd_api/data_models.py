@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Literal, Annotated
+from typing import Sequence, Literal, Annotated
 from enum import Enum
 
 NON_POLICY_FIELDS = ["status", "progress", "authenticated", "libraries", "albums"]
@@ -18,8 +18,8 @@ class PolicyConfigs(BaseModel):
 
     # Download options
     directory: str
-    folder_structure: str | None = None
-    size: Literal["original", "medium", "thumb", "adjusted", "alternative"] = "original"
+    folder_structure: str = "{:%Y/%m/%d}"
+    size: Sequence[Literal["original", "medium", "thumb", "adjusted", "alternative"]] = ["original"]
     live_photo_size: Literal["original", "medium", "thumb"] = "original"
     force_size: bool = False
     align_raw: Literal["original", "alternative", "as-is"] = "original"
@@ -33,7 +33,7 @@ class PolicyConfigs(BaseModel):
     use_os_locale: bool = False
 
     # Filter options
-    album: str | None = None
+    album: str = "All Photos"
     library: Literal["Personal Library", "Shared Library"] = "Personal Library"
     recent: Annotated[int, Field(ge=0)] | None = None
     until_found: Annotated[int, Field(ge=0)] | None = None
