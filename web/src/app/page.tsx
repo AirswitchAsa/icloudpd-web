@@ -6,15 +6,15 @@ import {
   Container,
   Button,
   VStack,
-  Flex,
   useDisclosure,
-  Text,
   useToast,
 } from '@chakra-ui/react';
 import { CreatePolicyModal } from '@/components/CreatePolicyModal';
 import { Banner } from '@/components/Banner';
 import { Panel } from '@/components/Panel';
+import { PolicyList } from '@/components/PolicyList';
 import { useSocket } from '@/hooks/useSocket';
+import { useSocketEvents } from '@/hooks/useSocketEvents';
 import { Policy } from '@/types/index';
 
 export default function Home() {
@@ -23,40 +23,26 @@ export default function Home() {
   const socket = useSocket();
   const toast = useToast();
 
-  useEffect(() => {
-    if (!socket) return;
-
-    // Request initial policies
-    socket.emit('getPolicies');
-
-    // Set up event listeners
-    socket.on('policies', (loadedPolicies: Policy[]) => {
-      console.log('Received policies:', loadedPolicies);
-      setPolicies(loadedPolicies);
-    });
-
-    socket.on('connect_error', () => {
-      toast({
-        title: 'Connection Error',
-        description: 'Failed to connect to server. Please check if the server is running.',
-        status: 'error',
-        duration: null,
-        isClosable: true,
-      });
-    });
-
-    // Cleanup
-    return () => {
-      socket.off('policies');
-      socket.off('policyAdded');
-      socket.off('policyUpdated');
-      socket.off('policyDeleted');
-      socket.off('connect_error');
-    };
-  }, [socket, toast]);
+  // Use the socket events hook
+  useSocketEvents({ socket, toast, setPolicies });
 
   const handlePolicyCreated = (newPolicy: Policy) => {
     setPolicies(prev => [...prev, newPolicy]);
+  };
+
+  const handlePolicyEdit = (policy: Policy) => {
+    // TODO: Implement policy editing
+    console.log('Edit policy:', policy);
+  };
+
+  const handlePolicyDelete = (policy: Policy) => {
+    // TODO: Implement policy deletion
+    console.log('Delete policy:', policy);
+  };
+
+  const handlePolicyRun = (policy: Policy) => {
+    // TODO: Implement policy running
+    console.log('Run policy:', policy);
   };
 
   return (
@@ -66,7 +52,6 @@ export default function Home() {
       {/* Main Content */}
       <Container maxW="container.xl" py={8}>
         <VStack spacing={8} align="center" width="100%">
-
           {/* All Policies Panel */}
           <Box width="61.8%">
             <Panel 
@@ -86,44 +71,12 @@ export default function Home() {
                 </Button>
               }
             >
-              {policies.length > 0 ? (
-                policies.map((policy, index) => (
-                  <Flex
-                    key={policy.name}
-                    p={4}
-                    borderBottom="1px"
-                    borderColor="gray.100"
-                    justify="space-between"
-                    align="center"
-                  >
-                    <Box>
-                      <Text
-                        fontSize="16px"
-                        fontWeight="medium"
-                        fontFamily="Inter, sans-serif"
-                      >
-                        {policy.name}
-                      </Text>
-                      <Text
-                        fontSize="14px"
-                        color="gray.500"
-                        fontFamily="Inter, sans-serif"
-                      >
-                        {policy.username} • {policy.directory}
-                      </Text>
-                    </Box>
-                  </Flex>
-                ))
-              ) : (
-                <Text
-                  color="gray.500"
-                  textAlign="center"
-                  fontFamily="Inter, sans-serif"
-                  fontSize="14px"
-                >
-                  No policies created yet
-                </Text>
-              )}
+              <PolicyList
+                policies={policies}
+                onEdit={handlePolicyEdit}
+                onDelete={handlePolicyDelete}
+                onRun={handlePolicyRun}
+              />
             </Panel>
           </Box>
         </VStack>
@@ -136,4 +89,4 @@ export default function Home() {
       </Container>
     </Box>
   );
-} 
+}

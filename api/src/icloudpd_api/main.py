@@ -30,7 +30,7 @@ app.add_middleware(
 socket_app = socketio.ASGIApp(sio, app)
 
 handler_manager: dict[str, SessionHandler] = {}
-MAX_SESSIONS = 1
+MAX_SESSIONS = 5
 
 
 @sio.event
@@ -38,14 +38,15 @@ async def connect(sid, environ):
     """
     Connect a client to the server. Force disconnect if the maximum number of sessions is reached.
     """
+    print(f"Client connected: {sid}")
     if len(handler_manager) < MAX_SESSIONS:
         handler_manager[sid] = SessionHandler(saved_policies_path="../policy/example.toml")
-        print(f"Client connected: {sid}")
     else:
         # disconnect the client
         print(f"Disconnecting client {sid} due to reaching max number of sessions")
-        await sio.disconnect(sid)
+        await disconnect(sid)
         return
+    print(f"Current client sessions: {list(handler_manager.keys())}")
 
 
 @sio.event
@@ -54,7 +55,9 @@ async def disconnect(sid):
     Disconnect a client from the server and remove the session handler.
     """
     print(f"Client disconnected: {sid}")
-    del handler_manager[sid]
+    if sid in handler_manager:
+        del handler_manager[sid]
+    print(f"Remaining client sessions: {list(handler_manager.keys())}")
 
 
 @sio.event

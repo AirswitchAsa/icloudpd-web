@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field
 from typing import Sequence, Literal, Annotated
 from enum import Enum
 
-NON_POLICY_FIELDS = ["status", "progress", "authenticated", "libraries", "albums"]
+NON_POLICY_FIELDS = ["status", "progress", "authenticated", "albums"]
 
 
 class AuthenticationResult(Enum):
