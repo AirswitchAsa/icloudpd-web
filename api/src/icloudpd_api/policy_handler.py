@@ -5,6 +5,7 @@ from icloudpd_api.icloud_utils import (
     file_match_policy_generator,
     build_raw_policy,
     build_downloader_builder_args,
+    request_2sa,
 )
 from icloudpd_api.logger import build_logger_level, build_photos_exception_handler
 from icloudpd_api.download_option_utils import (
@@ -147,6 +148,10 @@ class PolicyHandler:
         if self.authenticated:
             return AuthenticationResult.SUCCESS, "Authenticated."
         else:
+            if (
+                self._icloud.requires_2sa and not self._configs.request_2sa
+            ):  # User does not have MFA enabled, request 2SA using SMS manually
+                request_2sa(self._icloud)
             return AuthenticationResult.MFA_REQUIRED, "MFA required."
 
     def provide_mfa(self, mfa_code: str):

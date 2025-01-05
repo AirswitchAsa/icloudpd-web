@@ -3,11 +3,26 @@ from icloudpd.paths import clean_filename, remove_unicode_chars
 from icloudpd.base import lp_filename_concatinator, lp_filename_original, download_builder
 
 from pyicloud_ipd.file_match import FileMatchPolicy
+from pyicloud_ipd.base import PyiCloudService
 from icloudpd_api.data_models import PolicyConfigs
 
 from typing import Callable
 
 from inspect import signature
+
+
+def request_2sa(icloud: PyiCloudService) -> None:
+    """
+    Request 2SA code using SMS from the first trusted device.
+    Difference between 2FA and 2SA: https://discussions.apple.com/thread/7932277
+    """
+    devices = icloud.trusted_devices
+    if len(devices) == 0:
+        raise ValueError("No devices available for 2SA")
+    # Request 2SA from the first trusteddevice
+    phone_number = devices[0]["phoneNumber"]
+    print(f"Requesting 2SA code via SMS to {phone_number}")
+    icloud.send_verification_code(devices[0])
 
 
 def build_downloader_builder_args(configs: PolicyConfigs) -> dict:

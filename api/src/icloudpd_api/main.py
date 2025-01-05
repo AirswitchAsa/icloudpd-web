@@ -79,7 +79,10 @@ async def getPolicies(sid):
     Get the policies for the user with sid as a list of dictionaries.
     """
     if handler := handler_manager.get(sid):
-        await sio.emit("policies", handler.policies, to=sid)
+        try:
+            await sio.emit("policies", handler.policies, to=sid)
+        except Exception as e:
+            await sio.emit("internal_error", {"error": repr(e)}, to=sid)
 
 
 @sio.event
