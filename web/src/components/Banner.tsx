@@ -12,7 +12,7 @@ export function Banner() {
         <Flex 
           maxW="container.xl" 
           mx="auto" 
-          width="61.8%"
+          width="100%"
           justify="space-between" 
           align="center"
         >

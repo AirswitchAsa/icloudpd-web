@@ -53,10 +53,9 @@ export default function Home() {
       <Container maxW="container.xl" py={8}>
         <VStack spacing={8} align="center" width="100%">
           {/* All Policies Panel */}
-          <Box width="61.8%">
+          <Box width="100%">
             <Panel 
               title="All Policies"
-              width="100%"
               headerRight={
                 <Button
                   bg="black"
@@ -64,7 +63,9 @@ export default function Home() {
                   _hover={{ bg: 'gray.800' }}
                   borderRadius="xl"
                   fontFamily="Inter, sans-serif"
-                  fontSize="14px"
+                  fontSize="12px"
+                  size="sm"
+                  px={4}
                   onClick={onOpen}
                 >
                   Add

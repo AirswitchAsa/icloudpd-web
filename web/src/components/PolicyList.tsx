@@ -22,13 +22,27 @@ interface PolicyListProps {
 
 export const PolicyList = ({ policies, onEdit, onDelete, onRun }: PolicyListProps) => {
   return (
-    <VStack spacing={2} width="100%">
+    <VStack spacing={2} width="100%" align="stretch">
       {policies.length > 0 ? (
-        policies.map((policy) => <PolicyRow key={policy.name} policy={policy} onEdit={onEdit} onDelete={onDelete} onRun={onRun} />)
+        policies.map((policy) => (
+          <PolicyRow
+            key={policy.name}
+            policy={policy}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onRun={onRun}
+          />
+        ))
       ) : (
-        <Text color="gray.500" textAlign="center" fontFamily="Inter, sans-serif" fontSize="14px">
-          No policies created yet
-        </Text>
+        <Box
+          height="100px"
+          display="grid"
+          placeItems="center"
+        >
+          <Text color="gray.500" textAlign="center" fontFamily="Inter, sans-serif" fontSize="14px">
+            No policies created yet
+          </Text>
+        </Box>
       )}
     </VStack>
   );
@@ -72,21 +86,23 @@ const PolicyRow = ({ policy, onEdit, onDelete, onRun }: PolicyRowProps) => {
               <Text>{policy.directory}</Text>
             </Flex>
           </Box>
-          <Box width="150px">
-            <Text fontSize="14px" color="gray.600">
-              {policy.status || 'Idle'}
-            </Text>
-            {policy.progress !== undefined && (
-              <Progress
-                value={policy.progress}
-                size="sm"
-                colorScheme="blue"
-                borderRadius="full"
-              />
-            )}
+          <Box width="150px" display="flex">
+            <Box flex="1" mt={1}>
+              <Text fontSize="12px" color="gray.600" fontWeight="medium">
+                IDLE
+              </Text>
+              {policy.progress !== undefined && (
+                <Progress
+                  value={policy.progress}
+                  size="sm"
+                  colorScheme="blue"
+                  borderRadius="full"
+                />
+              )}
+            </Box>
           </Box>
         </Flex>
-        <Flex gap={2}>
+        <Flex gap={2} ml={4}>
           <IconButton
             aria-label="Run policy"
             icon={<FaPlay />}

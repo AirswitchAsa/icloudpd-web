@@ -1,4 +1,4 @@
-import { Box, Text, BoxProps, Flex } from '@chakra-ui/react';
+import { Box, Text, BoxProps, Flex, Spacer } from '@chakra-ui/react';
 
 interface PanelProps extends BoxProps {
   title: string;
@@ -9,42 +9,55 @@ interface PanelProps extends BoxProps {
 export function Panel({ title, children, headerRight, ...props }: PanelProps) {
   return (
     <Box width="100%" {...props}>
-      <Flex justify="space-between" align="center">
-        <Text
-          fontSize="20px"
-          fontWeight="medium"
-          fontFamily="Inter, sans-serif"
-          color="black"
-          mb={2}
-          py={20}
-        >
-          {title}
-        </Text>
-        {headerRight}
-      </Flex>
-      <Box
-        bg="white"
-        borderRadius="2xl"
-        py={8}
-        px={12}
-        boxShadow="sm"
-        border="1px"
+      <Box 
+        bg="white" 
+        borderRadius="2xl" 
+        boxShadow="sm" 
+        border="1px" 
         borderColor="gray.200"
-        minH="300px"
         display="flex"
-        alignItems="center"
-        justifyContent="center"
+        flexDirection="column"
       >
-        {children || (
+        <Flex 
+          px={6} 
+          py={4} 
+          borderBottom="1px" 
+          borderColor="gray.100" 
+          height="56px"
+          alignItems="center"
+        >
           <Text
+            fontSize="12px"
+            fontWeight="bold"
             color="gray.500"
-            textAlign="center"
-            fontFamily="Inter, sans-serif"
-            fontSize="14px"
+            letterSpacing="0.05em"
           >
-            Empty
+            {title.toUpperCase()}
           </Text>
-        )}
+          <Spacer />
+          {headerRight}
+        </Flex>
+        <Box
+          py={8}
+          px={12}
+          flex="1"
+          minH="200px"
+          display="flex"
+          alignItems="flex-start"
+          width="100%"
+        >
+          {children || (
+            <Text
+              color="gray.500"
+              textAlign="center"
+              fontFamily="Inter, sans-serif"
+              fontSize="14px"
+              width="100%"
+            >
+              Empty
+            </Text>
+          )}
+        </Box>
       </Box>
     </Box>
   );
