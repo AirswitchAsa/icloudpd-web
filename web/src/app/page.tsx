@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   Box,
   Container,
@@ -9,7 +9,7 @@ import {
   useDisclosure,
   useToast,
 } from '@chakra-ui/react';
-import { CreatePolicyModal } from '@/components/CreatePolicyModal';
+import { EditPolicyModal } from '@/components/EditPolicyModal';
 import { Banner } from '@/components/Banner';
 import { Panel } from '@/components/Panel';
 import { PolicyList } from '@/components/PolicyList';
@@ -26,7 +26,7 @@ export default function Home() {
   // Use the socket events hook
   useSocketEvents({ socket, toast, setPolicies });
 
-  const handlePolicyCreated = (newPolicy: Policy) => {
+  const handlePolicySaved = (newPolicy: Policy) => {
     setPolicies(prev => [...prev, newPolicy]);
   };
 
@@ -81,10 +81,11 @@ export default function Home() {
           </Box>
         </VStack>
 
-        <CreatePolicyModal 
+        <EditPolicyModal 
           isOpen={isOpen} 
           onClose={onClose} 
-          onPolicyCreated={handlePolicyCreated}
+          onPolicySaved={handlePolicySaved}
+          isEditing={false}
         />
       </Container>
     </Box>

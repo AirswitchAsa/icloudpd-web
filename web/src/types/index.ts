@@ -5,11 +5,36 @@ export interface Policy {
   status?: string;
   progress?: number;
   logs?: string;
-}
+  
+  // Connection options
+  domain: 'com' | 'cn';
 
-export interface CreatePolicyInput {
-  username: string;
-  directory: string;
-  syncMode: 'download' | 'sync';
-  interval?: number;
-} 
+  // Download options
+  folder_structure: string;
+  size: Array<'original' | 'medium' | 'thumb' | 'adjusted' | 'alternative'>;
+  live_photo_size: 'original' | 'medium' | 'thumb';
+  force_size: boolean;
+  align_raw: 'original' | 'alternative' | 'as-is';
+  keep_unicode_in_filenames: boolean;
+  set_exif_datetime: boolean;
+  live_photo_mov_filename_policy: 'original' | 'suffix';
+  file_match_policy: 'name-size-dedup-with-suffix' | 'name-id7';
+  xmp_sidecar: boolean;
+  use_os_locale: boolean;
+
+  // Filter options
+  album: string;
+  library: 'Personal Library' | 'Shared Library';
+  recent: number | null;
+  until_found: number | null;
+  skip_videos: boolean;
+  skip_live_photos: boolean;
+
+  // Delete options
+  auto_delete: boolean;
+  delete_after_download: boolean;
+
+  // icloudpd-ui options
+  interval: number | null;
+  log_level: 'debug' | 'info' | 'error';
+}
