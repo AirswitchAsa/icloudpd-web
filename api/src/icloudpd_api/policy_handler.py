@@ -158,7 +158,6 @@ class PolicyHandler:
         if not self.authenticated:
             return AuthenticationResult.MFA_REQUIRED, "Wrong MFA code."
         else:
-            self._status = PolicyStatus.STOPPED
             return AuthenticationResult.SUCCESS, "Authenticated."
 
     async def start(self, logger: logging.Logger):

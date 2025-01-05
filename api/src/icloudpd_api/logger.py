@@ -37,7 +37,7 @@ class LogCaptureStream(io.StringIO):
             new_lines = "".join(self.buffer)
             self.buffer = []
             return new_lines
-        return []
+        return ""
 
 
 def build_logger(policy_name: str) -> Tuple[logging.Logger, LogCaptureStream]:
