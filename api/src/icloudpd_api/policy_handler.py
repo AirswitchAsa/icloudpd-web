@@ -149,7 +149,7 @@ class PolicyHandler:
             return AuthenticationResult.SUCCESS, "Authenticated."
         else:
             if (
-                self._icloud.requires_2sa and not self._configs.request_2sa
+                self._icloud.requires_2sa and not self._icloud.requires_2fa
             ):  # User does not have MFA enabled, request 2SA using SMS manually
                 request_2sa(self._icloud)
             return AuthenticationResult.MFA_REQUIRED, "MFA required."
