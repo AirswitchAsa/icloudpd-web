@@ -53,7 +53,7 @@ class SessionHandler:
         if policy := self.get_policy(policy_name):
             policy.update(config_updates=kwargs)
         else:
-            self._policies.append(PolicyHandler(name=policy_name, **kwargs))
+            self._policies.append(PolicyHandler(**kwargs))
         self._save_policies()
 
     def delete_policy(self, policy_name: str):

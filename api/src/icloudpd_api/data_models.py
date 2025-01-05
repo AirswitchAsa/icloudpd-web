@@ -13,11 +13,11 @@ class AuthenticationResult(Enum):
 
 class PolicyConfigs(BaseModel):
     # Connection options
-    username: str
+    username: str = Field(min_length=1)
     domain: Literal["com", "cn"] = "com"
 
     # Download options
-    directory: str
+    directory: str = Field(min_length=1)
     folder_structure: str = "{:%Y/%m/%d}"
     size: Sequence[Literal["original", "medium", "thumb", "adjusted", "alternative"]] = ["original"]
     live_photo_size: Literal["original", "medium", "thumb"] = "original"

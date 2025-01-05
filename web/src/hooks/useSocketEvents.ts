@@ -75,6 +75,16 @@ export function useSocketEvents({ socket, toast, setPolicies }: UseSocketEventsP
       });
     });
 
+    socket.on('delete_policy_failed', ({ policy_name, error }: { policy_name: string; error: string }) => {
+      toast({
+        title: 'Failed to Delete Policy',
+        description: `Failed to delete policy "${policy_name}": ${error}`,
+        status: 'error',
+        duration: null,
+        isClosable: true,
+      });
+    });
+
     // Download events
     socket.on('download_progress', ({ policy_name, progress, logs }: { policy_name: string; progress: number; logs: string }) => {
       // TODO: Update progress bar for specific policy

@@ -106,8 +106,13 @@ async def deletePolicy(sid, policy_name):
     Delete a policy with the given name.
     """
     if handler := handler_manager.get(sid):
-        handler.delete_policy(policy_name)
-        await sio.emit("policies", handler.policies, to=sid)
+        try:
+            handler.delete_policy(policy_name)
+            await sio.emit("policies", handler.policies, to=sid)
+        except Exception as e:
+            await sio.emit(
+                "delete_policy_failed", {"policy_name": policy_name, "error": repr(e)}, to=sid
+            )
 
 
 @sio.event

@@ -100,6 +100,21 @@ export function EditPolicyModal({ isOpen, onClose, onPolicySaved, isEditing = fa
     log_level: policy?.log_level || 'info'
   });
 
+  const handleSave = () => {
+    try {
+      socket?.emit('savePolicy', formData.name, formData);
+      onPolicySaved?.(formData as Policy);
+    } catch (error) {
+      toast({
+        title: 'Error saving policy',
+        description: 'Failed to save policy',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} isCentered motionPreset="slideInBottom" size="xl" scrollBehavior="inside">
       <ModalOverlay backdropFilter="blur(4px)" />
@@ -409,6 +424,7 @@ export function EditPolicyModal({ isOpen, onClose, onPolicySaved, isEditing = fa
             mr={3}
             borderRadius="xl"
             fontFamily="Inter, sans-serif"
+            onClick={handleSave}
           >
             Save
           </Button>
