@@ -5,6 +5,7 @@ export interface Policy {
   status?: string;
   progress?: number;
   logs?: string;
+  authenticated?: boolean;
   
   // Connection options
   domain: 'com' | 'cn';

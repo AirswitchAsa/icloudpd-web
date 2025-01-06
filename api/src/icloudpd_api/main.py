@@ -4,7 +4,6 @@ from icloudpd_api.policy_handler import PolicyStatus
 from icloudpd_api.logger import build_logger
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import ValidationError
 import socketio
 import asyncio
 

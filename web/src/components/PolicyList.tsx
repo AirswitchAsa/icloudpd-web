@@ -81,6 +81,13 @@ const PolicyRow = ({ policy, onEdit, onDelete, onRun }: PolicyRowProps) => {
               {policy.name}
             </Text>
             <Flex gap={2} color="gray.500" fontSize="14px">
+              <Text 
+                color={policy.authenticated ? "green.500" : "gray.500"} 
+                fontWeight="medium"
+              >
+                {policy.authenticated ? "ready" : "unauthenticated"}
+              </Text>
+              <Text>•</Text>
               <Text>{policy.username}</Text>
               <Text>•</Text>
               <Text>{policy.directory}</Text>

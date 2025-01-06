@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box,
   Container,
@@ -17,22 +17,49 @@ import { PolicyList } from '@/components/PolicyList';
 import { useSocket } from '@/hooks/useSocket';
 import { useSocketEvents } from '@/hooks/useSocketEvents';
 import { Policy } from '@/types/index';
+import { AuthenticationModal } from '@/components/AuthenticationModal';
+import { MFAModal } from '@/components/MFAModal';
 
 export default function Home() {
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [selectedPolicy, setSelectedPolicy] = useState<Policy | undefined>();
   const [policyToDelete, setPolicyToDelete] = useState<Policy | undefined>();
+  const [policyToAuth, setPolicyToAuth] = useState<Policy | undefined>();
+  const [mfaError, setMfaError] = useState<string>();
+  
   const { isOpen: isEditPolicyOpen, onOpen: onEditPolicyOpen, onClose: onEditPolicyClose } = useDisclosure();
-  const {
-    isOpen: isDeleteOpen,
-    onOpen: onDeleteOpen,
-    onClose: onDeleteClose
-  } = useDisclosure();
+  const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
+  const { isOpen: isAuthOpen, onOpen: onAuthOpen, onClose: onAuthClose } = useDisclosure();
+  const { isOpen: isMfaOpen, onOpen: onMfaOpen, onClose: onMfaClose } = useDisclosure();
+  
   const socket = useSocket();
   const toast = useToast();
 
   // Use the socket events hook
   useSocketEvents({ socket, toast, setPolicies });
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleAuthenticated = () => {
+      onAuthClose();
+      onMfaClose();
+    };
+
+    const handleMfaRequired = (msg: string) => {
+      onAuthClose();
+      setMfaError(msg);
+      onMfaOpen();
+    };
+
+    socket.on('authenticated', handleAuthenticated);
+    socket.on('mfa_required', handleMfaRequired);
+
+    return () => {
+      socket.off('authenticated', handleAuthenticated);
+      socket.off('mfa_required', handleMfaRequired);
+    };
+  }, [socket, policyToAuth, onAuthClose, onMfaClose, onMfaOpen]);
 
   const handlePolicySaved = (policies: Policy[]) => {
     setPolicies(policies);
@@ -68,8 +95,19 @@ export default function Home() {
   };
 
   const handlePolicyRun = (policy: Policy) => {
-    // TODO: Implement policy running
-    console.log('Run policy:', policy);
+    setPolicyToAuth(policy);
+    onAuthOpen();
+  };
+
+  const handleAuthSubmit = (password: string) => {
+    if (!socket || !policyToAuth) return;
+    socket.emit('authenticate', policyToAuth.name, password);
+  };
+
+  const handleMfaSubmit = (code: string) => {
+    if (!socket || !policyToAuth) return;
+    setMfaError(undefined);
+    socket.emit('provideMFA', policyToAuth.name, code);
   };
 
   return (
@@ -124,6 +162,28 @@ export default function Home() {
           onClose={onDeleteClose}
           onConfirm={confirmDelete}
           policyName={policyToDelete?.name || ''}
+        />
+
+        <AuthenticationModal
+          isOpen={isAuthOpen}
+          onClose={() => {
+            onAuthClose();
+            setPolicyToAuth(undefined);
+          }}
+          onSubmit={handleAuthSubmit}
+          policyName={policyToAuth?.name || ''}
+        />
+
+        <MFAModal
+          isOpen={isMfaOpen}
+          onClose={() => {
+            onMfaClose();
+            setPolicyToAuth(undefined);
+            setMfaError(undefined);
+          }}
+          onSubmit={handleMfaSubmit}
+          policyName={policyToAuth?.name || ''}
+          error={mfaError}
         />
       </Container>
     </Box>
