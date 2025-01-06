@@ -1,7 +1,27 @@
 import { useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { Policy } from '@/types';
+
+// This will be replaced with proper user authentication later
+const CLIENT_ID = 'default-user';
 
 // Define types for the different event payloads
+interface PolicyUpdatePayload {
+  policies: Policy[];
+}
+
+interface ErrorWithPoliciesPayload {
+  policy_name: string;
+  error: string;
+  current_policies: Policy[];
+}
+
+interface ErrorPayload {
+  error: string;
+  policy_name?: string;
+  message?: string;
+}
+
 interface DownloadProgressPayload {
   policy_name: string;
   progress: number;
@@ -11,17 +31,6 @@ interface DownloadProgressPayload {
 interface DownloadFinishedPayload {
   policy_name: string;
   logs: string;
-}
-
-interface DownloadFailedPayload {
-  policy_name: string;
-  error: string;
-  logs: string;
-}
-
-interface SavePolicyFailedPayload {
-  policy_name: string;
-  error: string;
 }
 
 export function useSocket() {
@@ -35,6 +44,11 @@ export function useSocket() {
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
+      // setting custom headers is not supported when using transports: ['websocket']
+      // see https://socket.io/docs/v4/client-options/#extraheaders
+      auth: {
+        clientId: CLIENT_ID
+      }
     });
 
     // Basic connection events
@@ -42,12 +56,40 @@ export function useSocket() {
       console.log('Connected to Python server');
     });
 
-    newSocket.on('connect_error', (error) => {
+    newSocket.on('connect_error', (error: Error) => {
       console.error('Socket connection error:', error.message);
     });
 
     newSocket.on('disconnect', (reason) => {
       console.log('Socket disconnected:', reason);
+    });
+
+    // Policy update events
+    const policyUpdateEvents = [
+      'policies',
+      'uploaded_policies',
+      'policies_after_save',
+      'policies_after_delete',
+      'policies_after_interrupt'
+    ];
+
+    policyUpdateEvents.forEach(event => {
+      newSocket.on(event, (payload: Policy[]) => {
+        console.log(`${event}:`, payload);
+      });
+    });
+
+    // Error events with policies
+    const errorEventsWithPolicies = [
+      'error_saving_policy',
+      'error_deleting_policy',
+      'error_interrupting_download'
+    ];
+
+    errorEventsWithPolicies.forEach(event => {
+      newSocket.on(event, (payload: ErrorWithPoliciesPayload) => {
+        console.error(`${event}:`, payload);
+      });
     });
 
     // Authentication events
@@ -63,11 +105,6 @@ export function useSocket() {
       console.log('MFA required:', msg);
     });
 
-    // Policy management events
-    newSocket.on('save_policy_failed', (payload: SavePolicyFailedPayload) => {
-      console.error('Failed to save policy:', payload);
-    });
-
     // Download events
     newSocket.on('download_progress', (payload: DownloadProgressPayload) => {
       console.log('Download progress:', payload);
@@ -77,7 +114,7 @@ export function useSocket() {
       console.log('Download finished:', payload);
     });
 
-    newSocket.on('download_failed', (payload: DownloadFailedPayload) => {
+    newSocket.on('download_failed', (payload: ErrorPayload) => {
       console.error('Download failed:', payload);
     });
 

@@ -31,7 +31,7 @@ import { Policy } from '@/types';
 interface EditPolicyModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onPolicySaved?: (newPolicy: Policy) => void;
+  onPolicySaved?: (policies: Policy[]) => void;
   isEditing?: boolean;
   policy?: Policy;
 }
@@ -101,18 +101,29 @@ export function EditPolicyModal({ isOpen, onClose, onPolicySaved, isEditing = fa
   });
 
   const handleSave = () => {
-    try {
-      socket?.emit('savePolicy', formData.name, formData);
-      onPolicySaved?.(formData as Policy);
-    } catch (error) {
+    if (!socket) return;
+
+    // Listen for the response before closing
+    socket.once('policies_after_save', (policies: Policy[]) => {
+      if (onPolicySaved) {
+        onPolicySaved(policies);
+      }
+    });
+
+    socket.once('error_saving_policy', (data: { policy_name: string; error: string }) => {
       toast({
-        title: 'Error saving policy',
-        description: 'Failed to save policy',
+        title: 'Error',
+        description: `Failed to save policy "${data.policy_name}": ${data.error}`,
         status: 'error',
-        duration: 3000,
+        duration: 5000,
         isClosable: true,
       });
-    }
+      // If error occurs, remove the success listener
+      socket.off('policies_after_save');
+    });
+
+    // Send the save request
+    socket.emit('savePolicy', formData.name, formData);
   };
 
   return (

@@ -1,11 +1,11 @@
 import { useEffect } from 'react';
 import { Socket } from 'socket.io-client';
-import { useToast } from '@chakra-ui/react';
-import { Policy } from '@/types/index';
+import { UseToastOptions } from '@chakra-ui/react';
+import { Policy } from '@/types';
 
 interface UseSocketEventsProps {
   socket: Socket | null;
-  toast: ReturnType<typeof useToast>;
+  toast: (options: UseToastOptions) => void;
   setPolicies: (policies: Policy[]) => void;
 }
 
@@ -16,23 +16,61 @@ export function useSocketEvents({ socket, toast, setPolicies }: UseSocketEventsP
     // Request initial policies
     socket.emit('getPolicies');
 
-    // Set up event listeners
-    socket.on('policies', (loadedPolicies: Policy[]) => {
-      console.log('Received policies:', loadedPolicies);
-      setPolicies(loadedPolicies);
-    });
+    // Policy list update events (only successful operations)
+    const policyUpdateEvents = [
+      'policies',                    // Initial load
+      'policies_after_save',         // After successful save
+      'policies_after_delete',       // After successful delete
+      'policies_after_interrupt'     // After successful interrupt
+    ];
 
-    socket.on('connect_error', () => {
-      toast({
-        title: 'Connection Error',
-        description: 'Failed to connect to server. Please check if the server is running.',
-        status: 'error',
-        duration: null,
-        isClosable: true,
+    policyUpdateEvents.forEach(event => {
+      socket.on(event, (policies: Policy[]) => {
+        setPolicies(policies);
+        // Show success notification for specific events
+        if (event !== 'policies') { // Don't show for initial load
+          const messages = {
+            policies_after_save: 'Policy saved successfully',
+            policies_after_delete: 'Policy deleted successfully',
+            policies_after_interrupt: 'Download interrupted successfully'
+          };
+          toast({
+            title: 'Success',
+            description: messages[event as keyof typeof messages],
+            status: 'success',
+            duration: 3000,
+            isClosable: true,
+          });
+        }
       });
     });
 
-    // Authentication events
+    // Error events
+    const errorEvents = {
+      connect_error: 'Failed to connect to server',
+      error_saving_policy: 'Failed to save policy',
+      error_deleting_policy: 'Failed to delete policy',
+      error_interrupting_download: 'Failed to interrupt download',
+      authentication_failed: 'Authentication failed',
+      download_failed: 'Failed to download photos'
+    };
+
+    Object.entries(errorEvents).forEach(([event, defaultMessage]) => {
+      socket.on(event, (data: any) => {
+        const errorMessage = data?.error || data?.message || '';
+        const policyName = data?.policy_name ? ` "${data.policy_name}"` : '';
+        
+        toast({
+          title: 'Error',
+          description: `${defaultMessage}${policyName}${errorMessage ? ': ' + errorMessage : ''}`,
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+      });
+    });
+
+    // Authentication success
     socket.on('authenticated', (msg: string) => {
       toast({
         title: 'Authentication Successful',
@@ -43,16 +81,7 @@ export function useSocketEvents({ socket, toast, setPolicies }: UseSocketEventsP
       });
     });
 
-    socket.on('authentication_failed', (msg: string) => {
-      toast({
-        title: 'Authentication Failed',
-        description: msg,
-        status: 'error',
-        duration: null,
-        isClosable: true,
-      });
-    });
-
+    // MFA required
     socket.on('mfa_required', (msg: string) => {
       toast({
         title: 'MFA Required',
@@ -64,37 +93,13 @@ export function useSocketEvents({ socket, toast, setPolicies }: UseSocketEventsP
       // TODO: Show MFA input modal
     });
 
-    // Policy events
-    socket.on('save_policy_failed', ({ policy_name, error }: { policy_name: string; error: string }) => {
-      toast({
-        title: 'Failed to Save Policy',
-        description: `Failed to save policy "${policy_name}": ${error}`,
-        status: 'error',
-        duration: null,
-        isClosable: true,
-      });
-    });
-
-    socket.on('delete_policy_failed', ({ policy_name, error }: { policy_name: string; error: string }) => {
-      toast({
-        title: 'Failed to Delete Policy',
-        description: `Failed to delete policy "${policy_name}": ${error}`,
-        status: 'error',
-        duration: null,
-        isClosable: true,
-      });
-    });
-
-    // Download events
-    socket.on('download_progress', ({ policy_name, progress, logs }: { policy_name: string; progress: number; logs: string }) => {
+    // Download progress
+    socket.on('download_progress', ({ policy_name, progress }: { policy_name: string; progress: number }) => {
       // TODO: Update progress bar for specific policy
       console.log(`Download progress for ${policy_name}: ${progress}%`);
-      if (logs) {
-        console.log('Download logs:', logs);
-      }
     });
 
-    socket.on('download_finished', ({ policy_name, logs }: { policy_name: string; logs: string }) => {
+    socket.on('download_finished', ({ policy_name }: { policy_name: string }) => {
       toast({
         title: 'Download Complete',
         description: `Successfully downloaded photos for policy "${policy_name}"`,
@@ -104,27 +109,14 @@ export function useSocketEvents({ socket, toast, setPolicies }: UseSocketEventsP
       });
     });
 
-    socket.on('download_failed', ({ policy_name, error, logs }: { policy_name: string; error: string; logs: string }) => {
-      toast({
-        title: 'Download Failed',
-        description: `Failed to download photos for policy "${policy_name}": ${error}`,
-        status: 'error',
-        duration: null,
-        isClosable: true,
-      });
-    });
-
     // Cleanup
     return () => {
-      socket.off('policies');
-      socket.off('connect_error');
+      policyUpdateEvents.forEach(event => socket.off(event));
+      Object.keys(errorEvents).forEach(event => socket.off(event));
       socket.off('authenticated');
-      socket.off('authentication_failed');
       socket.off('mfa_required');
-      socket.off('save_policy_failed');
       socket.off('download_progress');
       socket.off('download_finished');
-      socket.off('download_failed');
     };
   }, [socket, toast, setPolicies]);
 }

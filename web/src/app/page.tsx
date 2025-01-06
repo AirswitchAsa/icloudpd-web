@@ -34,15 +34,8 @@ export default function Home() {
   // Use the socket events hook
   useSocketEvents({ socket, toast, setPolicies });
 
-  const handlePolicySaved = (newPolicy: Policy) => {
-    setPolicies(prev => {
-      // If we're editing, replace the old policy
-      if (selectedPolicy) {
-        return prev.map(p => p.name === selectedPolicy.name ? newPolicy : p);
-      }
-      // Otherwise add the new policy
-      return [...prev, newPolicy];
-    });
+  const handlePolicySaved = (policies: Policy[]) => {
+    setPolicies(policies);
     handleModalClose();
   };
 
@@ -68,26 +61,10 @@ export default function Home() {
 
   const confirmDelete = () => {
     if (!policyToDelete) return;
-
-    try {
-      socket?.emit('deletePolicy', policyToDelete.name);
-      toast({
-        title: 'Policy deleted',
-        description: `Successfully deleted policy: ${policyToDelete.name}`,
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
-      setPolicyToDelete(undefined);
-    } catch (error) {
-      toast({
-        title: 'Error deleting policy',
-        description: 'Failed to delete policy',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
-    }
+    
+    socket?.emit('deletePolicy', policyToDelete.name);
+    onDeleteClose();
+    setPolicyToDelete(undefined);
   };
 
   const handlePolicyRun = (policy: Policy) => {
