@@ -50,10 +50,14 @@ class SessionHandler:
         Update the parameters of the policy with the given name from the kwargs.
         Create a new policy if it does not exist.
         """
-        if policy := self.get_policy(policy_name):
+        if policy := self.get_policy(kwargs.get("name", "")):  # edit existing policy
             policy.update(config_updates=kwargs)
         else:
-            self._policies.append(PolicyHandler(**kwargs))
+            if policy := self.get_policy(policy_name):  # edit existing policy and update name
+                policy.name = kwargs.get("name", policy_name)
+                policy.update(config_updates=kwargs)
+            else:
+                self._policies.append(PolicyHandler(**kwargs))  # create new policy
         self._save_policies()
 
     def delete_policy(self, policy_name: str):

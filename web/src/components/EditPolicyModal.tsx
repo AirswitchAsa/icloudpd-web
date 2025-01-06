@@ -105,6 +105,14 @@ export function EditPolicyModal({ isOpen, onClose, onPolicySaved, isEditing = fa
 
     // Listen for the response before closing
     socket.once('policies_after_save', (policies: Policy[]) => {
+      toast({
+        title: 'Success',
+        description: `Policy "${formData.name}" saved successfully`,
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+      onClose();
       if (onPolicySaved) {
         onPolicySaved(policies);
       }
@@ -123,7 +131,11 @@ export function EditPolicyModal({ isOpen, onClose, onPolicySaved, isEditing = fa
     });
 
     // Send the save request
-    socket.emit('savePolicy', formData.name, formData);
+    // Send the save request with original name if editing
+    socket.emit('savePolicy', 
+      isEditing ? policy?.name : formData.name,  // Original name if editing, new name if creating
+      formData
+    );
   };
 
   return (
