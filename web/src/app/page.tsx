@@ -26,12 +26,12 @@ export default function Home() {
   const [policyToDelete, setPolicyToDelete] = useState<Policy | undefined>();
   const [policyToAuth, setPolicyToAuth] = useState<Policy | undefined>();
   const [mfaError, setMfaError] = useState<string>();
-  
+
   const { isOpen: isEditPolicyOpen, onOpen: onEditPolicyOpen, onClose: onEditPolicyClose } = useDisclosure();
   const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
   const { isOpen: isAuthOpen, onOpen: onAuthOpen, onClose: onAuthClose } = useDisclosure();
   const { isOpen: isMfaOpen, onOpen: onMfaOpen, onClose: onMfaClose } = useDisclosure();
-  
+
   const socket = useSocket();
   const toast = useToast();
 
@@ -88,7 +88,7 @@ export default function Home() {
 
   const confirmDelete = () => {
     if (!policyToDelete) return;
-    
+
     socket?.emit('deletePolicy', policyToDelete.name);
     onDeleteClose();
     setPolicyToDelete(undefined);
@@ -157,34 +157,42 @@ export default function Home() {
           />
         )}
 
-        <DeleteConfirmationDialog
-          isOpen={isDeleteOpen}
-          onClose={onDeleteClose}
-          onConfirm={confirmDelete}
-          policyName={policyToDelete?.name || ''}
-        />
+        {isDeleteOpen && (
+          <DeleteConfirmationDialog
+            isOpen={isDeleteOpen}
+            onClose={onDeleteClose}
+            onConfirm={confirmDelete}
+            policyName={policyToDelete?.name || ''}
+          />
+        )}
 
-        <AuthenticationModal
-          isOpen={isAuthOpen}
-          onClose={() => {
-            onAuthClose();
-            setPolicyToAuth(undefined);
-          }}
-          onSubmit={handleAuthSubmit}
-          policyName={policyToAuth?.name || ''}
-        />
+        {isAuthOpen && (
+          <AuthenticationModal
+            isOpen={true}
+            onClose={() => {
+              onAuthClose();
+              setPolicyToAuth(undefined);
+            }}
+            onSubmit={handleAuthSubmit}
+            username={policyToAuth?.username || ''}
+            socket={socket}
+          />
+        )}
 
-        <MFAModal
-          isOpen={isMfaOpen}
-          onClose={() => {
-            onMfaClose();
-            setPolicyToAuth(undefined);
-            setMfaError(undefined);
-          }}
-          onSubmit={handleMfaSubmit}
-          policyName={policyToAuth?.name || ''}
-          error={mfaError}
-        />
+        {isMfaOpen && (
+          <MFAModal
+            isOpen={true}
+            onClose={() => {
+              onMfaClose();
+              setPolicyToAuth(undefined);
+              setMfaError(undefined);
+            }}
+            onSubmit={handleMfaSubmit}
+            error={mfaError}
+            socket={socket}
+          />
+        )}
+
       </Container>
     </Box>
   );

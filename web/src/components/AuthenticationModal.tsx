@@ -13,21 +13,40 @@ import {
   InputGroup,
   InputRightElement,
   IconButton,
+  Spinner,
+  Flex,
+  Text,
 } from '@chakra-ui/react';
 import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
+import { Socket } from 'socket.io-client';
 
 interface AuthenticationModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (password: string) => void;
-  policyName: string;
+  username: string;
+  socket: Socket | null;
 }
 
-export function AuthenticationModal({ isOpen, onClose, onSubmit, policyName }: AuthenticationModalProps) {
+export function AuthenticationModal({ isOpen, onClose, onSubmit, username, socket }: AuthenticationModalProps) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   const handleSubmit = () => {
+    if (!socket) return;
+    setIsAuthenticating(true);
+
+    // Add one-time listeners for authentication response
+    socket.once('authenticated', () => {
+      setIsAuthenticating(false);
+      onClose();
+    });
+
+    socket.once('authentication_failed', () => {
+      setIsAuthenticating(false);
+    });
+
     onSubmit(password);
     setPassword('');
   };
@@ -39,7 +58,16 @@ export function AuthenticationModal({ isOpen, onClose, onSubmit, policyName }: A
         <ModalHeader>Authentication Required</ModalHeader>
         <ModalBody>
           <FormControl>
-            <FormLabel>Enter iCloud password for policy "{policyName}"</FormLabel>
+            <FormLabel>
+              {isAuthenticating ? (
+                <Flex gap={2} align="center">
+                  <Spinner size="sm" />
+                  <Text>Authenticating</Text>
+                </Flex>
+              ) : (
+                `Enter the password for iCloud user ${username}`
+              )}
+            </FormLabel>
             <InputGroup>
               <Input
                 type={showPassword ? 'text' : 'password'}
@@ -70,7 +98,8 @@ export function AuthenticationModal({ isOpen, onClose, onSubmit, policyName }: A
           <Button
             colorScheme="blue"
             onClick={handleSubmit}
-            isDisabled={!password}
+            isDisabled={!password || isAuthenticating}
+            isLoading={isAuthenticating}
           >
             Submit
           </Button>

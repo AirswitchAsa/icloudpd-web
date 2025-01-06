@@ -71,7 +71,7 @@ export function useSocketEvents({ socket, toast, setPolicies }: UseSocketEventsP
     });
 
     // Authentication success
-    socket.on('authenticated', (msg: string) => {
+    socket.on('authenticated', ({ msg, policies }: { msg: string; policies: Policy[] }) => {
       toast({
         title: 'Authentication Successful',
         description: msg,
@@ -79,6 +79,7 @@ export function useSocketEvents({ socket, toast, setPolicies }: UseSocketEventsP
         duration: 3000,
         isClosable: true,
       });
+      setPolicies(policies);
     });
 
     // MFA required
@@ -87,10 +88,10 @@ export function useSocketEvents({ socket, toast, setPolicies }: UseSocketEventsP
         title: 'MFA Required',
         description: msg,
         status: 'info',
-        duration: null,
+        duration: 3000,
         isClosable: true,
       });
-      // TODO: Show MFA input modal
+
     });
 
     // Download progress

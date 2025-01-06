@@ -313,17 +313,31 @@ export function EditPolicyModal({ isOpen, onClose, onPolicySaved, isEditing = fa
                 <FormControl>
                   <FieldWithInfo 
                     label="Album"
-                    info="The album to download photos from"
+                    info={policy?.authenticated 
+                      ? "Select an album from your iCloud account" 
+                      : "Enter an album name or authenticate to see available albums"
+                    }
                   >
-                    <Select
-                      value={formData.album}
-                      onChange={(e) => setFormData({ ...formData, album: e.target.value })}
-                      maxW="200px"
-                    >
-                      <option value="All Photos">All Photos</option>
-                      <option value="Favorites">Favorites</option>
-                      <option value="Recents">Recents</option>
-                    </Select>
+                    {policy?.authenticated && policy.albums ? (
+                      <Select
+                        value={formData.album}
+                        onChange={(e) => setFormData({ ...formData, album: e.target.value })}
+                        maxW="200px"
+                      >
+                        {policy.albums.map((album) => (
+                          <option key={album} value={album}>
+                            {album}
+                          </option>
+                        ))}
+                      </Select>
+                    ) : (
+                      <Input
+                        value={formData.album}
+                        onChange={(e) => setFormData({ ...formData, album: e.target.value })}
+                        maxW="200px"
+                        placeholder="Enter album name"
+                      />
+                    )}
                   </FieldWithInfo>
                 </FormControl>
 

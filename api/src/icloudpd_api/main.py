@@ -160,7 +160,9 @@ async def authenticate(sid, policy_name, password):
                     result, msg = policy.authenticate(password)
                     match result:
                         case AuthenticationResult.SUCCESS:
-                            await sio.emit("authenticated", msg, to=sid)
+                            await sio.emit(
+                                "authenticated", {"msg": msg, "policies": handler.policies}, to=sid
+                            )
                         case AuthenticationResult.FAILED:
                             await sio.emit("authentication_failed", msg, to=sid)
                         case AuthenticationResult.MFA_REQUIRED:
@@ -181,7 +183,9 @@ async def provideMFA(sid, policy_name, mfa_code):
                     result, msg = policy.provide_mfa(mfa_code)
                     match result:
                         case AuthenticationResult.SUCCESS:
-                            await sio.emit("authenticated", msg, to=sid)
+                            await sio.emit(
+                                "authenticated", {"msg": msg, "policies": handler.policies}, to=sid
+                            )
                         case AuthenticationResult.MFA_REQUIRED:
                             await sio.emit("mfa_required", msg, to=sid)
             except Exception as e:

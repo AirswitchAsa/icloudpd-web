@@ -6,6 +6,7 @@ export interface Policy {
   progress?: number;
   logs?: string;
   authenticated?: boolean;
+  albums?: string[];
   
   // Connection options
   domain: 'com' | 'cn';
