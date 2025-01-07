@@ -8,11 +8,13 @@ import {
   Collapse,
   useDisclosure,
   VStack,
+  Spinner,
 } from '@chakra-ui/react';
 import { ChevronDownIcon, ChevronUpIcon, EditIcon, DeleteIcon } from '@chakra-ui/icons';
 import { FaPlay, FaPause } from 'react-icons/fa';
 import { Policy } from '@/types/index';
 import { InterruptConfirmationDialog } from './InterruptConfirmationDialog';
+import { useState, useEffect } from 'react';
 
 interface PolicyListProps {
   policies: Policy[];
@@ -66,6 +68,7 @@ const PolicyRow = ({ policy, onEdit, onDelete, onRun, onInterrupt }: PolicyRowPr
     onOpen: onInterruptOpen, 
     onClose: onInterruptClose 
   } = useDisclosure();
+  const [isWaitingRun, setIsWaitingRun] = useState(false);
 
   const handleInterrupt = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -76,6 +79,19 @@ const PolicyRow = ({ policy, onEdit, onDelete, onRun, onInterrupt }: PolicyRowPr
     onInterrupt(policy);
     onInterruptClose();
   };
+
+  const handleRun = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsWaitingRun(true);
+    onRun(policy);
+  };
+
+  // Reset waiting state when we get progress or policy changes
+  useEffect(() => {
+    if (policy.status === 'running') {
+      setIsWaitingRun(false);
+    }
+  }, [policy.status]);
 
   const getStatusDisplay = (policy: Policy) => {
     if (policy.status === 'running') {
@@ -109,6 +125,44 @@ const PolicyRow = ({ policy, onEdit, onDelete, onRun, onInterrupt }: PolicyRowPr
   };
 
   const status = getStatusDisplay(policy);
+
+  const renderActionButton = () => {
+    if (isWaitingRun) {
+      return (
+        <IconButton
+          aria-label="Loading"
+          icon={<Spinner size="sm" />}
+          colorScheme="blue"
+          variant="ghost"
+          size="sm"
+        />
+      );
+    }
+
+    if (policy.status === 'running') {
+      return (
+        <IconButton
+          aria-label="Pause download"
+          icon={<FaPause />}
+          colorScheme="blue"
+          variant="ghost"
+          size="sm"
+          onClick={handleInterrupt}
+        />
+      );
+    }
+    
+    return (
+      <IconButton
+        aria-label="Run policy"
+        icon={<FaPlay />}
+        colorScheme="green"
+        variant="ghost"
+        size="sm"
+        onClick={handleRun}
+      />
+    );
+  };
 
   return (
     <Box width="100%" borderWidth="1px" borderRadius="lg" overflow="hidden">
@@ -160,28 +214,7 @@ const PolicyRow = ({ policy, onEdit, onDelete, onRun, onInterrupt }: PolicyRowPr
           </Box>
         </Flex>
         <Flex gap={2} ml={4}>
-          {policy.status === 'running' ? (
-            <IconButton
-              aria-label="Pause download"
-              icon={<FaPause />}
-              colorScheme="blue"
-              variant="ghost"
-              size="sm"
-              onClick={handleInterrupt}
-            />
-          ) : (
-            <IconButton
-              aria-label="Run policy"
-              icon={<FaPlay />}
-              colorScheme="green"
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                onRun(policy);
-              }}
-            />
-          )}
+          {renderActionButton()}
           <IconButton
             aria-label="Edit policy"
             icon={<EditIcon />}
