@@ -151,11 +151,13 @@ export default function Home() {
             >
               <PolicyList
                 policies={policies}
+                setPolicies={setPolicies}
                 onEdit={handlePolicyEdit}
                 onDelete={handlePolicyDelete}
                 onRun={handlePolicyRun}
                 onInterrupt={handlePolicyInterrupt}
                 socket={socket}
+                toast={toast}
               />
             </Panel>
           </Box>

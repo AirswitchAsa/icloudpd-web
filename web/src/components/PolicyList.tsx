@@ -11,7 +11,7 @@ import {
   Spinner,
   UseToastOptions,
 } from '@chakra-ui/react';
-import { ChevronDownIcon, ChevronUpIcon, EditIcon, DeleteIcon } from '@chakra-ui/icons';
+import { ChevronDownIcon, ChevronUpIcon, EditIcon, DeleteIcon, CopyIcon } from '@chakra-ui/icons';
 import { FaPlay, FaPause } from 'react-icons/fa';
 import { Policy } from '@/types/index';
 import { InterruptConfirmationDialog } from './InterruptConfirmationDialog';
@@ -21,14 +21,25 @@ import { SocketAddress } from 'net';
 
 interface PolicyListProps {
   policies: Policy[];
+  setPolicies: (policies: Policy[]) => void;
   onEdit: (policy: Policy) => void;
   onDelete: (policy: Policy) => void;
   onRun: (policy: Policy) => void;
   onInterrupt: (policy: Policy) => void;
   socket: Socket | null;
+  toast: (options: UseToastOptions) => void;
 }
 
-export const PolicyList = ({ policies, onEdit, onDelete, onRun, onInterrupt, socket }: PolicyListProps) => {
+export const PolicyList = ({ 
+  policies, 
+  setPolicies,
+  onEdit, 
+  onDelete, 
+  onRun, 
+  onInterrupt, 
+  socket, 
+  toast 
+}: PolicyListProps) => {
   return (
     <VStack spacing={2} width="100%" align="stretch">
       {policies.length > 0 ? (
@@ -36,11 +47,13 @@ export const PolicyList = ({ policies, onEdit, onDelete, onRun, onInterrupt, soc
           <PolicyRow
             key={policy.name}
             policy={policy}
+            setPolicies={setPolicies}
             onEdit={onEdit}
             onDelete={onDelete}
             onRun={onRun}
             onInterrupt={onInterrupt}
             socket={socket}
+            toast={toast}
           />
         ))
       ) : (
@@ -60,14 +73,25 @@ export const PolicyList = ({ policies, onEdit, onDelete, onRun, onInterrupt, soc
 
 interface PolicyRowProps {
   policy: Policy;
+  setPolicies: (policies: Policy[]) => void;
   onEdit: (policy: Policy) => void;
   onDelete: (policy: Policy) => void;
   onRun: (policy: Policy) => void;
   onInterrupt: (policy: Policy) => void;
   socket: Socket | null;
+  toast: (options: UseToastOptions) => void;
 }
 
-const PolicyRow = ({ policy, onEdit, onDelete, onRun, onInterrupt, socket }: PolicyRowProps) => {
+const PolicyRow = ({ 
+  policy, 
+  setPolicies,
+  onEdit, 
+  onDelete, 
+  onRun, 
+  onInterrupt, 
+  socket, 
+  toast 
+}: PolicyRowProps) => {
   const { isOpen, onToggle } = useDisclosure();
   const { 
     isOpen: isInterruptOpen, 
@@ -178,6 +202,33 @@ const PolicyRow = ({ policy, onEdit, onDelete, onRun, onInterrupt, socket }: Pol
     );
   };
 
+  const handleDuplicate = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!socket) return;
+
+    const duplicatedPolicy = {
+      ...policy,
+      name: `${policy.name} COPY`,
+      authenticated: false // Reset authentication state for the new policy
+    };
+
+    socket.once('policies_after_create', (policies: Policy[]) => {
+      setPolicies(policies);
+    });
+
+    socket.once('error_creating_policy', ({ policy_name, error }: { policy_name: string; error: string }) => {
+      toast({
+        title: 'Error',
+        description: `Failed to create policy "${policy_name}": ${error}`,
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    });
+
+    socket.emit('createPolicy', duplicatedPolicy);
+  };
+
   return (
     <Box width="100%" borderWidth="1px" borderRadius="lg" overflow="hidden">
       <Flex
@@ -239,6 +290,15 @@ const PolicyRow = ({ policy, onEdit, onDelete, onRun, onInterrupt, socket }: Pol
               e.stopPropagation();
               onEdit(policy);
             }}
+            isDisabled={policy.status === 'running'}
+          />
+          <IconButton
+            aria-label="Duplicate policy"
+            icon={<CopyIcon />}
+            colorScheme="blue"
+            variant="ghost"
+            size="sm"
+            onClick={handleDuplicate}
             isDisabled={policy.status === 'running'}
           />
           <IconButton
