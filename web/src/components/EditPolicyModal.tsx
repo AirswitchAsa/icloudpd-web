@@ -313,16 +313,14 @@ export function EditPolicyModal({ isOpen, onClose, onPolicySaved, isEditing = fa
                 <FormControl>
                   <FieldWithInfo 
                     label="Album"
-                    info={policy?.authenticated 
-                      ? "Select an album from your iCloud account" 
-                      : "Enter an album name or authenticate to see available albums"
-                    }
+                    info="The album to download from. Choose from a list of albums when the policy is authenticated. Note that user-created albums only exist in Personal Library and trying to download them from a Shared Library will result in an error. Default: All Photos"
                   >
                     {policy?.authenticated && policy.albums ? (
                       <Select
-                        value={formData.album}
+                        value={policy.albums.includes(formData.album) ? formData.album : ''}
                         onChange={(e) => setFormData({ ...formData, album: e.target.value })}
                         maxW="200px"
+                        placeholder="Select an album"
                       >
                         {policy.albums.map((album) => (
                           <option key={album} value={album}>
@@ -343,7 +341,23 @@ export function EditPolicyModal({ isOpen, onClose, onPolicySaved, isEditing = fa
 
                 <FormControl>
                   <FieldWithInfo 
-                    label="Recent Photos Count"
+                    label="Library"
+                    info="The library to download from. Personal Library will be used if you do not have a shared library. Default: Personal Library"
+                  >
+                    <Select
+                      value={formData.library}
+                      onChange={(e) => setFormData({ ...formData, library: e.target.value as 'Personal Library' | 'Shared Library' })}
+                      maxW="200px"
+                    >
+                      <option value="Personal Library">Personal Library</option>
+                      <option value="Shared Library">Shared Library</option>
+                    </Select>
+                  </FieldWithInfo>
+                </FormControl>
+
+                <FormControl>
+                  <FieldWithInfo 
+                    label="Download Recents"
                     info="Number of recent photos to download (leave empty for all)"
                   >
                     <NumberInput

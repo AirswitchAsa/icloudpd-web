@@ -10,17 +10,19 @@ import {
   VStack,
 } from '@chakra-ui/react';
 import { ChevronDownIcon, ChevronUpIcon, EditIcon, DeleteIcon } from '@chakra-ui/icons';
-import { FaPlay } from 'react-icons/fa';
+import { FaPlay, FaPause } from 'react-icons/fa';
 import { Policy } from '@/types/index';
+import { InterruptConfirmationDialog } from './InterruptConfirmationDialog';
 
 interface PolicyListProps {
   policies: Policy[];
   onEdit: (policy: Policy) => void;
   onDelete: (policy: Policy) => void;
   onRun: (policy: Policy) => void;
+  onInterrupt: (policy: Policy) => void;
 }
 
-export const PolicyList = ({ policies, onEdit, onDelete, onRun }: PolicyListProps) => {
+export const PolicyList = ({ policies, onEdit, onDelete, onRun, onInterrupt }: PolicyListProps) => {
   return (
     <VStack spacing={2} width="100%" align="stretch">
       {policies.length > 0 ? (
@@ -31,6 +33,7 @@ export const PolicyList = ({ policies, onEdit, onDelete, onRun }: PolicyListProp
             onEdit={onEdit}
             onDelete={onDelete}
             onRun={onRun}
+            onInterrupt={onInterrupt}
           />
         ))
       ) : (
@@ -53,10 +56,59 @@ interface PolicyRowProps {
   onEdit: (policy: Policy) => void;
   onDelete: (policy: Policy) => void;
   onRun: (policy: Policy) => void;
+  onInterrupt: (policy: Policy) => void;
 }
 
-const PolicyRow = ({ policy, onEdit, onDelete, onRun }: PolicyRowProps) => {
+const PolicyRow = ({ policy, onEdit, onDelete, onRun, onInterrupt }: PolicyRowProps) => {
   const { isOpen, onToggle } = useDisclosure();
+  const { 
+    isOpen: isInterruptOpen, 
+    onOpen: onInterruptOpen, 
+    onClose: onInterruptClose 
+  } = useDisclosure();
+
+  const handleInterrupt = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onInterruptOpen();
+  };
+
+  const confirmInterrupt = () => {
+    onInterrupt(policy);
+    onInterruptClose();
+  };
+
+  const getStatusDisplay = (policy: Policy) => {
+    if (policy.status === 'running') {
+      return {
+        text: 'running',
+        color: 'blue.500'
+      };
+    }
+    if (policy.status === 'errored') {
+      return {
+        text: 'errored',
+        color: 'red.500'
+      };
+    }
+    if (policy.authenticated) {
+      if (policy.progress === 100) {
+        return {
+          text: 'done',
+          color: 'green.500'
+        };
+      }
+      return {
+        text: 'ready',
+        color: 'green.500'
+      };
+    }
+    return {
+      text: 'unauthenticated',
+      color: 'gray.500'
+    };
+  };
+
+  const status = getStatusDisplay(policy);
 
   return (
     <Box width="100%" borderWidth="1px" borderRadius="lg" overflow="hidden">
@@ -82,10 +134,10 @@ const PolicyRow = ({ policy, onEdit, onDelete, onRun }: PolicyRowProps) => {
             </Text>
             <Flex gap={2} color="gray.500" fontSize="14px">
               <Text 
-                color={policy.authenticated ? "green.500" : "gray.500"} 
+                color={status.color}
                 fontWeight="medium"
               >
-                {policy.authenticated ? "ready" : "unauthenticated"}
+                {status.text}
               </Text>
               <Text>•</Text>
               <Text>{policy.username}</Text>
@@ -95,32 +147,41 @@ const PolicyRow = ({ policy, onEdit, onDelete, onRun }: PolicyRowProps) => {
           </Box>
           <Box width="150px" display="flex">
             <Box flex="1" mt={1}>
-              <Text fontSize="12px" color="gray.600" fontWeight="medium">
-                IDLE
+            <Text fontSize="12px" color="gray.600" fontWeight="medium">
+                {policy.status === 'running' ? `${policy.progress || 0}%` : 'IDLE'}
               </Text>
-              {policy.progress !== undefined && (
                 <Progress
-                  value={policy.progress}
+                  value={policy.progress || 0}
                   size="sm"
-                  colorScheme="blue"
+                  colorScheme={policy.status === 'running' ? 'blue' : policy.status === 'errored' ? 'red' : 'green'}
                   borderRadius="full"
                 />
-              )}
-            </Box>
+              </Box>
           </Box>
         </Flex>
         <Flex gap={2} ml={4}>
-          <IconButton
-            aria-label="Run policy"
-            icon={<FaPlay />}
-            colorScheme="green"
-            variant="ghost"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              onRun(policy);
-            }}
-          />
+          {policy.status === 'running' ? (
+            <IconButton
+              aria-label="Pause download"
+              icon={<FaPause />}
+              colorScheme="blue"
+              variant="ghost"
+              size="sm"
+              onClick={handleInterrupt}
+            />
+          ) : (
+            <IconButton
+              aria-label="Run policy"
+              icon={<FaPlay />}
+              colorScheme="green"
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onRun(policy);
+              }}
+            />
+          )}
           <IconButton
             aria-label="Edit policy"
             icon={<EditIcon />}
@@ -131,6 +192,7 @@ const PolicyRow = ({ policy, onEdit, onDelete, onRun }: PolicyRowProps) => {
               e.stopPropagation();
               onEdit(policy);
             }}
+            isDisabled={policy.status === 'running'}
           />
           <IconButton
             aria-label="Delete policy"
@@ -142,14 +204,50 @@ const PolicyRow = ({ policy, onEdit, onDelete, onRun }: PolicyRowProps) => {
               e.stopPropagation();
               onDelete(policy);
             }}
+            isDisabled={policy.status === 'running'}
           />
         </Flex>
       </Flex>
+
+      <InterruptConfirmationDialog
+        isOpen={isInterruptOpen}
+        onClose={onInterruptClose}
+        onConfirm={confirmInterrupt}
+        policyName={policy.name}
+      />
+
       <Collapse in={isOpen}>
         <Box p={4} bg="gray.50">
-          <Text fontSize="14px" fontFamily="monospace" whiteSpace="pre-wrap">
-            {policy.logs || 'No logs available'}
-          </Text>
+          <Box 
+            ml={12}
+            maxH="300px"
+            overflowY="auto"
+            sx={{
+              '&::-webkit-scrollbar': {
+                width: '8px',
+                borderRadius: '8px',
+                backgroundColor: 'rgba(0, 0, 0, 0.05)',
+              },
+              '&::-webkit-scrollbar-thumb': {
+                backgroundColor: 'rgba(0, 0, 0, 0.1)',
+                borderRadius: '8px',
+                '&:hover': {
+                  backgroundColor: 'rgba(0, 0, 0, 0.15)',
+                },
+              },
+            }}
+          >
+            <Text 
+              fontSize="14px" 
+              fontFamily="monospace" 
+              whiteSpace="pre-wrap"
+              sx={{
+                wordBreak: 'break-word',
+              }}
+            >
+              {policy.logs || 'No logs available'}
+            </Text>
+          </Box>
         </Box>
       </Collapse>
     </Box>

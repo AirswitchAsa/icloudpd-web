@@ -13,7 +13,6 @@ import {
   InputGroup,
   InputRightElement,
   IconButton,
-  Spinner,
   Flex,
   Text,
 } from '@chakra-ui/react';
@@ -61,8 +60,7 @@ export function AuthenticationModal({ isOpen, onClose, onSubmit, username, socke
             <FormLabel>
               {isAuthenticating ? (
                 <Flex gap={2} align="center">
-                  <Spinner size="sm" />
-                  <Text>Authenticating</Text>
+                  <Text>Authenticating...</Text>
                 </Flex>
               ) : (
                 `Enter the password for iCloud user ${username}`

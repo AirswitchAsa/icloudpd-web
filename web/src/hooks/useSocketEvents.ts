@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 import { Socket } from 'socket.io-client';
 import { UseToastOptions } from '@chakra-ui/react';
 import { Policy } from '@/types';
@@ -6,7 +7,7 @@ import { Policy } from '@/types';
 interface UseSocketEventsProps {
   socket: Socket | null;
   toast: (options: UseToastOptions) => void;
-  setPolicies: (policies: Policy[]) => void;
+  setPolicies: Dispatch<SetStateAction<Policy[]>>;
 }
 
 export function useSocketEvents({ socket, toast, setPolicies }: UseSocketEventsProps) {
@@ -51,8 +52,7 @@ export function useSocketEvents({ socket, toast, setPolicies }: UseSocketEventsP
       error_saving_policy: 'Failed to save policy',
       error_deleting_policy: 'Failed to delete policy',
       error_interrupting_download: 'Failed to interrupt download',
-      authentication_failed: 'Authentication failed',
-      download_failed: 'Failed to download photos'
+      authentication_failed: 'Authentication failed'
     };
 
     Object.entries(errorEvents).forEach(([event, defaultMessage]) => {
@@ -67,6 +67,22 @@ export function useSocketEvents({ socket, toast, setPolicies }: UseSocketEventsP
           duration: 5000,
           isClosable: true,
         });
+      });
+    });
+
+    // Handle download failures separately since we need to update policy state
+    socket.on('download_failed', ({ policy, error, logs }: { policy: Policy; error: string; logs: string }) => {
+      updatePolicy(policy);
+      if (logs) {
+        updateLogs(policy.name, logs);
+      }
+      
+      toast({
+        title: 'Error',
+        description: `Error downloading photos for policy "${policy.name}": ${error}`,
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
       });
     });
 
@@ -94,13 +110,42 @@ export function useSocketEvents({ socket, toast, setPolicies }: UseSocketEventsP
 
     });
 
+    // Helper function to update a single policy
+    const updatePolicy = (policyUpdate: Partial<Policy> & { name: string }) => {
+      setPolicies(prev => prev.map(p => 
+        p.name === policyUpdate.name 
+          ? { ...p, ...policyUpdate }
+          : p
+      ));
+    };
+
+    // Helper function to append logs to a policy
+    const updateLogs = (policyName: string, newLogs: string) => {
+      setPolicies(prev => prev.map(p => 
+        p.name === policyName 
+          ? { ...p, logs: (p.logs || '') + newLogs }
+          : p
+      ));
+    };
+
     // Download progress
-    socket.on('download_progress', ({ policy_name, progress }: { policy_name: string; progress: number }) => {
-      // TODO: Update progress bar for specific policy
-      console.log(`Download progress for ${policy_name}: ${progress}%`);
+    socket.on('download_progress', ({ policy, logs }: { policy: Policy; logs: string }) => {
+      updatePolicy(policy);
+      if (logs) {
+        updateLogs(policy.name, logs);
+      }
     });
 
-    socket.on('download_finished', ({ policy_name }: { policy_name: string }) => {
+    socket.on('download_finished', ({ policy_name, progress, logs }: { policy_name: string; progress: number; logs: string }) => {
+      updatePolicy({ 
+        name: policy_name,
+        progress: progress,
+        status: 'stopped'
+      });
+      if (logs) {
+        updateLogs(policy_name, logs);
+      }
+      
       toast({
         title: 'Download Complete',
         description: `Successfully downloaded photos for policy "${policy_name}"`,
@@ -118,6 +163,7 @@ export function useSocketEvents({ socket, toast, setPolicies }: UseSocketEventsP
       socket.off('mfa_required');
       socket.off('download_progress');
       socket.off('download_finished');
+      socket.off('download_failed');
     };
   }, [socket, toast, setPolicies]);
 }

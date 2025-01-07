@@ -92,7 +92,7 @@ def check_folder_structure(logger: logging.Logger, directory: str, folder_struct
     directory_empty = not [f for f in os.listdir(directory) if not f.startswith(".")]
 
     if directory_empty:
-        write_structure_file(directory, folder_structure)
+        write_structure_file(structure_file_path, folder_structure)
         return
 
     # folder not empty but no .structure file

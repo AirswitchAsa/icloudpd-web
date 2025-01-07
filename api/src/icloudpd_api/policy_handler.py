@@ -32,7 +32,7 @@ import os
 class PolicyStatus(Enum):
     RUNNING = "running"
     STOPPED = "stopped"
-    SCHEDULED = "scheduled"
+    ERRORED = "errored"
 
 
 class PolicyHandler:
@@ -49,14 +49,17 @@ class PolicyHandler:
     def status(self) -> PolicyStatus:
         return self._status
 
+    @status.setter
+    def status(self, value: PolicyStatus):
+        assert isinstance(value, PolicyStatus), "Status must be a PolicyStatus"
+        self._status = value
+
     @property
     def progress(self) -> int:
-        assert self._status == PolicyStatus.RUNNING, "Can only get progress when policy is running"
         return self._progress
 
     @progress.setter
     def progress(self, value: int):
-        assert self._status == PolicyStatus.RUNNING, "Can only set progress when policy is running"
         assert isinstance(value, int), "Progress must be an integer"
         assert 0 <= value <= 100, "Progress must be between 0 and 100"
         self._progress = value
@@ -120,7 +123,9 @@ class PolicyHandler:
         """
         Update the policy configs. Should only be called when status is STOPPED.
         """
-        assert self._status == PolicyStatus.STOPPED, "Can only update policy when policy is stopped"
+        assert (
+            self._status == PolicyStatus.STOPPED or self._status == PolicyStatus.ERRORED
+        ), "Can only update policy when policy is stopped or errored"
         new_config_args = self._configs.model_dump()
         new_config_args.update(config_updates)
         self._configs = PolicyConfigs(**new_config_args)
@@ -247,15 +252,15 @@ class PolicyHandler:
                 )
         except Exception as e:
             logger.error(f"Error running policy: {self._name}. Exiting.")
-            self._status = PolicyStatus.STOPPED
+            self._status = PolicyStatus.ERRORED
             self._progress = 0
             raise e
 
         logger.info(
-            f"Total of {photos_counter} items from album {self._configs.album} have been downloaded for {self._configs.library} at {self._configs.directory}"
+            f"Total of {photos_counter} items in {self._configs.library} from album {self._configs.album} have been downloaded at {self._configs.directory}"
         )
         self._status = PolicyStatus.STOPPED
-        self._progress = 0
 
     def interrupt(self):
+        assert self._status == PolicyStatus.RUNNING, "Can only interrupt when policy is running"
         self._status = PolicyStatus.STOPPED

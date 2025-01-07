@@ -14,7 +14,6 @@ import {
   Text,
   VStack,
   Flex,
-  Spinner,
 } from '@chakra-ui/react';
 
 interface MFAModalProps {
@@ -62,8 +61,7 @@ export function MFAModal({ isOpen, onClose, onSubmit, error, socket }: MFAModalP
               <FormLabel>
                 {isVerifying ? (
                   <Flex gap={2} align="center">
-                    <Spinner size="sm" />
-                    <Text>Verifying</Text>
+                    <Text>Verifying...</Text>
                   </Flex>
                 ) : (
                   `Verification code is sent to your trusted devices`

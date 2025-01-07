@@ -95,8 +95,15 @@ export default function Home() {
   };
 
   const handlePolicyRun = (policy: Policy) => {
-    setPolicyToAuth(policy);
-    onAuthOpen();
+    if (!socket) return;
+
+    if (!policy.authenticated) {
+      setPolicyToAuth(policy);
+      onAuthOpen();
+    } else {
+      policy.logs = '';
+      socket.emit('start', policy.name );
+    }
   };
 
   const handleAuthSubmit = (password: string) => {
@@ -108,6 +115,11 @@ export default function Home() {
     if (!socket || !policyToAuth) return;
     setMfaError(undefined);
     socket.emit('provideMFA', policyToAuth.name, code);
+  };
+
+  const handlePolicyInterrupt = (policy: Policy) => {
+    if (!socket) return;
+    socket.emit('interrupt', policy.name);
   };
 
   return (
@@ -142,6 +154,7 @@ export default function Home() {
                 onEdit={handlePolicyEdit}
                 onDelete={handlePolicyDelete}
                 onRun={handlePolicyRun}
+                onInterrupt={handlePolicyInterrupt}
               />
             </Panel>
           </Box>

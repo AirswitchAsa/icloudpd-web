@@ -215,19 +215,20 @@ async def start(sid, policy_name):
                             await sio.emit(
                                 "download_progress",
                                 {
-                                    "policy_name": policy_name,
-                                    "progress": policy.progress,
+                                    "policy": policy.dump(),
                                     "logs": logs,
                                 },
                                 to=sid,
                             )
                             last_progress = policy.progress
-                    if task.exception() is not None:
+                    if exception := task.exception():
+                        policy.status = PolicyStatus.ERRORED
+                        logger.error(f"Download failed: {repr(exception)}")
                         await sio.emit(
                             "download_failed",
                             {
-                                "policy_name": policy_name,
-                                "error": repr(task.exception()),
+                                "policy": policy.dump(),
+                                "error": repr(exception),
                                 "logs": log_capture_stream.read_new_lines(),
                             },
                             to=sid,
@@ -238,17 +239,19 @@ async def start(sid, policy_name):
                         "download_finished",
                         {
                             "policy_name": policy_name,
+                            "progress": policy.progress,
                             "logs": log_capture_stream.read_new_lines(),
                         },
                         to=sid,
                     )
             except Exception as e:
+                policy.status = PolicyStatus.ERRORED
                 await sio.emit(
                     "download_failed",
                     {
-                        "policy_name": policy_name,
+                        "policy": policy.dump(),
                         "error": repr(e),
-                        "logs": "",
+                        "logs": f"Internal error: {repr(e)}\n",
                     },
                     to=sid,
                 )
