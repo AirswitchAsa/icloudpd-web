@@ -1,11 +1,9 @@
 from icloudpd_api.data_models import PolicyConfigs, AuthenticationResult
 from icloudpd_api.icloud_utils import (
-    build_filename_cleaner,
-    build_lp_filename_generator,
-    file_match_policy_generator,
-    build_raw_policy,
+    build_pyicloudservice_args,
     build_downloader_builder_args,
     request_2sa,
+    ICloudManager,
 )
 from icloudpd_api.logger import build_logger_level, build_photos_exception_handler
 from icloudpd_api.download_option_utils import (
@@ -67,9 +65,9 @@ class PolicyHandler:
     @property
     def authenticated(self) -> bool:
         return (
-            self._icloud is not None
-            and not self._icloud.requires_2sa
-            and not self._icloud.requires_2fa
+            self.icloud is not None
+            and not self.icloud.requires_2sa
+            and not self.icloud.requires_2fa
         )
 
     @property
@@ -80,7 +78,7 @@ class PolicyHandler:
         if not self.authenticated:
             return []
         if library := self.library_name:
-            return [str(a) for a in self._icloud.photos.libraries[library].albums.values()]
+            return [str(a) for a in self.icloud.photos.libraries[library].albums.values()]
         else:
             return []
 
@@ -90,7 +88,7 @@ class PolicyHandler:
         Find the actual library name from icloud given the library name in the configs.
         """
         assert self.authenticated, "Can only get library name when authenticated"
-        libraries = list(self._icloud.photos.libraries.keys())
+        libraries = list(self.icloud.photos.libraries.keys())
         shared_library_name = next((lib for lib in libraries if "SharedSync" in lib), None)
         if shared_library_name and self._configs.library == "Shared Library":
             return shared_library_name
@@ -99,12 +97,24 @@ class PolicyHandler:
         else:
             return None
 
-    def __init__(self, name: str, **kwargs):
+    @property
+    def icloud(self) -> PyiCloudService:
+        return self._icloud_manager.get_instance(self.username)
+
+    @icloud.setter
+    def icloud(self, instance: PyiCloudService):
+        self._icloud_manager.set_instance(self.username, instance)
+
+    @property
+    def username(self) -> str:
+        return self._configs.username
+
+    def __init__(self, name: str, icloud_manager: ICloudManager, **kwargs):
         self._name = name
         self._configs = PolicyConfigs(**kwargs)  # validate the configs and fill-in defaults
         self._status = PolicyStatus.STOPPED
-        self._icloud = None
         self._progress = 0
+        self._icloud_manager = icloud_manager
 
     def dump(self, excludes: list[str] = []) -> dict:
         policy_dict = {
@@ -137,15 +147,11 @@ class PolicyHandler:
         assert self._status == PolicyStatus.STOPPED, "Can only authenticate when policy is stopped"
         assert not self.authenticated, "Can only authenticate when it is not authenticated"
         try:
-            self._icloud = PyiCloudService(
-                filename_cleaner=build_filename_cleaner(self._configs.keep_unicode_in_filenames),
-                lp_filename_generator=build_lp_filename_generator(
-                    self._configs.live_photo_mov_filename_policy
-                ),
+            pyicloudservice_args = build_pyicloudservice_args(self._configs)
+            self.icloud = PyiCloudService(
+                **pyicloudservice_args,
                 domain=self._configs.domain,
-                raw_policy=build_raw_policy(self._configs.align_raw),
-                file_match_policy=file_match_policy_generator(self._configs.file_match_policy),
-                apple_id=self._configs.username,
+                apple_id=self.username,
                 password=password,
             )
         except PyiCloudFailedLoginException as e:
@@ -154,9 +160,9 @@ class PolicyHandler:
             return AuthenticationResult.SUCCESS, "Authenticated."
         else:
             if (
-                self._icloud.requires_2sa and not self._icloud.requires_2fa
+                self.icloud.requires_2sa and not self.icloud.requires_2fa
             ):  # User does not have MFA enabled, request 2SA using SMS manually
-                request_2sa(self._icloud)
+                request_2sa(self.icloud)
             return AuthenticationResult.MFA_REQUIRED, "MFA required."
 
     def provide_mfa(self, mfa_code: str):
@@ -164,7 +170,7 @@ class PolicyHandler:
         Provide the MFA code to the icloud instance to finish authentication.
         """
         assert not self.authenticated, "Can only provide MFA when policy is not authenticated"
-        self._icloud.validate_2fa_code(mfa_code)
+        self.icloud.validate_2fa_code(mfa_code)
         if not self.authenticated:
             return AuthenticationResult.MFA_REQUIRED, "Wrong MFA code."
         else:
@@ -181,9 +187,15 @@ class PolicyHandler:
         try:
             logger.info(f"Starting policy: {self._name}...")
 
+            pyicloudservice_args = build_pyicloudservice_args(self._configs)
+            self._icloud_manager.update_instance(
+                username=self.username,
+                attributes=pyicloudservice_args,
+            )
+
             download_photo: Callable = download_builder(
                 logger=logger, **build_downloader_builder_args(self._configs)
-            )(self._icloud)
+            )(self.icloud)
 
             async def async_download_photo(*args, **kwargs):
                 loop = asyncio.get_running_loop()
@@ -194,12 +206,12 @@ class PolicyHandler:
 
             if (library_name := self.library_name) is None:
                 raise ValueError(f"Unavailable library: {self._configs.library}")
-            library = self._icloud.photos.libraries[library_name]
+            library = self.icloud.photos.libraries[library_name]
             assert (
                 self._configs.album in library.albums
             ), f"Album {self._configs.album} not found in library {library_name}"
             photos: PhotoAlbum = library.albums[self._configs.album]
-            error_handler = build_photos_exception_handler(logger, self._icloud)
+            error_handler = build_photos_exception_handler(logger, self.icloud)
             photos.exception_handler = error_handler
             photos_count: int | None = len(photos)
 
@@ -228,7 +240,7 @@ class PolicyHandler:
                         delete_local = partial(
                             delete_photo,
                             logger,
-                            self._icloud.photos,
+                            self.icloud.photos,
                             library,
                             item,
                         )

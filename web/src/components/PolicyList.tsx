@@ -9,12 +9,15 @@ import {
   useDisclosure,
   VStack,
   Spinner,
+  UseToastOptions,
 } from '@chakra-ui/react';
 import { ChevronDownIcon, ChevronUpIcon, EditIcon, DeleteIcon } from '@chakra-ui/icons';
 import { FaPlay, FaPause } from 'react-icons/fa';
 import { Policy } from '@/types/index';
 import { InterruptConfirmationDialog } from './InterruptConfirmationDialog';
 import { useState, useEffect } from 'react';
+import { Socket } from 'socket.io-client';
+import { SocketAddress } from 'net';
 
 interface PolicyListProps {
   policies: Policy[];
@@ -22,9 +25,10 @@ interface PolicyListProps {
   onDelete: (policy: Policy) => void;
   onRun: (policy: Policy) => void;
   onInterrupt: (policy: Policy) => void;
+  socket: Socket | null;
 }
 
-export const PolicyList = ({ policies, onEdit, onDelete, onRun, onInterrupt }: PolicyListProps) => {
+export const PolicyList = ({ policies, onEdit, onDelete, onRun, onInterrupt, socket }: PolicyListProps) => {
   return (
     <VStack spacing={2} width="100%" align="stretch">
       {policies.length > 0 ? (
@@ -36,6 +40,7 @@ export const PolicyList = ({ policies, onEdit, onDelete, onRun, onInterrupt }: P
             onDelete={onDelete}
             onRun={onRun}
             onInterrupt={onInterrupt}
+            socket={socket}
           />
         ))
       ) : (
@@ -59,9 +64,10 @@ interface PolicyRowProps {
   onDelete: (policy: Policy) => void;
   onRun: (policy: Policy) => void;
   onInterrupt: (policy: Policy) => void;
+  socket: Socket | null;
 }
 
-const PolicyRow = ({ policy, onEdit, onDelete, onRun, onInterrupt }: PolicyRowProps) => {
+const PolicyRow = ({ policy, onEdit, onDelete, onRun, onInterrupt, socket }: PolicyRowProps) => {
   const { isOpen, onToggle } = useDisclosure();
   const { 
     isOpen: isInterruptOpen, 
@@ -82,8 +88,14 @@ const PolicyRow = ({ policy, onEdit, onDelete, onRun, onInterrupt }: PolicyRowPr
 
   const handleRun = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (policy.authenticated) {
+    if (socket && policy.authenticated) {
       setIsWaitingRun(true);
+      socket.once('icloud_is_busy', () => {
+        setIsWaitingRun(false);
+      });
+      socket.once('download_failed', () => {
+        setIsWaitingRun(false);
+      });
     }
     onRun(policy);
   };

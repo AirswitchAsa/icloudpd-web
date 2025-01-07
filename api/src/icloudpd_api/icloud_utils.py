@@ -11,6 +11,45 @@ from typing import Callable
 from inspect import signature
 
 
+class ICloudManager:
+    def __init__(self):
+        self._icloud_instances: dict[str, PyiCloudService] = {}
+
+    def get_instance(self, username: str) -> PyiCloudService | None:
+        """
+        Get the instance for the given username.
+        """
+        return self._icloud_instances.get(username)
+
+    def set_instance(self, username: str, instance: PyiCloudService):
+        """
+        Set the instance for the given username.
+        """
+        assert (
+            self._icloud_instances.get(username) is None
+        ), "Trying to set an icloud instance that already exists"
+        self._icloud_instances[username] = instance
+
+    def update_instance(self, username: str, attributes: dict):
+        """
+        Update the attributes of the instance with the given username.
+        """
+        instance = self._icloud_instances.get(username)
+        assert instance is not None, "Trying to update non-existing instance"
+        for key in attributes:
+            assert hasattr(instance, key), f"Instance does not have attribute '{key}'"
+        for key, value in attributes.items():
+            setattr(instance, key, value)
+
+    def remove_instances(self, active_usernames: list[str]):
+        """
+        Remove all instances that are not in the list of active usernames.
+        """
+        for username in self._icloud_instances:
+            if username not in active_usernames:
+                self._icloud_instances.pop(username, None)
+
+
 def request_2sa(icloud: PyiCloudService) -> None:
     """
     Request 2SA code using SMS from the first trusted device.
@@ -74,3 +113,14 @@ def build_raw_policy(align_raw: str) -> str:
             return "as-is"
         case _:
             raise ValueError(f"align_raw was provided with unsupported value of '{align_raw}'")
+
+
+def build_pyicloudservice_args(configs: PolicyConfigs) -> dict:
+    return {
+        "filename_cleaner": build_filename_cleaner(configs.keep_unicode_in_filenames),
+        "lp_filename_generator": build_lp_filename_generator(
+            configs.live_photo_mov_filename_policy
+        ),
+        "raw_policy": build_raw_policy(configs.align_raw),
+        "file_match_policy": file_match_policy_generator(configs.file_match_policy),
+    }

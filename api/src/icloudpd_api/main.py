@@ -131,6 +131,24 @@ async def savePolicy(sid, policy_name, policy_update):
 
 
 @sio.event
+async def createPolicy(sid, policy):
+    """
+    Create a new policy with the given name and update the parameters.
+    """
+    if client_id := sid_to_client.get(sid):
+        if handler := handler_manager.get(client_id):
+            try:
+                handler.create_policy(**policy)
+                await sio.emit("policies_after_create", handler.policies, to=sid)
+            except Exception as e:
+                await sio.emit(
+                    "error_creating_policy",
+                    {"policy_name": policy.get("name", ""), "error": repr(e)},
+                    to=sid,
+                )
+
+
+@sio.event
 async def deletePolicy(sid, policy_name):
     """
     Delete a policy with the given name.
@@ -199,10 +217,20 @@ async def start(sid, policy_name):
     """
     if client_id := sid_to_client.get(sid):
         if handler := handler_manager.get(client_id):
+            # Set up logging
+            logger, log_capture_stream = build_logger(policy_name)
             try:
                 if policy := handler.get_policy(policy_name):
-                    # Set up logging
-                    logger, log_capture_stream = build_logger(policy_name)
+                    # Check if another policy using the iCloud instance is running
+                    if occupying_policy_name := handler.icloud_instance_occupied_by(
+                        policy.username
+                    ):
+                        await sio.emit(
+                            "icloud_is_busy",
+                            f"iCloud user {policy.username} has another policy running: {occupying_policy_name}",
+                            to=sid,
+                        )
+                        return
 
                     task = asyncio.create_task(policy.start(logger))
                     last_progress = 0

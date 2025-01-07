@@ -155,6 +155,7 @@ export default function Home() {
                 onDelete={handlePolicyDelete}
                 onRun={handlePolicyRun}
                 onInterrupt={handlePolicyInterrupt}
+                socket={socket}
               />
             </Panel>
           </Box>

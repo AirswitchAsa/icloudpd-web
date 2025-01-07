@@ -105,7 +105,17 @@ export function useSocketEvents({ socket, toast, setPolicies }: UseSocketEventsP
         duration: 3000,
         isClosable: true,
       });
+    });
 
+    // iCloud busy notification
+    socket.on('icloud_is_busy', (msg: string) => {
+      toast({
+        title: 'iCloud Account Busy',
+        description: msg,
+        status: 'info',
+        duration: 5000,
+        isClosable: true,
+      });
     });
 
     // Helper function to update a single policy
@@ -162,6 +172,7 @@ export function useSocketEvents({ socket, toast, setPolicies }: UseSocketEventsP
       socket.off('download_progress');
       socket.off('download_finished');
       socket.off('download_failed');
+      socket.off('icloud_is_busy');
     };
   }, [socket, toast, setPolicies]);
 }

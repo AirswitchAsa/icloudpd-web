@@ -104,10 +104,13 @@ export function EditPolicyModal({ isOpen, onClose, onPolicySaved, isEditing = fa
     if (!socket) return;
 
     // Listen for the response before closing
-    socket.once('policies_after_save', (policies: Policy[]) => {
+    const successEvent = isEditing ? 'policies_after_save' : 'policies_after_create';
+    const errorEvent = isEditing ? 'error_saving_policy' : 'error_creating_policy';
+
+    socket.once(successEvent, (policies: Policy[]) => {
       toast({
         title: 'Success',
-        description: `Policy "${formData.name}" saved successfully`,
+        description: `Policy "${formData.name}" ${isEditing ? 'saved' : 'created'} successfully`,
         status: 'success',
         duration: 3000,
         isClosable: true,
@@ -118,24 +121,25 @@ export function EditPolicyModal({ isOpen, onClose, onPolicySaved, isEditing = fa
       }
     });
 
-    socket.once('error_saving_policy', (data: { policy_name: string; error: string }) => {
+    socket.once(errorEvent, ({ policy_name, error }: { policy_name: string; error: string }) => {
+      const errorMessage = `Failed to ${isEditing ? 'save' : 'create'} policy "${policy_name}": ${error}`;
       toast({
         title: 'Error',
-        description: `Failed to save policy "${data.policy_name}": ${data.error}`,
+        description: errorMessage,
         status: 'error',
         duration: 5000,
         isClosable: true,
       });
       // If error occurs, remove the success listener
-      socket.off('policies_after_save');
+      socket.off(successEvent);
     });
 
-    // Send the save request
-    // Send the save request with original name if editing
-    socket.emit('savePolicy', 
-      isEditing ? policy?.name : formData.name,  // Original name if editing, new name if creating
-      formData
-    );
+    // Send the request
+    if (isEditing) {
+      socket.emit('savePolicy', policy?.name, formData);
+    } else {
+      socket.emit('createPolicy', formData);
+    }
   };
 
   return (
