@@ -22,7 +22,6 @@ export function useSocketEvents({ socket, toast, setPolicies }: UseSocketEventsP
       'policies',                    // Initial load
       'policies_after_save',         // After successful save
       'policies_after_delete',       // After successful delete
-      'policies_after_interrupt'     // After successful interrupt
     ];
 
     policyUpdateEvents.forEach(event => {
@@ -33,7 +32,6 @@ export function useSocketEvents({ socket, toast, setPolicies }: UseSocketEventsP
           const messages = {
             policies_after_save: 'Policy saved successfully',
             policies_after_delete: 'Policy deleted successfully',
-            policies_after_interrupt: 'Download interrupted successfully'
           };
           toast({
             title: 'Success',

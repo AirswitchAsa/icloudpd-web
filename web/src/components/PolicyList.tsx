@@ -82,7 +82,9 @@ const PolicyRow = ({ policy, onEdit, onDelete, onRun, onInterrupt }: PolicyRowPr
 
   const handleRun = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsWaitingRun(true);
+    if (policy.authenticated) {
+      setIsWaitingRun(true);
+    }
     onRun(policy);
   };
 

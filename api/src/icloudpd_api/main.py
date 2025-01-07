@@ -276,7 +276,6 @@ async def interrupt(sid, policy_name):
             try:
                 if policy := handler.get_policy(policy_name):
                     policy.interrupt()
-                    await sio.emit("policies_after_interrupt", handler.policies, to=sid)
             except Exception as e:
                 await sio.emit(
                     "error_interrupting_download",

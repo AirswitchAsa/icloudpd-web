@@ -70,7 +70,6 @@ export function useSocket() {
       'uploaded_policies',
       'policies_after_save',
       'policies_after_delete',
-      'policies_after_interrupt'
     ];
 
     policyUpdateEvents.forEach(event => {
