@@ -9,7 +9,11 @@ dependencies = [
     "icloudpd",
     "python-socketio",
     "toml>=0.10.2",
+    "click>=8.0.0",
 ]
+
+[project.scripts]
+icloudpd-web = "icloudpd_web.cli:main"
 
 [build-system]
 requires = ["hatchling"]

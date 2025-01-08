@@ -120,6 +120,7 @@ name = "icloudpd-web"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "click" },
     { name = "fastapi" },
     { name = "icloudpd" },
     { name = "python-socketio" },
@@ -134,6 +135,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "click", specifier = ">=8.0.0" },
     { name = "fastapi", specifier = ">=0.109.0" },
     { name = "icloudpd" },
     { name = "python-socketio" },

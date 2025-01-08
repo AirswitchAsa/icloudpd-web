@@ -1,8 +1,8 @@
 [[policy]]
 name = "Test Policy"
-username = "meuryuuki@gmail.com"
-directory = "/mnt/crucial/Shared/test/"
-album = "Twitter"
+username = "demo@gmail.com"
+directory = "~/Photos/Test"
+album = "All Photos"
 library = "Personal Library"
 
 

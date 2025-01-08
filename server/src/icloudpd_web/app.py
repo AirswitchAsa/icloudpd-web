@@ -1,15 +1,20 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-import socketio
-import asyncio
 from icloudpd_web.api.session_handler import SessionHandler
 from icloudpd_web.api.data_models import AuthenticationResult
 from icloudpd_web.api.policy_handler import PolicyStatus
 from icloudpd_web.api.logger import build_logger
 
+import socketio
+import asyncio
+import os
+
 MAX_SESSIONS = 5
 DEFAULT_CLIENT_ID = "default-user"
+TOML_PATH = os.environ.get("TOML_PATH", "./policies.toml")
+allowed_origins = os.environ.get("ALLOWED_ORIGINS", "*")
+ALLOWED_ORIGINS = allowed_origins.split(",") if allowed_origins != "*" else "*"
 
 
 def create_app(
@@ -18,8 +23,10 @@ def create_app(
     # Socket.IO server
     sio = socketio.AsyncServer(
         async_mode="asgi",
-        cors_allowed_origins="*",
+        cors_allowed_origins=ALLOWED_ORIGINS,
     )
+
+    print(f"Allowed origins: {ALLOWED_ORIGINS}")
 
     # FastAPI app
     app = FastAPI(
@@ -29,7 +36,7 @@ def create_app(
     # Configure CORS for REST endpoints
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=ALLOWED_ORIGINS if ALLOWED_ORIGINS != "*" else ["*"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -60,9 +67,7 @@ def create_app(
                 print(f"New session {sid} created for client {client_id}")
             else:
                 print(f"New client {client_id} connected with session {sid}")
-                handler_manager[client_id] = SessionHandler(
-                    saved_policies_path="../example_policy/example.toml"
-                )
+                handler_manager[client_id] = SessionHandler(saved_policies_path=TOML_PATH)
         else:
             print(f"Disconnecting client {client_id} due to reaching max sessions")
             for sid in sid_to_client.keys():

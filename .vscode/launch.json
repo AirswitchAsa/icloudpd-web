@@ -5,32 +5,47 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Launch icloudpd-web Server",
+      "name": "icloudpd-web Development Server",
       "type": "debugpy",
       "request": "launch",
-      "module": "uvicorn",
+      "module": "icloudpd_web.cli",
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/server/",
       "args": [
-        "icloudpd_web.dev:socket_app",
         "--host", "0.0.0.0",
         "--port", "5000",
+        "--allowed-origins", "http://pulse.local:3000",
+        "--toml-path", "../example_policy/example.toml",
+        "--server-only",
         "--reload"
       ],
     },
     {
-      "name": "Launch icloudpd-web Production Server",
+      "name": "icloudpd-web Production Server",
       "type": "debugpy",
       "request": "launch",
-      "module": "uvicorn",
       "console": "integratedTerminal",
+      "module": "icloudpd_web.cli",
       "cwd": "${workspaceFolder}/server/",
       "args": [
-        "icloudpd_web.main:socket_app",
         "--host", "0.0.0.0",
         "--port", "5000",
+        "--allowed-origins", "http://pulse.local:5000",
+        "--toml-path", "../example_policy/example.toml",
         "--reload"
       ],
+    },
+    {
+      "name": "Next.js Development Server",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/web/",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "console": "integratedTerminal",
     }
   ]
 }
