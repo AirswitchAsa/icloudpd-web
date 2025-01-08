@@ -5,6 +5,7 @@ from icloudpd_web.api.session_handler import SessionHandler
 from icloudpd_web.api.data_models import AuthenticationResult
 from icloudpd_web.api.policy_handler import PolicyStatus
 from icloudpd_web.api.logger import build_logger
+from icloudpd_web.api.authentication_local import authenticate_secret, save_secret_hash
 
 import socketio
 import asyncio
@@ -13,6 +14,8 @@ import os
 MAX_SESSIONS = 5
 DEFAULT_CLIENT_ID = "default-user"
 TOML_PATH = os.environ.get("TOML_PATH", "./policies.toml")
+secret_hash_path = os.environ.get("SECRET_HASH_PATH", "~/.icloudpd_web/secret_hash")
+SECRET_HASH_PATH = os.path.abspath(os.path.expanduser(secret_hash_path))
 allowed_origins = os.environ.get("ALLOWED_ORIGINS", "*")
 ALLOWED_ORIGINS = allowed_origins.split(",") if allowed_origins != "*" else "*"
 
@@ -50,6 +53,42 @@ def create_app(
     handler_manager: dict[str, SessionHandler] = {}
     # Mapping to track which sids ownership by clientId
     sid_to_client: dict[str, str] = {}
+
+    @sio.event
+    async def authenticate_local(sid, password, path=SECRET_HASH_PATH):
+        try:
+            if authenticate_secret(password, path):
+                await sio.emit("server_authenticated", to=sid)
+            else:
+                await sio.emit("server_authentication_failed", {"error": "Invalid password"}, to=sid)
+        except Exception as e:
+            await sio.emit("server_authentication_failed", {"error": repr(e)}, to=sid)
+
+
+    @sio.event
+    async def save_secret(sid, old_password, new_password, path=SECRET_HASH_PATH):
+        try:
+            if authenticate_secret(old_password, path):
+                save_secret_hash(new_password, path)
+                await sio.emit("server_secret_saved", to=sid)
+            else:
+                await sio.emit("failed_saving_server_secret", {"error": "Invalid old password"}, to=sid)
+        except Exception as e:
+            await sio.emit("failed_saving_server_secret", {"error": repr(e)}, to=sid)
+
+
+    @sio.event
+    async def reset_secret(sid, path=SECRET_HASH_PATH):
+        try:
+            print("Resetting server secret, removing all sessions")
+            handler_manager.clear()
+            sid_to_client.clear()
+            if os.path.exists(path):
+                os.remove(path)
+            await sio.emit("server_secret_reset", to=sid)
+        except Exception as e:
+            await sio.emit("failed_resetting_server_secret", {"error": repr(e)}, to=sid)
+
 
     @sio.event
     async def connect(sid, environ, auth):

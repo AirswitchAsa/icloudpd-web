@@ -15,6 +15,10 @@ import os
     multiple=True,
     help="Allowed CORS origins. Pass values with space to specify multiple origins. Warning: '*' will be used if not specified, and this is not recommended for production.",
 )
+@click.option(
+    "--secret-hash-path",
+    help="Path to the secret hash file. The secret hash will be saved to ~/.icloudpd_web/secret_hash by default.",
+)
 # dev options
 @click.option(
     "--server-only",
@@ -33,6 +37,7 @@ def main(
     server_only: bool,
     toml_path: str,
     allowed_origins: tuple[str],
+    secret_hash_path: str,
 ):
     """Launch the iCloud Photos Downloader server with the Web interface"""
 
@@ -41,6 +46,9 @@ def main(
 
     if allowed_origins:
         os.environ["ALLOWED_ORIGINS"] = ",".join(allowed_origins)
+
+    if secret_hash_path:
+        os.environ["SECRET_HASH_PATH"] = secret_hash_path
 
     if server_only:
         uvicorn.run("icloudpd_web.dev:socket_app", host=host, port=port, reload=reload)

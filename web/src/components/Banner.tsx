@@ -5,7 +5,11 @@ import {
   Button,
 } from '@chakra-ui/react';
 
-export function Banner() {
+interface BannerProps {
+  onSettingsClick: () => void;
+}
+
+export function Banner({ onSettingsClick }: BannerProps) {
   return (
     <Box bg="white" borderBottom="1px" borderColor="gray.200" py={4} position="sticky" top={0} zIndex={1}>
       <Box mx="auto" width="100%">
@@ -31,6 +35,7 @@ export function Banner() {
             borderRadius="xl"
             fontFamily="Inter, sans-serif"
             fontSize="14px"
+            onClick={onSettingsClick}
           >
             Settings
           </Button>

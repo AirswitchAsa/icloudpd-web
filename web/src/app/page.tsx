@@ -19,6 +19,8 @@ import { useSocketEvents } from '@/hooks/useSocketEvents';
 import { Policy } from '@/types/index';
 import { AuthenticationModal } from '@/components/AuthenticationModal';
 import { MFAModal } from '@/components/MFAModal';
+import { ServerAuthenticationModal } from '@/components/ServerAuthenticationModal';
+import { SettingsModal } from '@/components/SettingsModal';
 
 export default function Home() {
   const [policies, setPolicies] = useState<Policy[]>([]);
@@ -26,11 +28,13 @@ export default function Home() {
   const [policyToDelete, setPolicyToDelete] = useState<Policy | undefined>();
   const [policyToAuth, setPolicyToAuth] = useState<Policy | undefined>();
   const [mfaError, setMfaError] = useState<string>();
+  const [isServerAuthenticated, setIsServerAuthenticated] = useState(false);
 
   const { isOpen: isEditPolicyOpen, onOpen: onEditPolicyOpen, onClose: onEditPolicyClose } = useDisclosure();
   const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
   const { isOpen: isAuthOpen, onOpen: onAuthOpen, onClose: onAuthClose } = useDisclosure();
   const { isOpen: isMfaOpen, onOpen: onMfaOpen, onClose: onMfaClose } = useDisclosure();
+  const { isOpen: isSettingsOpen, onOpen: onSettingsOpen, onClose: onSettingsClose } = useDisclosure();
 
   const socket = useSocket();
   const toast = useToast();
@@ -52,12 +56,18 @@ export default function Home() {
       onMfaOpen();
     };
 
+    const handleServerAuthenticated = () => {
+      setIsServerAuthenticated(true);
+    };
+
     socket.on('authenticated', handleAuthenticated);
     socket.on('mfa_required', handleMfaRequired);
+    socket.on('server_authenticated', handleServerAuthenticated);
 
     return () => {
       socket.off('authenticated', handleAuthenticated);
       socket.off('mfa_required', handleMfaRequired);
+      socket.off('server_authenticated', handleServerAuthenticated);
     };
   }, [socket, policyToAuth, onAuthClose, onMfaClose, onMfaOpen]);
 
@@ -122,9 +132,13 @@ export default function Home() {
     socket.emit('interrupt', policy.name);
   };
 
+  if (!isServerAuthenticated) {
+    return <ServerAuthenticationModal isOpen={true} socket={socket} />;
+  }
+
   return (
     <Box bg="gray.200" minH="100vh">
-      <Banner />
+      <Banner onSettingsClick={onSettingsOpen} />
 
       {/* Main Content */}
       <Container maxW="container.xl" py={8}>
@@ -209,6 +223,13 @@ export default function Home() {
           />
         )}
 
+        {isSettingsOpen && (
+          <SettingsModal
+            isOpen={true}
+            onClose={onSettingsClose}
+            socket={socket}
+          />
+        )}
       </Container>
     </Box>
   );
