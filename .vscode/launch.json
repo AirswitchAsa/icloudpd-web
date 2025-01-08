@@ -14,7 +14,7 @@
       "args": [
         "--host", "0.0.0.0",
         "--port", "5000",
-        "--allowed-origins", "http://pulse.local:3000",
+        "--allowed-origins", "http://localhost:3000",
         "--toml-path", "../example_policy/example.toml",
         "--server-only",
         "--reload"
@@ -30,7 +30,7 @@
       "args": [
         "--host", "0.0.0.0",
         "--port", "5000",
-        "--allowed-origins", "http://pulse.local:5000",
+        "--allowed-origins", "http://localhost:3000",
         "--toml-path", "../example_policy/example.toml",
         "--reload"
       ],
