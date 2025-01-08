@@ -143,6 +143,7 @@ export default function Home() {
                   fontSize="12px"
                   size="sm"
                   px={4}
+                  pt={1}
                   onClick={handleAddNewClick}
                 >
                   Add

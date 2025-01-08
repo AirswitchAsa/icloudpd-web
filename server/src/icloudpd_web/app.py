@@ -96,17 +96,29 @@ def create_app(
             )
 
     @sio.event
-    async def uploadPolicies(sid, policies):
+    async def uploadPolicies(sid, toml_content):
         """
         Create policies for the user with sid. Existing policies are replaced.
         """
         if client_id := sid_to_client.get(sid):
             if handler := handler_manager.get(client_id):
                 try:
-                    handler.replace_policies(policies)
+                    handler.replace_policies(toml_content)
                     await sio.emit("uploaded_policies", handler.policies, to=sid)
                 except Exception as e:
                     await sio.emit("error_uploading_policies", {"error": repr(e)}, to=sid)
+
+    @sio.event
+    async def downloadPolicies(sid):
+        """
+        Download the policies for the user with sid as a TOML string.
+        """
+        if client_id := sid_to_client.get(sid):
+            if handler := handler_manager.get(client_id):
+                try:
+                    await sio.emit("downloaded_policies", handler.dump_policies_as_toml(), to=sid)
+                except Exception as e:
+                    await sio.emit("error_downloading_policies", {"error": repr(e)}, to=sid)
 
     @sio.event
     async def getPolicies(sid):

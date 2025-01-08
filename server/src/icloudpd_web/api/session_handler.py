@@ -21,6 +21,14 @@ class SessionHandler:
         self._icloud_manager = ICloudManager()
         self._load_policies()
 
+    def _load_policies_from_toml(self, saved_policies: list[dict]) -> list[dict]:
+        for policy in saved_policies:
+            assert "name" in policy, "Policy must have a name"
+            assert "username" in policy, "Policy must have a username"
+            assert "directory" in policy, "Policy must have a directory"
+            assert policy["name"] not in self.policy_names, "Policy name must be unique"
+            self._policies.append(PolicyHandler(icloud_manager=self._icloud_manager, **policy))
+
     def _load_policies(self):
         """
         Load the policies from the file if it exists.
@@ -28,14 +36,7 @@ class SessionHandler:
         if os.path.exists(self._saved_policies_path):
             with open(self._saved_policies_path, "r") as file:
                 saved_policies = toml.load(file).get("policy", [])
-                for policy in saved_policies:
-                    assert "name" in policy, "Policy must have a name"
-                    assert "username" in policy, "Policy must have a username"
-                    assert "directory" in policy, "Policy must have a directory"
-                    assert policy["name"] not in self.policy_names, "Policy name must be unique"
-                    self._policies.append(
-                        PolicyHandler(icloud_manager=self._icloud_manager, **policy)
-                    )
+                self._load_policies_from_toml(saved_policies)
 
     def _save_policies(self):
         """
@@ -46,6 +47,14 @@ class SessionHandler:
                 "policy": [policy.dump(excludes=NON_POLICY_FIELDS) for policy in self._policies]
             }
             toml.dump(policies_to_save, file)
+
+    def dump_policies_as_toml(self) -> str:
+        """
+        Dump the policies as a TOML string.
+        """
+        return toml.dumps(
+            {"policy": [policy.dump(excludes=NON_POLICY_FIELDS) for policy in self._policies]}
+        )
 
     def get_policy(self, name: str) -> PolicyHandler | None:
         """
@@ -95,13 +104,14 @@ class SessionHandler:
         self._policies = [policy for policy in self._policies if policy.name != policy_name]
         self._save_policies()
 
-    def replace_policies(self, policies: list[dict]):
+    def replace_policies(self, toml_content: str):
         """
         Replace the current policies with the policies defined in the list of dictionaries.
         """
-        self._policies = [
-            PolicyHandler(icloud_manager=self._icloud_manager, **policy) for policy in policies
-        ]
+        self._policies = []
+        self._icloud_manager = ICloudManager()
+        read_policies = toml.loads(toml_content).get("policy", [])
+        self._load_policies_from_toml(read_policies)
         self._save_policies()
 
     def icloud_instance_occupied_by(self, username: str) -> str | None:

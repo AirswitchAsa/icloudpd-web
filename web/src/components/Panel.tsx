@@ -38,7 +38,8 @@ export function Panel({ title, children, headerRight, ...props }: PanelProps) {
           {headerRight}
         </Flex>
         <Box
-          py={8}
+          pt={2}
+          pb={10}
           px={12}
           flex="1"
           minH="200px"
@@ -46,17 +47,7 @@ export function Panel({ title, children, headerRight, ...props }: PanelProps) {
           alignItems="flex-start"
           width="100%"
         >
-          {children || (
-            <Text
-              color="gray.500"
-              textAlign="center"
-              fontFamily="Inter, sans-serif"
-              fontSize="14px"
-              width="100%"
-            >
-              Empty
-            </Text>
-          )}
+          {children}
         </Box>
       </Box>
     </Box>
