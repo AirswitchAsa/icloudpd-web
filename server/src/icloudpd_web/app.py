@@ -98,7 +98,6 @@ def create_app(
             try:
                 print("Resetting server secret, removing all sessions")
                 handler_manager.clear()
-                sid_to_client.clear()
                 try:
                     os.remove(path)
                 except FileNotFoundError:
