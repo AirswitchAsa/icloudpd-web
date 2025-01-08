@@ -139,6 +139,7 @@ class PolicyHandler:
         new_config_args = self._configs.model_dump()
         new_config_args.update(config_updates)
         self._configs = PolicyConfigs(**new_config_args)
+        self._progress = 0
 
     def authenticate(self, password: str):
         """

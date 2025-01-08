@@ -27,9 +27,10 @@ export function Panel({ title, children, headerRight, ...props }: PanelProps) {
         >
           <Text
             fontSize="14px"
-            fontWeight="bold"
-            color="gray.500"
+            fontWeight="semibold"
+            color="gray.600"
             letterSpacing="0.05em"
+            pl={2}
           >
             {title.toUpperCase()}
           </Text>

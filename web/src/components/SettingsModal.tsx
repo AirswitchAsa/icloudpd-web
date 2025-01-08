@@ -7,20 +7,15 @@ import {
   ModalBody,
   ModalFooter,
   Button,
-  Input,
-  FormControl,
-  FormLabel,
-  InputGroup,
-  InputRightElement,
-  IconButton,
-  Text,
-  VStack,
   Box,
   Flex,
-  useToast,
+  VStack,
+  Text,
 } from '@chakra-ui/react';
-import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
 import { Socket } from 'socket.io-client';
+import { GeneralSettings } from './settings/GeneralSettings';
+import { DownloadSettings } from './settings/DownloadSettings';
+import { UserSettings } from './settings/UserSettings';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -28,112 +23,69 @@ interface SettingsModalProps {
   socket: Socket | null;
 }
 
+type TabType = 'general' | 'download' | 'user';
+
+interface TabConfig {
+  id: TabType;
+  label: string;
+  component: React.ComponentType<any>;
+}
+
+const TABS: TabConfig[] = [
+  { id: 'general', label: 'General', component: GeneralSettings },
+  { id: 'download', label: 'Download', component: DownloadSettings },
+  { id: 'user', label: 'User', component: UserSettings },
+];
+
 export function SettingsModal({ isOpen, onClose, socket }: SettingsModalProps) {
-  const [oldPassword, setOldPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [showOldPassword, setShowOldPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const toast = useToast();
+  const [activeTab, setActiveTab] = useState<TabType>('general');
 
-  const handleSave = () => {
-    if (!socket) return;
-    setIsSaving(true);
-
-    socket.emit('save_secret', oldPassword, newPassword);
-  };
-
-  // Set up socket event listeners
-  socket?.once('server_secret_saved', () => {
-    setIsSaving(false);
-    setOldPassword('');
-    setNewPassword('');
-    toast({
-      title: 'Success',
-      description: 'Server password has been updated',
-      status: 'success',
-      duration: 3000,
-      isClosable: true,
-    });
-    onClose();
-  });
-
-  socket?.once('failed_saving_server_secret', (data: { error: string }) => {
-    setIsSaving(false);
-    toast({
-      title: 'Error',
-      description: data.error,
-      status: 'error',
-      duration: 5000,
-      isClosable: true,
-    });
-  });
+  const ActiveComponent = TABS.find(tab => tab.id === activeTab)?.component || GeneralSettings;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} isCentered>
+    <Modal isOpen={isOpen} onClose={onClose} size="4xl" isCentered>
       <ModalOverlay backdropFilter="blur(4px)" />
-      <ModalContent borderRadius="xl">
-        <ModalHeader>Settings</ModalHeader>
-        <ModalBody>
-          <Flex>
-            <Box flex={1}>
-              <VStack spacing={4} align="stretch">
-                <Text fontWeight="bold" fontSize="lg">Change Server Password</Text>
-                <FormControl>
-                  <FormLabel>Current Password</FormLabel>
-                  <InputGroup>
-                    <Input
-                      type={showOldPassword ? 'text' : 'password'}
-                      value={oldPassword}
-                      onChange={(e) => setOldPassword(e.target.value)}
-                    />
-                    <InputRightElement>
-                      <IconButton
-                        aria-label={showOldPassword ? 'Hide password' : 'Show password'}
-                        icon={showOldPassword ? <ViewOffIcon /> : <ViewIcon />}
-                        variant="ghost"
-                        onClick={() => setShowOldPassword(!showOldPassword)}
-                        size="sm"
-                      />
-                    </InputRightElement>
-                  </InputGroup>
-                </FormControl>
-                <FormControl>
-                  <FormLabel>New Password</FormLabel>
-                  <InputGroup>
-                    <Input
-                      type={showNewPassword ? 'text' : 'password'}
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                    />
-                    <InputRightElement>
-                      <IconButton
-                        aria-label={showNewPassword ? 'Hide password' : 'Show password'}
-                        icon={showNewPassword ? <ViewOffIcon /> : <ViewIcon />}
-                        variant="ghost"
-                        onClick={() => setShowNewPassword(!showNewPassword)}
-                        size="sm"
-                      />
-                    </InputRightElement>
-                  </InputGroup>
-                </FormControl>
+      <ModalContent borderRadius="xl" maxH="85vh">
+        <ModalHeader borderBottomWidth="1px">Settings</ModalHeader>
+        <ModalBody p={0} overflowY="auto">
+          <Flex minH="600px">
+            {/* Left sidebar */}
+            <Box w="240px" borderRightWidth="1px" p={6}>
+              <VStack spacing={2} align="stretch">
+                {TABS.map(tab => (
+                  <Box
+                    key={tab.id}
+                    py={2}
+                    px={4}
+                    cursor="pointer"
+                    borderRadius="md"
+                    bg={activeTab === tab.id ? 'gray.100' : 'transparent'}
+                    _hover={{
+                      bg: activeTab === tab.id ? 'gray.100' : 'gray.50'
+                    }}
+                    onClick={() => setActiveTab(tab.id)}
+                  >
+                    <Text
+                      fontSize="sm"
+                      fontWeight={activeTab === tab.id ? 'semibold' : 'normal'}
+                      color={activeTab === tab.id ? 'black' : 'gray.600'}
+                    >
+                      {tab.label}
+                    </Text>
+                  </Box>
+                ))}
               </VStack>
+            </Box>
+
+            {/* Right content area */}
+            <Box flex={1} p={8}>
+              <ActiveComponent socket={socket} />
             </Box>
           </Flex>
         </ModalBody>
-        <ModalFooter>
-          <Button variant="ghost" mr={3} onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            bg="black"
-            color="white"
-            _hover={{ bg: 'gray.800' }}
-            onClick={handleSave}
-            isDisabled={!oldPassword || !newPassword || isSaving}
-            isLoading={isSaving}
-          >
-            Save Changes
+        <ModalFooter borderTopWidth="1px">
+          <Button variant="ghost" onClick={onClose}>
+            Close
           </Button>
         </ModalFooter>
       </ModalContent>

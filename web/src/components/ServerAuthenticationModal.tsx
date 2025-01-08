@@ -17,6 +17,7 @@ import {
   VStack,
   Link,
   useDisclosure,
+  FormErrorMessage,
 } from '@chakra-ui/react';
 import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
 import { Socket } from 'socket.io-client';
@@ -32,9 +33,14 @@ export function ServerAuthenticationModal({ isOpen, socket }: ServerAuthenticati
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [error, setError] = useState<string>();
   const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSettingNewPassword, setIsSettingNewPassword] = useState(false);
   const { isOpen: isNewPasswordOpen, onOpen: onNewPasswordOpen, onClose: onNewPasswordClose } = useDisclosure();
+
+  const passwordsMatch = newPassword === confirmPassword;
+  const showMismatchError = confirmPassword !== '' && !passwordsMatch;
 
   const handleSubmit = () => {
     if (!socket) return;
@@ -50,7 +56,7 @@ export function ServerAuthenticationModal({ isOpen, socket }: ServerAuthenticati
   };
 
   const handleSetNewPassword = () => {
-    if (!socket) return;
+    if (!socket || !passwordsMatch) return;
     setIsSettingNewPassword(true);
     setError(undefined);
 
@@ -81,6 +87,7 @@ export function ServerAuthenticationModal({ isOpen, socket }: ServerAuthenticati
   socket?.once('server_secret_saved', () => {
     setIsSettingNewPassword(false);
     setNewPassword('');
+    setConfirmPassword('');
     onNewPasswordClose();
   });
 
@@ -160,15 +167,15 @@ export function ServerAuthenticationModal({ isOpen, socket }: ServerAuthenticati
           <ModalHeader>Set New Password</ModalHeader>
           <ModalBody>
             <VStack spacing={4}>
-              <FormControl>
-                <FormLabel>Enter new server password</FormLabel>
+              <FormControl isInvalid={showMismatchError}>
+                <FormLabel>New Password</FormLabel>
                 <InputGroup>
                   <Input
                     type={showNewPassword ? 'text' : 'password'}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && newPassword) {
+                      if (e.key === 'Enter' && newPassword && passwordsMatch) {
                         handleSetNewPassword();
                       }
                     }}
@@ -184,6 +191,33 @@ export function ServerAuthenticationModal({ isOpen, socket }: ServerAuthenticati
                   </InputRightElement>
                 </InputGroup>
               </FormControl>
+              <FormControl isInvalid={showMismatchError}>
+                <FormLabel>Confirm Password</FormLabel>
+                <InputGroup>
+                  <Input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && confirmPassword && passwordsMatch) {
+                        handleSetNewPassword();
+                      }
+                    }}
+                  />
+                  <InputRightElement>
+                    <IconButton
+                      aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                      icon={showConfirmPassword ? <ViewOffIcon /> : <ViewIcon />}
+                      variant="ghost"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      size="sm"
+                    />
+                  </InputRightElement>
+                </InputGroup>
+                {showMismatchError && (
+                  <FormErrorMessage>Passwords do not match</FormErrorMessage>
+                )}
+              </FormControl>
               {error && (
                 <Text color="red.500" fontSize="sm">
                   {error}
@@ -197,7 +231,7 @@ export function ServerAuthenticationModal({ isOpen, socket }: ServerAuthenticati
               color="white"
               _hover={{ bg: 'gray.800' }}
               onClick={handleSetNewPassword}
-              isDisabled={!newPassword || isSettingNewPassword}
+              isDisabled={!newPassword || !confirmPassword || !passwordsMatch || isSettingNewPassword}
               isLoading={isSettingNewPassword}
             >
               Set Password

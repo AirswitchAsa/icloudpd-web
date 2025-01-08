@@ -54,41 +54,58 @@ def create_app(
     # Mapping to track which sids ownership by clientId
     sid_to_client: dict[str, str] = {}
 
+    def find_active_client_id(client_id: str) -> str | None:
+        for sid, cid in sid_to_client.items():
+            if cid == client_id:
+                return sid
+        return None
+    
+    async def maybe_emit(event: str, client_id: str, preferred_sid: str, *args, **kwargs):
+        if preferred_sid in sid_to_client:
+            await sio.emit(event, *args, **kwargs, to=preferred_sid)
+        elif sid := find_active_client_id(client_id):
+            await sio.emit(event, *args, **kwargs, to=sid)
+        else:
+            print(f"No active session found for client {client_id} when emitting {event}")
+
     @sio.event
     async def authenticate_local(sid, password, path=SECRET_HASH_PATH):
-        try:
-            if authenticate_secret(password, path):
-                await sio.emit("server_authenticated", to=sid)
-            else:
-                await sio.emit("server_authentication_failed", {"error": "Invalid password"}, to=sid)
-        except Exception as e:
-            await sio.emit("server_authentication_failed", {"error": repr(e)}, to=sid)
-
+        if client_id := sid_to_client.get(sid):
+            try:
+                if authenticate_secret(password, path):
+                    await maybe_emit("server_authenticated", client_id, sid)
+                else:
+                    await maybe_emit("server_authentication_failed", client_id, sid, {"error": "Invalid password"})
+            except Exception as e:
+                await maybe_emit("server_authentication_failed", client_id, sid, {"error": repr(e)})
 
     @sio.event
     async def save_secret(sid, old_password, new_password, path=SECRET_HASH_PATH):
-        try:
-            if authenticate_secret(old_password, path):
-                save_secret_hash(new_password, path)
-                await sio.emit("server_secret_saved", to=sid)
-            else:
-                await sio.emit("failed_saving_server_secret", {"error": "Invalid old password"}, to=sid)
-        except Exception as e:
-            await sio.emit("failed_saving_server_secret", {"error": repr(e)}, to=sid)
-
+        if client_id := sid_to_client.get(sid):
+            try:
+                if authenticate_secret(old_password, path):
+                    save_secret_hash(new_password, path)
+                    await maybe_emit("server_secret_saved", client_id, sid)
+                    await maybe_emit("server_authenticated", client_id, sid)
+                else:
+                    await maybe_emit("failed_saving_server_secret", client_id, sid, {"error": "Invalid old password"})
+            except Exception as e:
+                await maybe_emit("failed_saving_server_secret", client_id, sid, {"error": repr(e)})
 
     @sio.event
     async def reset_secret(sid, path=SECRET_HASH_PATH):
-        try:
-            print("Resetting server secret, removing all sessions")
-            handler_manager.clear()
-            sid_to_client.clear()
-            if os.path.exists(path):
-                os.remove(path)
-            await sio.emit("server_secret_reset", to=sid)
-        except Exception as e:
-            await sio.emit("failed_resetting_server_secret", {"error": repr(e)}, to=sid)
-
+        if client_id := sid_to_client.get(sid):
+            try:
+                print("Resetting server secret, removing all sessions")
+                handler_manager.clear()
+                sid_to_client.clear()
+                try:
+                    os.remove(path)
+                except FileNotFoundError:
+                    pass
+                await maybe_emit("server_secret_reset", client_id, sid)
+            except Exception as e:
+                await maybe_emit("failed_resetting_server_secret", client_id, sid, {"error": repr(e)})
 
     @sio.event
     async def connect(sid, environ, auth):
@@ -123,10 +140,10 @@ def create_app(
         if client_id := sid_to_client.pop(sid, None):
             print(f"Client session disconnected: {client_id} (sid: {sid})")
             # Only remove handler if no other sids are using this client_id
-            if not any(cid == client_id for cid in sid_to_client.values()):
-                if client_id in handler_manager:
-                    del handler_manager[client_id]
-                    print(f"Removed handler for {client_id}")
+            # if not any(cid == client_id for cid in sid_to_client.values()):
+            #     if client_id in handler_manager:
+            #         del handler_manager[client_id]
+            #         print(f"Removed handler for {client_id}")
 
         # print clients and relevant handlers
         for client_id, _ in handler_manager.items():
@@ -143,9 +160,9 @@ def create_app(
             if handler := handler_manager.get(client_id):
                 try:
                     handler.replace_policies(toml_content)
-                    await sio.emit("uploaded_policies", handler.policies, to=sid)
+                    await maybe_emit("uploaded_policies", client_id, sid, handler.policies)
                 except Exception as e:
-                    await sio.emit("error_uploading_policies", {"error": repr(e)}, to=sid)
+                    await maybe_emit("error_uploading_policies", client_id, sid, {"error": repr(e)})
 
     @sio.event
     async def downloadPolicies(sid):
@@ -155,9 +172,9 @@ def create_app(
         if client_id := sid_to_client.get(sid):
             if handler := handler_manager.get(client_id):
                 try:
-                    await sio.emit("downloaded_policies", handler.dump_policies_as_toml(), to=sid)
+                    await maybe_emit("downloaded_policies", client_id, sid, handler.dump_policies_as_toml())
                 except Exception as e:
-                    await sio.emit("error_downloading_policies", {"error": repr(e)}, to=sid)
+                    await maybe_emit("error_downloading_policies", client_id, sid, {"error": repr(e)})
 
     @sio.event
     async def getPolicies(sid):
@@ -167,9 +184,9 @@ def create_app(
         if client_id := sid_to_client.get(sid):
             if handler := handler_manager.get(client_id):
                 try:
-                    await sio.emit("policies", handler.policies, to=sid)
+                    await maybe_emit("policies", client_id, sid, handler.policies)
                 except Exception as e:
-                    await sio.emit("internal_error", {"error": repr(e)}, to=sid)
+                    await maybe_emit("internal_error", client_id, sid, {"error": repr(e)})
 
     @sio.event
     async def savePolicy(sid, policy_name, policy_update):
@@ -180,12 +197,13 @@ def create_app(
             if handler := handler_manager.get(client_id):
                 try:
                     handler.save_policy(policy_name, **policy_update)
-                    await sio.emit("policies_after_save", handler.policies, to=sid)
+                    await maybe_emit("policies_after_save", client_id, sid, handler.policies)
                 except Exception as e:
-                    await sio.emit(
+                    await maybe_emit(
                         "error_saving_policy",
-                        {"policy_name": policy_name, "error": repr(e)},
-                        to=sid,
+                        client_id,
+                        sid,
+                        {"policy_name": policy_name, "error": repr(e)}
                     )
 
     @sio.event
@@ -197,12 +215,13 @@ def create_app(
             if handler := handler_manager.get(client_id):
                 try:
                     handler.create_policy(**policy)
-                    await sio.emit("policies_after_create", handler.policies, to=sid)
+                    await maybe_emit("policies_after_create", client_id, sid, handler.policies)
                 except Exception as e:
-                    await sio.emit(
+                    await maybe_emit(
                         "error_creating_policy",
-                        {"policy_name": policy.get("name", ""), "error": repr(e)},
-                        to=sid,
+                        client_id,
+                        sid,
+                        {"policy_name": policy.get("name", ""), "error": repr(e)}
                     )
 
     @sio.event
@@ -214,12 +233,13 @@ def create_app(
             if handler := handler_manager.get(client_id):
                 try:
                     handler.delete_policy(policy_name)
-                    await sio.emit("policies_after_delete", handler.policies, to=sid)
+                    await maybe_emit("policies_after_delete", client_id, sid, handler.policies)
                 except Exception as e:
-                    await sio.emit(
+                    await maybe_emit(
                         "error_deleting_policy",
-                        {"policy_name": policy_name, "error": repr(e)},
-                        to=sid,
+                        client_id,
+                        sid,
+                        {"policy_name": policy_name, "error": repr(e)}
                     )
 
     @sio.event
@@ -234,17 +254,18 @@ def create_app(
                         result, msg = policy.authenticate(password)
                         match result:
                             case AuthenticationResult.SUCCESS:
-                                await sio.emit(
+                                await maybe_emit(
                                     "authenticated",
-                                    {"msg": msg, "policies": handler.policies},
-                                    to=sid,
+                                    client_id,
+                                    sid,
+                                    {"msg": msg, "policies": handler.policies}
                                 )
                             case AuthenticationResult.FAILED:
-                                await sio.emit("authentication_failed", msg, to=sid)
+                                await maybe_emit("authentication_failed", client_id, sid, msg)
                             case AuthenticationResult.MFA_REQUIRED:
-                                await sio.emit("mfa_required", msg, to=sid)
+                                await maybe_emit("mfa_required", client_id, sid, msg)
                 except Exception as e:
-                    await sio.emit("authentication_failed", repr(e), to=sid)
+                    await maybe_emit("authentication_failed", client_id, sid, repr(e))
 
     @sio.event
     async def provideMFA(sid, policy_name, mfa_code):
@@ -258,15 +279,16 @@ def create_app(
                         result, msg = policy.provide_mfa(mfa_code)
                         match result:
                             case AuthenticationResult.SUCCESS:
-                                await sio.emit(
+                                await maybe_emit(
                                     "authenticated",
-                                    {"msg": msg, "policies": handler.policies},
-                                    to=sid,
+                                    client_id,
+                                    sid,
+                                    {"msg": msg, "policies": handler.policies}
                                 )
                             case AuthenticationResult.MFA_REQUIRED:
-                                await sio.emit("mfa_required", msg, to=sid)
+                                await maybe_emit("mfa_required", client_id, sid, msg)
                 except Exception as e:
-                    await sio.emit("authentication_failed", repr(e), to=sid)
+                    await maybe_emit("authentication_failed", client_id, sid, repr(e))
 
     @sio.event
     async def start(sid, policy_name):
@@ -283,10 +305,11 @@ def create_app(
                         if occupying_policy_name := handler.icloud_instance_occupied_by(
                             policy.username
                         ):
-                            await sio.emit(
+                            await maybe_emit(
                                 "icloud_is_busy",
-                                f"iCloud user {policy.username} has another policy running: {occupying_policy_name}",
-                                to=sid,
+                                client_id,
+                                sid,
+                                f"iCloud user {policy.username} has another policy running: {occupying_policy_name}"
                             )
                             return
 
@@ -298,48 +321,52 @@ def create_app(
                                 logs := log_capture_stream.read_new_lines()
                                 or policy.progress != last_progress
                             ):
-                                await sio.emit(
+                                await maybe_emit(
                                     "download_progress",
+                                    client_id,
+                                    sid,
                                     {
                                         "policy": policy.dump(),
                                         "logs": logs,
-                                    },
-                                    to=sid,
+                                    }
                                 )
                                 last_progress = policy.progress
                         if exception := task.exception():
                             policy.status = PolicyStatus.ERRORED
                             logger.error(f"Download failed: {repr(exception)}")
-                            await sio.emit(
+                            await maybe_emit(
                                 "download_failed",
+                                client_id,
+                                sid,
                                 {
                                     "policy": policy.dump(),
                                     "error": repr(exception),
                                     "logs": log_capture_stream.read_new_lines(),
-                                },
-                                to=sid,
+                                }
                             )
                             return
 
-                        await sio.emit(
+                        await maybe_emit(
                             "download_finished",
+                            client_id,
+                            sid,
                             {
                                 "policy_name": policy_name,
                                 "progress": policy.progress,
                                 "logs": log_capture_stream.read_new_lines(),
-                            },
-                            to=sid,
+                            }
                         )
                 except Exception as e:
                     policy.status = PolicyStatus.ERRORED
-                    await sio.emit(
+                    await maybe_emit(
                         "download_failed",
+                        client_id,
+                        sid,
                         {
                             "policy": policy.dump(),
                             "error": repr(e),
                             "logs": f"Internal error: {repr(e)}\n",
-                        },
-                        to=sid,
+                        }
                     )
                 finally:
                     # Clean up logger and log capture stream
@@ -362,10 +389,11 @@ def create_app(
                     if policy := handler.get_policy(policy_name):
                         policy.interrupt()
                 except Exception as e:
-                    await sio.emit(
+                    await maybe_emit(
                         "error_interrupting_download",
-                        {"policy_name": policy_name, "error": repr(e)},
-                        to=sid,
+                        client_id,
+                        sid,
+                        {"policy_name": policy_name, "error": repr(e)}
                     )
 
     return app, sio

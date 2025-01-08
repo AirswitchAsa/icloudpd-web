@@ -19,6 +19,7 @@ export function Banner({ onSettingsClick }: BannerProps) {
           width="100%"
           justify="space-between" 
           align="center"
+          pr={6}
         >
           <Heading
             fontSize="24px"
@@ -28,17 +29,40 @@ export function Banner({ onSettingsClick }: BannerProps) {
           >
             iCloud Photos Downloader
           </Heading>
-          <Button
-            bg="black"
-            color="white"
-            _hover={{ bg: 'gray.800' }}
-            borderRadius="xl"
-            fontFamily="Inter, sans-serif"
-            fontSize="14px"
-            onClick={onSettingsClick}
-          >
-            Settings
-          </Button>
+
+          <Flex gap={4} align="center">
+            <Box
+              as="a"
+              href="https://github.com/your-username/your-repo"
+              target="_blank"
+              rel="noopener noreferrer"
+              color="gray.600"
+              _hover={{ 
+                color: 'gray.800',
+                cursor: 'pointer'
+              }}
+              fontFamily="Inter, sans-serif"
+              fontSize="14px"
+              fontWeight="semibold"
+            >
+              Github
+            </Box>
+
+            <Box
+              as="span"
+              color="gray.600"
+              _hover={{ 
+                color: 'gray.800',
+                cursor: 'pointer'
+              }}
+              fontFamily="Inter, sans-serif"
+              fontSize="14px"
+              fontWeight="semibold"
+              onClick={onSettingsClick}
+            >
+              Settings
+            </Box>
+          </Flex>
         </Flex>
       </Box>
     </Box>
