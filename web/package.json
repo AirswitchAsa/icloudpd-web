@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build && cp -r ./out/* ../python/src/icloudpd_web/webapp",
     "start": "next start",
     "lint": "next lint"
   },

@@ -51,7 +51,12 @@ socket.on('download_failed', (data) => {
   console.log('Received download_failed:', data);
 });
 
+socket.on('internal_error', (data) => {
+  console.log('Received internal_error:', data);
+});
+
 socket.emit('getPolicies');
+
 
 // Test updating a policy
 function testUpdatePolicy() {
@@ -68,17 +73,31 @@ function testUpdatePolicy() {
 
 function testAuthenticate() {
   const policyName = 'Test Policy';
-  const password = '114514';
+  const password = 'Qi@nznG14';
 
   socket.emit('authenticate', policyName, password);
   // socket.emit('provideMFA', policyName, '114514');
   socket.emit('getPolicies');
 }
-// testAuthenticate();
+testAuthenticate();
 
 function testStart() {
   testAuthenticate();
   const policyName = 'Test Policy';
   socket.emit('start', policyName);
 }
-testStart();
+// testStart();
+
+function testInterrupt() {
+  testAuthenticate();
+  const policyName = 'Test Policy';
+  socket.emit('start', policyName);
+  setTimeout(() => {
+    socket.emit('interrupt', policyName);
+  }, 8000);
+  setTimeout(() => {
+    socket.emit('start', policyName);
+  }, 12000);
+}
+// testInterrupt();
+

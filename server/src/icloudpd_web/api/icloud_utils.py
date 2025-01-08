@@ -4,7 +4,7 @@ from icloudpd.base import lp_filename_concatinator, lp_filename_original, downlo
 
 from pyicloud_ipd.file_match import FileMatchPolicy
 from pyicloud_ipd.base import PyiCloudService
-from icloudpd_api.data_models import PolicyConfigs
+from icloudpd_web.api.data_models import PolicyConfigs
 
 from typing import Callable
 

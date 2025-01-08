@@ -1,7 +1,7 @@
 [project]
-name = "icloudpd-api"
+name = "icloudpd-web"
 version = "0.1.0"
-description = "API for iCloud Photos Downloader"
+description = "Web application for iCloud Photos Downloader, based on icloudpd"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.109.0",
@@ -15,6 +15,11 @@ dependencies = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build]
+include = [
+    "src/icloudpd_web/webapp/**/*",  # next.js build output
+]
+
 [tool.hatch.metadata]
 allow-direct-references = true
 
@@ -27,4 +32,4 @@ dev = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/icloudpd_api"]
+packages = ["src/icloudpd_web"]

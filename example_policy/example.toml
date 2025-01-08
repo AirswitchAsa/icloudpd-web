@@ -1,0 +1,50 @@
+[[policy]]
+name = "Test Policy"
+username = "meuryuuki@gmail.com"
+domain = "com"
+directory = "/mnt/crucial/Shared/test/"
+folder_structure = "{:%Y/%m}"
+size = [ "original",]
+live_photo_size = "original"
+force_size = false
+align_raw = "original"
+keep_unicode_in_filenames = false
+set_exif_datetime = false
+live_photo_mov_filename_policy = "suffix"
+file_match_policy = "name-size-dedup-with-suffix"
+xmp_sidecar = false
+use_os_locale = false
+album = "All Photos"
+library = "Shared Library"
+recent = 100
+skip_videos = false
+skip_live_photos = false
+auto_delete = false
+delete_after_download = false
+log_level = "info"
+
+[[policy]]
+name = "Favorites Backup"
+username = "meuryuuki@gmail.com"
+domain = "com"
+directory = "/mnt/crucial/Shared/test_2/"
+folder_structure = "{:%Y/%m/%d}"
+size = [ "original",]
+live_photo_size = "original"
+force_size = false
+align_raw = "original"
+keep_unicode_in_filenames = false
+set_exif_datetime = false
+live_photo_mov_filename_policy = "suffix"
+file_match_policy = "name-size-dedup-with-suffix"
+xmp_sidecar = false
+use_os_locale = false
+album = "All Photos"
+library = "Shared Library"
+recent = 10
+skip_videos = false
+skip_live_photos = false
+auto_delete = false
+delete_after_download = false
+log_level = "info"
+

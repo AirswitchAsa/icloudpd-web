@@ -1,12 +1,12 @@
-from icloudpd_api.data_models import PolicyConfigs, AuthenticationResult
-from icloudpd_api.icloud_utils import (
+from icloudpd_web.api.data_models import PolicyConfigs, AuthenticationResult
+from icloudpd_web.api.icloud_utils import (
     build_pyicloudservice_args,
     build_downloader_builder_args,
     request_2sa,
     ICloudManager,
 )
-from icloudpd_api.logger import build_logger_level, build_photos_exception_handler
-from icloudpd_api.download_option_utils import (
+from icloudpd_web.api.logger import build_logger_level, build_photos_exception_handler
+from icloudpd_web.api.download_option_utils import (
     handle_recent_until_found,
     log_at_download_start,
     should_break,

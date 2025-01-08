@@ -1,0 +1,8 @@
+from icloudpd_web.app import create_app
+import socketio
+
+# Create the app without static file serving
+app, sio = create_app(serve_static=False)
+
+# ASGI app by wrapping FastAPI with Socket.IO
+socket_app = socketio.ASGIApp(sio, app)

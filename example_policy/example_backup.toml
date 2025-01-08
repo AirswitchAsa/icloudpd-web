@@ -1,7 +1,10 @@
 [[policy]]
 name = "Test Policy"
-username = "demo@icloud.com"
-directory = "~/Photos/Daily"
+username = "meuryuuki@gmail.com"
+directory = "/mnt/crucial/Shared/test/"
+album = "Twitter"
+library = "Personal Library"
+
 
 [[policy]]
 name = "Favorites Backup"

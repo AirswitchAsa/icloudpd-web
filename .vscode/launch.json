@@ -5,14 +5,28 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Launch icloudpd-api Server",
+      "name": "Launch icloudpd-web Server",
       "type": "debugpy",
       "request": "launch",
       "module": "uvicorn",
       "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}/api/",
+      "cwd": "${workspaceFolder}/server/",
       "args": [
-        "icloudpd_api.main:socket_app",
+        "icloudpd_web.dev:socket_app",
+        "--host", "0.0.0.0",
+        "--port", "5000",
+        "--reload"
+      ],
+    },
+    {
+      "name": "Launch icloudpd-web Production Server",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/server/",
+      "args": [
+        "icloudpd_web.main:socket_app",
         "--host", "0.0.0.0",
         "--port", "5000",
         "--reload"

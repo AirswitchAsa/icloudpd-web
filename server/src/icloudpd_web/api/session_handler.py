@@ -1,6 +1,6 @@
-from icloudpd_api.icloud_utils import ICloudManager
-from icloudpd_api.policy_handler import PolicyHandler, PolicyStatus
-from icloudpd_api.data_models import NON_POLICY_FIELDS
+from icloudpd_web.api.icloud_utils import ICloudManager
+from icloudpd_web.api.policy_handler import PolicyHandler, PolicyStatus
+from icloudpd_web.api.data_models import NON_POLICY_FIELDS
 
 import toml
 import os
