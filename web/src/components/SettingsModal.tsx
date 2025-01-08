@@ -21,6 +21,7 @@ interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   socket: Socket | null;
+  isGuest: boolean;
 }
 
 type TabType = 'general' | 'download' | 'user';
@@ -37,7 +38,7 @@ const TABS: TabConfig[] = [
   { id: 'user', label: 'User', component: UserSettings },
 ];
 
-export function SettingsModal({ isOpen, onClose, socket }: SettingsModalProps) {
+export function SettingsModal({ isOpen, onClose, socket, isGuest }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<TabType>('general');
 
   const ActiveComponent = TABS.find(tab => tab.id === activeTab)?.component || GeneralSettings;
@@ -79,7 +80,7 @@ export function SettingsModal({ isOpen, onClose, socket }: SettingsModalProps) {
 
             {/* Right content area */}
             <Box flex={1} p={8}>
-              <ActiveComponent socket={socket} />
+              <ActiveComponent socket={socket} isGuest={isGuest} />
             </Box>
           </Flex>
         </ModalBody>

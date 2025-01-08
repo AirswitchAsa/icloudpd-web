@@ -7,17 +7,32 @@ from icloudpd_web.api.policy_handler import PolicyStatus
 from icloudpd_web.api.logger import build_logger
 from icloudpd_web.api.authentication_local import authenticate_secret, save_secret_hash
 
+from dataclasses import dataclass
 import socketio
 import asyncio
 import os
 
-MAX_SESSIONS = 5
-DEFAULT_CLIENT_ID = "default-user"
-TOML_PATH = os.environ.get("TOML_PATH", "./policies.toml")
 secret_hash_path = os.environ.get("SECRET_HASH_PATH", "~/.icloudpd_web/secret_hash")
-SECRET_HASH_PATH = os.path.abspath(os.path.expanduser(secret_hash_path))
+secret_hash_path = os.path.abspath(os.path.expanduser(secret_hash_path))
 allowed_origins = os.environ.get("ALLOWED_ORIGINS", "*")
-ALLOWED_ORIGINS = allowed_origins.split(",") if allowed_origins != "*" else "*"
+allowed_origins = allowed_origins.split(",") if allowed_origins != "*" else "*"
+
+
+@dataclass
+class AppConfig:
+    client_ids: set[str]
+    allowed_origins: list[str]
+    max_sessions: int = os.environ.get("MAX_SESSIONS", 5)
+    default_client_id: str = "default-user"
+    no_password: bool = os.environ.get("NO_PASSWORD", False)
+    always_guest: bool = os.environ.get("ALWAYS_GUEST", False)
+    disable_guest: bool = os.environ.get("DISABLE_GUEST", False)
+    toml_path: str = os.environ.get("TOML_PATH", "./policies.toml")
+    secret_hash_path: str = secret_hash_path
+
+
+
+app_config = AppConfig(client_ids=set({"default-user"}), allowed_origins=allowed_origins)
 
 
 def create_app(
@@ -26,10 +41,10 @@ def create_app(
     # Socket.IO server
     sio = socketio.AsyncServer(
         async_mode="asgi",
-        cors_allowed_origins=ALLOWED_ORIGINS,
+        cors_allowed_origins=app_config.allowed_origins,
     )
 
-    print(f"Allowed origins: {ALLOWED_ORIGINS}")
+    print(f"Allowed origins: {app_config.allowed_origins}")
 
     # FastAPI app
     app = FastAPI(
@@ -39,7 +54,7 @@ def create_app(
     # Configure CORS for REST endpoints
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=ALLOWED_ORIGINS if ALLOWED_ORIGINS != "*" else ["*"],
+        allow_origins=app_config.allowed_origins if app_config.allowed_origins != "*" else ["*"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -59,7 +74,7 @@ def create_app(
             if cid == client_id:
                 return sid
         return None
-    
+
     async def maybe_emit(event: str, client_id: str, preferred_sid: str, *args, **kwargs):
         if preferred_sid in sid_to_client:
             await sio.emit(event, *args, **kwargs, to=preferred_sid)
@@ -69,42 +84,72 @@ def create_app(
             print(f"No active session found for client {client_id} when emitting {event}")
 
     @sio.event
-    async def authenticate_local(sid, password, path=SECRET_HASH_PATH):
+    async def updateAppConfig(sid, key, value):
+        try:
+            client_id = sid_to_client.get(sid)
+            assert client_id, "Client ID not found"
+            assert key in {
+                "always_guest",
+                "disable_guest",
+                "no_password",
+            }, "Invalid setting to update"
+            if (key != "always_guest" or value) and client_id not in app_config.client_ids:
+                raise ValueError("Guest user is not allowed to update this setting")
+
+            setattr(app_config, key, value)
+            await maybe_emit("app_config_updated", client_id, sid)
+        except Exception as e:
+            await maybe_emit("error_updating_app_config", client_id, sid, {"error": repr(e)})
+
+    @sio.event
+    async def authenticate_local(sid, password):
         if client_id := sid_to_client.get(sid):
             try:
-                if authenticate_secret(password, path):
+                if authenticate_secret(password, app_config.secret_hash_path):
                     await maybe_emit("server_authenticated", client_id, sid)
                 else:
-                    await maybe_emit("server_authentication_failed", client_id, sid, {"error": "Invalid password"})
+                    await maybe_emit(
+                        "server_authentication_failed",
+                        client_id,
+                        sid,
+                        {"error": "Invalid password"},
+                    )
             except Exception as e:
                 await maybe_emit("server_authentication_failed", client_id, sid, {"error": repr(e)})
 
     @sio.event
-    async def save_secret(sid, old_password, new_password, path=SECRET_HASH_PATH):
+    async def save_secret(sid, old_password, new_password):
         if client_id := sid_to_client.get(sid):
             try:
-                if authenticate_secret(old_password, path):
-                    save_secret_hash(new_password, path)
+                if authenticate_secret(old_password, app_config.secret_hash_path):
+                    save_secret_hash(new_password, app_config.secret_hash_path)
                     await maybe_emit("server_secret_saved", client_id, sid)
                     await maybe_emit("server_authenticated", client_id, sid)
                 else:
-                    await maybe_emit("failed_saving_server_secret", client_id, sid, {"error": "Invalid old password"})
+                    await maybe_emit(
+                        "failed_saving_server_secret",
+                        client_id,
+                        sid,
+                        {"error": "Invalid old password"},
+                    )
             except Exception as e:
                 await maybe_emit("failed_saving_server_secret", client_id, sid, {"error": repr(e)})
 
     @sio.event
-    async def reset_secret(sid, path=SECRET_HASH_PATH):
+    async def reset_secret(sid):
         if client_id := sid_to_client.get(sid):
             try:
                 print("Resetting server secret, removing all sessions")
                 handler_manager.clear()
                 try:
-                    os.remove(path)
+                    os.remove(app_config.secret_hash_path)
                 except FileNotFoundError:
                     pass
                 await maybe_emit("server_secret_reset", client_id, sid)
             except Exception as e:
-                await maybe_emit("failed_resetting_server_secret", client_id, sid, {"error": repr(e)})
+                await maybe_emit(
+                    "failed_resetting_server_secret", client_id, sid, {"error": repr(e)}
+                )
 
     @sio.event
     async def connect(sid, environ, auth):
@@ -112,17 +157,19 @@ def create_app(
         Connect a client to the server using clientId for identification.
         """
         # TODO: handle authentication
-        client_id = auth.get("clientId", DEFAULT_CLIENT_ID)
+        client_id = auth.get("clientId", app_config.default_client_id)
 
         # Store the sid to client mapping
         sid_to_client[sid] = client_id
 
-        if len(sid_to_client) <= MAX_SESSIONS:
+        if len(sid_to_client) <= app_config.max_sessions:
             if client_id in handler_manager:
                 print(f"New session {sid} created for client {client_id}")
             else:
                 print(f"New client {client_id} connected with session {sid}")
-                handler_manager[client_id] = SessionHandler(saved_policies_path=TOML_PATH)
+                handler_manager[client_id] = SessionHandler(
+                    saved_policies_path=app_config.toml_path
+                )
         else:
             print(f"Disconnecting client {client_id} due to reaching max sessions")
             for sid in sid_to_client.keys():
@@ -134,21 +181,44 @@ def create_app(
     @sio.event
     async def disconnect(sid):
         """
-        Disconnect handling using sid to client mapping.
+        Disconnect and remove handler using sid to client mapping for guest clients.
         """
         if client_id := sid_to_client.pop(sid, None):
             print(f"Client session disconnected: {client_id} (sid: {sid})")
-            # Only remove handler if no other sids are using this client_id
-            # if not any(cid == client_id for cid in sid_to_client.values()):
-            #     if client_id in handler_manager:
-            #         del handler_manager[client_id]
-            #         print(f"Removed handler for {client_id}")
+            # Only remove handler if no other sids are using this client_id and the client is a guest
+            if client_id not in app_config.client_ids and not any(
+                cid == client_id for cid in sid_to_client.values()
+            ):
+                if client_id in handler_manager:
+                    del handler_manager[client_id]
+                    print(f"Removed handler for guest {client_id}")
 
         # print clients and relevant handlers
         for client_id, _ in handler_manager.items():
             print(
                 f"Client {client_id} owns sessions {[sid for sid in sid_to_client if sid_to_client[sid] == client_id]}"
             )
+
+    @sio.event
+    async def logOut(sid, client_id):
+        """
+        Log out a client and remove the handler.
+        """
+        if client_id := sid_to_client.get(sid, None) and client_id in handler_manager:
+            del handler_manager[client_id]
+            print(f"Removed handler for client {client_id}")
+
+    @sio.event
+    async def getServerConfig(sid):
+        """
+        Get the server config for the client with sid.
+        """
+        if client_id := sid_to_client.get(sid):
+            try:
+                viewable_configs = {"always_guest": app_config.always_guest, "disable_guest": app_config.disable_guest, "no_password": app_config.no_password}
+                await maybe_emit("server_config", client_id, sid, viewable_configs)
+            except Exception as e:
+                await maybe_emit("server_config_not_found", client_id, sid, {"error": repr(e)})
 
     @sio.event
     async def uploadPolicies(sid, toml_content):
@@ -171,9 +241,13 @@ def create_app(
         if client_id := sid_to_client.get(sid):
             if handler := handler_manager.get(client_id):
                 try:
-                    await maybe_emit("downloaded_policies", client_id, sid, handler.dump_policies_as_toml())
+                    await maybe_emit(
+                        "downloaded_policies", client_id, sid, handler.dump_policies_as_toml()
+                    )
                 except Exception as e:
-                    await maybe_emit("error_downloading_policies", client_id, sid, {"error": repr(e)})
+                    await maybe_emit(
+                        "error_downloading_policies", client_id, sid, {"error": repr(e)}
+                    )
 
     @sio.event
     async def getPolicies(sid):
@@ -202,7 +276,7 @@ def create_app(
                         "error_saving_policy",
                         client_id,
                         sid,
-                        {"policy_name": policy_name, "error": repr(e)}
+                        {"policy_name": policy_name, "error": repr(e)},
                     )
 
     @sio.event
@@ -220,7 +294,7 @@ def create_app(
                         "error_creating_policy",
                         client_id,
                         sid,
-                        {"policy_name": policy.get("name", ""), "error": repr(e)}
+                        {"policy_name": policy.get("name", ""), "error": repr(e)},
                     )
 
     @sio.event
@@ -238,7 +312,7 @@ def create_app(
                         "error_deleting_policy",
                         client_id,
                         sid,
-                        {"policy_name": policy_name, "error": repr(e)}
+                        {"policy_name": policy_name, "error": repr(e)},
                     )
 
     @sio.event
@@ -257,7 +331,7 @@ def create_app(
                                     "authenticated",
                                     client_id,
                                     sid,
-                                    {"msg": msg, "policies": handler.policies}
+                                    {"msg": msg, "policies": handler.policies},
                                 )
                             case AuthenticationResult.FAILED:
                                 await maybe_emit("authentication_failed", client_id, sid, msg)
@@ -282,7 +356,7 @@ def create_app(
                                     "authenticated",
                                     client_id,
                                     sid,
-                                    {"msg": msg, "policies": handler.policies}
+                                    {"msg": msg, "policies": handler.policies},
                                 )
                             case AuthenticationResult.MFA_REQUIRED:
                                 await maybe_emit("mfa_required", client_id, sid, msg)
@@ -308,7 +382,7 @@ def create_app(
                                 "icloud_is_busy",
                                 client_id,
                                 sid,
-                                f"iCloud user {policy.username} has another policy running: {occupying_policy_name}"
+                                f"iCloud user {policy.username} has another policy running: {occupying_policy_name}",
                             )
                             return
 
@@ -327,7 +401,7 @@ def create_app(
                                     {
                                         "policy": policy.dump(),
                                         "logs": logs,
-                                    }
+                                    },
                                 )
                                 last_progress = policy.progress
                         if exception := task.exception():
@@ -341,7 +415,7 @@ def create_app(
                                     "policy": policy.dump(),
                                     "error": repr(exception),
                                     "logs": log_capture_stream.read_new_lines(),
-                                }
+                                },
                             )
                             return
 
@@ -353,7 +427,7 @@ def create_app(
                                 "policy_name": policy_name,
                                 "progress": policy.progress,
                                 "logs": log_capture_stream.read_new_lines(),
-                            }
+                            },
                         )
                 except Exception as e:
                     policy.status = PolicyStatus.ERRORED
@@ -365,7 +439,7 @@ def create_app(
                             "policy": policy.dump(),
                             "error": repr(e),
                             "logs": f"Internal error: {repr(e)}\n",
-                        }
+                        },
                     )
                 finally:
                     # Clean up logger and log capture stream
@@ -392,7 +466,7 @@ def create_app(
                         "error_interrupting_download",
                         client_id,
                         sid,
-                        {"policy_name": policy_name, "error": repr(e)}
+                        {"policy_name": policy_name, "error": repr(e)},
                     )
 
     return app, sio

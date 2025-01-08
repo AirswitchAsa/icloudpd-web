@@ -14,7 +14,7 @@ import { DeleteConfirmationDialog } from '@/components/DeleteConfirmationDialog'
 import { Banner } from '@/components/Banner';
 import { Panel } from '@/components/Panel';
 import { PolicyList } from '@/components/PolicyList';
-import { useSocket } from '@/hooks/useSocket';
+import { useSocket, SocketConfig } from '@/hooks/useSocket';
 import { useSocketEvents } from '@/hooks/useSocketEvents';
 import { Policy } from '@/types/index';
 import { AuthenticationModal } from '@/components/AuthenticationModal';
@@ -29,6 +29,10 @@ export default function Home() {
   const [policyToAuth, setPolicyToAuth] = useState<Policy | undefined>();
   const [mfaError, setMfaError] = useState<string>();
   const [isServerAuthenticated, setIsServerAuthenticated] = useState(false);
+  const [socketConfig, setSocketConfig] = useState<SocketConfig>({
+    clientId: 'default-user',
+    isGuest: false,
+  });
 
   const { isOpen: isEditPolicyOpen, onOpen: onEditPolicyOpen, onClose: onEditPolicyClose } = useDisclosure();
   const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
@@ -36,7 +40,7 @@ export default function Home() {
   const { isOpen: isMfaOpen, onOpen: onMfaOpen, onClose: onMfaClose } = useDisclosure();
   const { isOpen: isSettingsOpen, onOpen: onSettingsOpen, onClose: onSettingsClose } = useDisclosure();
 
-  const socket = useSocket();
+  const socket = useSocket(socketConfig);
   const toast = useToast();
 
   // Use the socket events hook
@@ -70,6 +74,11 @@ export default function Home() {
       socket.off('server_authenticated', handleServerAuthenticated);
     };
   }, [socket, policyToAuth, onAuthClose, onMfaClose, onMfaOpen]);
+
+  const handleServerAuthenticated = (clientId: string, isGuest: boolean) => {
+    setSocketConfig({ clientId, isGuest });
+    setIsServerAuthenticated(true);
+  };
 
   const handlePolicySaved = (policies: Policy[]) => {
     setPolicies(policies);
@@ -133,7 +142,7 @@ export default function Home() {
   };
 
   if (!isServerAuthenticated) {
-    return <ServerAuthenticationModal isOpen={true} socket={socket} />;
+    return <ServerAuthenticationModal isOpen={true} socket={socket} onAuthenticated={handleServerAuthenticated} />;
   }
 
   return (
@@ -228,6 +237,7 @@ export default function Home() {
             isOpen={true}
             onClose={onSettingsClose}
             socket={socket}
+            isGuest={socketConfig.isGuest}
           />
         )}
       </Container>

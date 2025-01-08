@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { Policy } from '@/types';
 
-// This will be replaced with proper user authentication later
-const CLIENT_ID = 'default-user';
+// Generate a random guest ID
+function generateGuestId() {
+  return 'guest-' + Math.random().toString(36).substring(2, 8);
+}
 
 // Define types for the different event payloads
 interface PolicyUpdatePayload {
@@ -33,7 +35,12 @@ interface DownloadFinishedPayload {
   logs: string;
 }
 
-export function useSocket() {
+export interface SocketConfig {
+  clientId: string;
+  isGuest: boolean;
+}
+
+export function useSocket(config?: SocketConfig) {
   const [socket, setSocket] = useState<Socket | null>(null);
 
   useEffect(() => {
@@ -43,10 +50,8 @@ export function useSocket() {
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
-      // setting custom headers is not supported when using transports: ['websocket']
-      // see https://socket.io/docs/v4/client-options/#extraheaders
       auth: {
-        clientId: CLIENT_ID
+        clientId: config?.clientId || 'default-user'
       }
     });
 
@@ -122,7 +127,9 @@ export function useSocket() {
       console.log('Cleaning up socket connection');
       newSocket.close();
     };
-  }, []);
+  }, [config?.clientId]);
 
   return socket;
 }
+
+export { generateGuestId };

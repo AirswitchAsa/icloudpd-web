@@ -19,6 +19,30 @@ import os
     "--secret-hash-path",
     help="Path to the secret hash file. The secret hash will be saved to ~/.icloudpd_web/secret_hash by default.",
 )
+@click.option(
+    "--max-sessions",
+    type=int,
+    help="Maximum number of sessions to allow. Default: 5",
+)
+
+@click.option(
+    "--no-password",
+    is_flag=True,
+    help="Disable server password authentication. Use it only when access is trusted. This can be configured later in the web interface.",
+)
+
+@click.option(
+    "--always-guest",
+    is_flag=True,
+    help="Always login the user as a guest. This can be configured later in the web interface.",
+)
+
+@click.option(
+    "--disable-guest",
+    is_flag=True,
+    help="Disable guest login. This can be configured later in the web interface.",
+)
+
 # dev options
 @click.option(
     "--server-only",
@@ -38,6 +62,10 @@ def main(
     toml_path: str,
     allowed_origins: tuple[str],
     secret_hash_path: str,
+    max_sessions: int,
+    no_password: bool,
+    always_guest: bool,
+    disable_guest: bool,
 ):
     """Launch the iCloud Photos Downloader server with the Web interface"""
 
@@ -49,6 +77,23 @@ def main(
 
     if secret_hash_path:
         os.environ["SECRET_HASH_PATH"] = secret_hash_path
+
+    if max_sessions:
+        os.environ["MAX_SESSIONS"] = str(max_sessions)
+
+    if no_password and always_guest:
+        raise click.BadParameter("Cannot enable --no-password and --always-guest together")
+    if always_guest and disable_guest:
+        raise click.BadParameter("Cannot enable --always-guest and --disable-guest together")
+
+    if no_password:
+        os.environ["NO_PASSWORD"] = "true"
+
+    if always_guest:
+        os.environ["ALWAYS_GUEST"] = "true"
+
+    if disable_guest:
+        os.environ["DISABLE_GUEST"] = "true"
 
     if server_only:
         uvicorn.run("icloudpd_web.dev:socket_app", host=host, port=port, reload=reload)

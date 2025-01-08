@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Modal,
   ModalOverlay,
@@ -18,16 +18,25 @@ import {
   Link,
   useDisclosure,
   FormErrorMessage,
+  HStack,
 } from '@chakra-ui/react';
 import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
 import { Socket } from 'socket.io-client';
+import { generateGuestId } from '@/hooks/useSocket';
 
 interface ServerAuthenticationModalProps {
   isOpen: boolean;
   socket: Socket | null;
+  onAuthenticated: (clientId: string, isGuest: boolean) => void;
 }
 
-export function ServerAuthenticationModal({ isOpen, socket }: ServerAuthenticationModalProps) {
+interface ServerConfig {
+  no_password: boolean;
+  always_guest: boolean;
+  disable_guest: boolean;
+}
+
+export function ServerAuthenticationModal({ isOpen, socket, onAuthenticated }: ServerAuthenticationModalProps) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
@@ -37,10 +46,38 @@ export function ServerAuthenticationModal({ isOpen, socket }: ServerAuthenticati
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSettingNewPassword, setIsSettingNewPassword] = useState(false);
+  const [serverConfig, setServerConfig] = useState<ServerConfig>({
+    no_password: false,
+    always_guest: false,
+    disable_guest: false,
+  });
   const { isOpen: isNewPasswordOpen, onOpen: onNewPasswordOpen, onClose: onNewPasswordClose } = useDisclosure();
 
   const passwordsMatch = newPassword === confirmPassword;
   const showMismatchError = confirmPassword !== '' && !passwordsMatch;
+
+  useEffect(() => {
+    if (!socket) return;
+
+    // Get server config
+    socket.emit('getServerConfig');
+
+    socket.on('server_config', (config: ServerConfig) => {
+      setServerConfig(config);
+    });
+
+    return () => {
+      socket.off('server_config');
+    };
+  }, [socket]);
+
+  useEffect(() => {
+    if (serverConfig.no_password) {
+      onAuthenticated('default-user', false);
+    } else if (serverConfig.always_guest) {
+      onAuthenticated(generateGuestId(), true);
+    }
+  }, [serverConfig, onAuthenticated]);
 
   const handleSubmit = () => {
     if (!socket) return;
@@ -55,6 +92,10 @@ export function ServerAuthenticationModal({ isOpen, socket }: ServerAuthenticati
     socket.emit('reset_secret');
   };
 
+  const handleGuestLogin = () => {
+    onAuthenticated(generateGuestId(), true);
+  };
+
   const handleSetNewPassword = () => {
     if (!socket || !passwordsMatch) return;
     setIsSettingNewPassword(true);
@@ -67,6 +108,7 @@ export function ServerAuthenticationModal({ isOpen, socket }: ServerAuthenticati
   socket?.once('server_authenticated', () => {
     setIsAuthenticating(false);
     setPassword('');
+    onAuthenticated('default-user', false);
   });
 
   socket?.once('server_authentication_failed', (data: { error: string }) => {
@@ -135,15 +177,26 @@ export function ServerAuthenticationModal({ isOpen, socket }: ServerAuthenticati
                   {error}
                 </Text>
               )}
-              <Link
-                color="blue.500"
-                onClick={handleReset}
-                textDecoration="underline"
-                cursor="pointer"
-                alignSelf="start"
-              >
-                Reset server secret
-              </Link>
+              <HStack spacing={4} width="100%" justify="space-between">
+                <Link
+                  color="blue.500"
+                  onClick={handleReset}
+                  textDecoration="underline"
+                  cursor="pointer"
+                >
+                  Reset server secret
+                </Link>
+                {!serverConfig.disable_guest && (
+                  <Link
+                    color="blue.500"
+                    onClick={handleGuestLogin}
+                    textDecoration="underline"
+                    cursor="pointer"
+                  >
+                    Continue as guest
+                  </Link>
+                )}
+              </HStack>
             </VStack>
           </ModalBody>
           <ModalFooter>
