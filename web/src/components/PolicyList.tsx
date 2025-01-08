@@ -11,7 +11,7 @@ import {
   Spinner,
   UseToastOptions,
 } from '@chakra-ui/react';
-import { ChevronDownIcon, ChevronUpIcon, EditIcon, DeleteIcon, CopyIcon } from '@chakra-ui/icons';
+import { ChevronDownIcon, ChevronUpIcon, EditIcon, DeleteIcon, CopyIcon, DownloadIcon } from '@chakra-ui/icons';
 import { FaPlay, FaPause } from 'react-icons/fa';
 import { Policy } from '@/types/index';
 import { InterruptConfirmationDialog } from './InterruptConfirmationDialog';
@@ -229,6 +229,21 @@ const PolicyRow = ({
     socket.emit('createPolicy', duplicatedPolicy);
   };
 
+  const handleExportLogs = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!policy.logs) return;
+
+    const blob = new Blob([policy.logs], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${policy.name}-logs.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <Box width="100%" borderWidth="1px" borderRadius="lg" overflow="hidden">
       <Flex
@@ -355,6 +370,19 @@ const PolicyRow = ({
               {policy.logs || 'No logs available'}
             </Text>
           </Box>
+          {policy.logs && policy.status !== 'running' && (
+            <Flex justify="flex-start" mt={4} ml={12}>
+              <Button
+                leftIcon={<DownloadIcon />}
+                size="sm"
+                variant="outline"
+                colorScheme="blue"
+                onClick={handleExportLogs}
+              >
+                Export Logs
+              </Button>
+            </Flex>
+          )}
         </Box>
       </Collapse>
     </Box>
