@@ -132,7 +132,7 @@ export default function Home() {
           {/* All Policies Panel */}
           <Box width="100%">
             <Panel
-              title="All Policies"
+              title="Policies"
               headerRight={
                 <Button
                   bg="black"
@@ -143,7 +143,6 @@ export default function Home() {
                   fontSize="12px"
                   size="sm"
                   px={4}
-                  pt={1}
                   onClick={handleAddNewClick}
                 >
                   Add

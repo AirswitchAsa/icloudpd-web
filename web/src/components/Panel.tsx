@@ -19,15 +19,14 @@ export function Panel({ title, children, headerRight, ...props }: PanelProps) {
         flexDirection="column"
       >
         <Flex 
-          px={6} 
-          py={4} 
+          px={12}
           borderBottom="1px" 
           borderColor="gray.100" 
           height="56px"
           alignItems="center"
         >
           <Text
-            fontSize="12px"
+            fontSize="14px"
             fontWeight="bold"
             color="gray.500"
             letterSpacing="0.05em"
