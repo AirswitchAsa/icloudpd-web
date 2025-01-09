@@ -8,6 +8,11 @@
 - The application allows managing multiple icloudpd settings ("policies" in `icloupd-web`) through the web UI and monitoring the progress of the downloads.
 - The application bundles a static next.js application in a fastapi server. Therefore, you can spin up the server and use the web UI using the python distribution.
 
+## Screenshots
+<img width="1509" alt="main" src="https://github.com/user-attachments/assets/2faec712-01bd-4eff-bdff-cdbdfd8ee728" />
+<img width="1509" alt="edit" src="https://github.com/user-attachments/assets/d613ddd8-5d5f-4209-8bbe-0586d7fd500f" />
+
+
 ## Installation
 
 The application is available on pypi and requires python 3.12 or later.
