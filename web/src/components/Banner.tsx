@@ -33,7 +33,7 @@ export function Banner({ onSettingsClick }: BannerProps) {
           <Flex gap={4} align="center">
             <Box
               as="a"
-              href="https://github.com/your-username/your-repo"
+              href="https://github.com/AirswitchAsa/icloudpd-web"
               target="_blank"
               rel="noopener noreferrer"
               color="gray.600"

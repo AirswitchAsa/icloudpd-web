@@ -1,7 +1,18 @@
 [project]
 name = "icloudpd-web"
+authors = [
+    { name = "Qian Zhang", email = "contact@qzsh.email" },
+]
 version = "0.1.0"
+keywords = ["icloud", "photos", "downloader", "webapp"]
 description = "Web application for iCloud Photos Downloader, based on icloudpd"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "License :: Other/Proprietary License",
+    "Operating System :: OS Independent",
+]
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.109.0",

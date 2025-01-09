@@ -31,7 +31,6 @@ class AppConfig:
     secret_hash_path: str = secret_hash_path
 
 
-
 app_config = AppConfig(client_ids=set({"default-user"}), allowed_origins=allowed_origins)
 
 
@@ -215,7 +214,11 @@ def create_app(
         """
         if client_id := sid_to_client.get(sid):
             try:
-                viewable_configs = {"always_guest": app_config.always_guest, "disable_guest": app_config.disable_guest, "no_password": app_config.no_password}
+                viewable_configs = {
+                    "always_guest": app_config.always_guest,
+                    "disable_guest": app_config.disable_guest,
+                    "no_password": app_config.no_password,
+                }
                 await maybe_emit("server_config", client_id, sid, viewable_configs)
             except Exception as e:
                 await maybe_emit("server_config_not_found", client_id, sid, {"error": repr(e)})
