@@ -49,7 +49,7 @@ export function SettingsModal({ isOpen, onClose, socket, isGuest }: SettingsModa
       <ModalContent borderRadius="xl" maxH="85vh">
         <ModalHeader borderBottomWidth="1px">Settings</ModalHeader>
         <ModalBody p={0} overflowY="auto">
-          <Flex minH="600px">
+          <Flex minH="600px" maxH="600px">
             {/* Left sidebar */}
             <Box w="240px" borderRightWidth="1px" p={6}>
               <VStack spacing={2} align="stretch">
@@ -79,7 +79,7 @@ export function SettingsModal({ isOpen, onClose, socket, isGuest }: SettingsModa
             </Box>
 
             {/* Right content area */}
-            <Box flex={1} p={8}>
+            <Box flex={1} p={8} overflow="auto">
               <ActiveComponent socket={socket} isGuest={isGuest} />
             </Box>
           </Flex>
