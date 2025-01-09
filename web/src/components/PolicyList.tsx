@@ -39,7 +39,7 @@ export const PolicyList = ({
 }: PolicyListProps) => {
   const [filteredPolicies, setFilteredPolicies] = useState<Policy[]>(policies);
   const [selectedUsernames, setSelectedUsernames] = useState<string[]>(['All']);
-  const [sortOrder, setSortOrder] = useState<'none' | 'asc' | 'desc'>('none');
+  const [sortConfig, setSortConfig] = useState<{ field: 'none' | 'name' | 'username' | 'status', direction: 'asc' | 'desc' }>({ field: 'none', direction: 'asc' });
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const {
@@ -57,6 +57,16 @@ export const PolicyList = ({
   // Get unique usernames from policies
   const uniqueUsernames = Array.from(new Set(policies.map(p => p.username)));
 
+  const getStatusOrder = (policy: Policy) => {
+    if (!policy.authenticated) return 4;
+    switch (policy.status?.toLowerCase()) {
+      case 'running': return 1;
+      case 'errored': return 0;
+      case 'stopped': return 2;
+      default: return 3;
+    }
+  };
+
   // Update filtered policies when policies, filter, or sort changes
   useEffect(() => {
     let result = [...policies];
@@ -67,18 +77,26 @@ export const PolicyList = ({
     }
     
     // Apply sort
-    if (sortOrder !== 'none') {
+    if (sortConfig.field !== 'none') {
       result.sort((a, b) => {
-        if (sortOrder === 'asc') {
-          return a.name.localeCompare(b.name);
-        } else {
-          return b.name.localeCompare(a.name);
+        let comparison = 0;
+        switch (sortConfig.field) {
+          case 'name':
+            comparison = a.name.localeCompare(b.name);
+            break;
+          case 'username':
+            comparison = a.username.localeCompare(b.username);
+            break;
+          case 'status':
+            comparison = getStatusOrder(a) - getStatusOrder(b);
+            break;
         }
+        return sortConfig.direction === 'asc' ? comparison : -comparison;
       });
     }
     
     setFilteredPolicies(result);
-  }, [policies, selectedUsernames, sortOrder]);
+  }, [policies, selectedUsernames, sortConfig]);
 
   const handleImportClick = () => {
     fileInputRef.current?.click();
@@ -180,7 +198,7 @@ export const PolicyList = ({
             setSelectedUsernames={setSelectedUsernames}
             uniqueUsernames={uniqueUsernames}
           />
-          <SortMenu setSortOrder={setSortOrder} />
+          <SortMenu setSortConfig={setSortConfig} />
         </Flex>
       </Flex>
 

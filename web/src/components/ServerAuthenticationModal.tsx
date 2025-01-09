@@ -185,7 +185,8 @@ export function ServerAuthenticationModal({ isOpen, socket, onAuthenticated }: S
               )}
               <HStack spacing={4} width="100%" justify="space-between">
                 <Link
-                  color="blue.500"
+                  color="gray.700"
+                  fontSize="14px"
                   onClick={() => {
                     setError('');
                     onNewPasswordOpen();
@@ -193,11 +194,12 @@ export function ServerAuthenticationModal({ isOpen, socket, onAuthenticated }: S
                   textDecoration="underline"
                   cursor="pointer"
                 >
-                  Reset server secret
+                  Reset server password
                 </Link>
                 {!serverConfig.disable_guest && (
                   <Link
-                    color="blue.500"
+                    color="gray.700"
+                    fontSize="14px"
                     onClick={handleGuestLogin}
                     textDecoration="underline"
                     cursor="pointer"

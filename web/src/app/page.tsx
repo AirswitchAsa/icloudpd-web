@@ -141,13 +141,23 @@ export default function Home() {
     socket.emit('interrupt', policy.name);
   };
 
+  const handleLogout = () => {
+    if (!socket) return;
+    socket.emit('logOut', socketConfig.clientId);
+    setIsServerAuthenticated(false);
+    setSocketConfig({
+      clientId: 'default-user',
+      isGuest: false,
+    });
+  };
+
   if (!isServerAuthenticated) {
     return <ServerAuthenticationModal isOpen={true} socket={socket} onAuthenticated={handleServerAuthenticated} />;
   }
 
   return (
     <Box bg="gray.200" minH="100vh">
-      <Banner onSettingsClick={onSettingsOpen} />
+      <Banner onSettingsClick={onSettingsOpen} onLogoutClick={handleLogout} />
 
       {/* Main Content */}
       <Container maxW="container.xl" py={8}>
