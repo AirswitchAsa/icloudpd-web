@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build && rm -rf ../server/src/icloudpd_web/webapp/* && cp -r ./out/* ../server/src/icloudpd_web/webapp/",
+    "build": "next build && rm -rf ../src/icloudpd_web/webapp/* && cp -r ./out/* ../src/icloudpd_web/webapp/",
     "start": "next start",
     "lint": "next lint"
   },

@@ -7,7 +7,12 @@ from icloudpd.download import mkdirs_for_path
 import itertools
 import logging
 import os
-
+class DryRunFilter(logging.Filter):
+    def filter(self, record):
+        if record.msg.startswith("Downloaded"): # Duplicate message are logged by icloudpd
+            return False
+        record.msg = f"[DRY RUN] {record.msg}" if not record.msg.startswith("[DRY RUN]") else record.msg
+        return True
 
 def handle_recent_until_found(
     photos_count: int | None,

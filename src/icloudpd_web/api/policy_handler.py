@@ -11,6 +11,7 @@ from icloudpd_web.api.download_option_utils import (
     log_at_download_start,
     should_break,
     check_folder_structure,
+    DryRunFilter,
 )
 from pyicloud_ipd.base import PyiCloudService
 from pyicloud_ipd.exceptions import PyiCloudFailedLoginException
@@ -187,13 +188,12 @@ class PolicyHandler:
 
         # Pprepend [DRY RUN] to all messages if dry_run is enabled
         if self._configs.dry_run:
-            class DryRunFilter(logging.Filter):
-                def filter(self, record):
-                    if record.msg.startswith("Downloaded"): # Duplicate message are logged by icloudpd
-                        return False
-                    record.msg = f"[DRY RUN] {record.msg}" if not record.msg.startswith("[DRY RUN]") else record.msg
-                    return True
             logger.addFilter(DryRunFilter())
+        else:
+            # Remove the dry run filter, if it exists
+            for filter in logger.filters:
+                if isinstance(filter, DryRunFilter):
+                    logger.removeFilter(filter)
 
         try:
             logger.info(f"Starting policy: {self._name}...")
@@ -213,6 +213,7 @@ class PolicyHandler:
                 return await loop.run_in_executor(None, download_photo, *args, **kwargs)
 
             directory = os.path.normpath(cast(str, self._configs.directory))
+            directory = os.path.abspath(os.path.expanduser(directory))
             check_folder_structure(logger, directory, self._configs.folder_structure, self._configs.dry_run)
 
             if (library_name := self.library_name) is None:
