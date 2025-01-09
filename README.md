@@ -20,7 +20,6 @@ The application is available on pypi and requires python 3.12 or later.
 ### Usage
 
 ```bash
-pip install -U git+https://github.com/icloud-photos-downloader/icloud_photos_downloader.git@master
 pip install icloudpd-web
 icloudpd-web
 ```
