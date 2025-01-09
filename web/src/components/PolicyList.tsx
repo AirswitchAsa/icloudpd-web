@@ -217,7 +217,7 @@ export const PolicyList = ({
           placeItems="center"
         >
           <Text color="gray.500" textAlign="center" fontFamily="Inter, sans-serif" fontSize="14px">
-            No policies found
+          No available policies. Create a new one or import from a file.
           </Text>
         </Box>
       )}

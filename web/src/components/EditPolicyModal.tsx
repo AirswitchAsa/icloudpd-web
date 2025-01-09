@@ -23,8 +23,9 @@ import {
   IconButton,
   Collapse,
   useDisclosure,
+  Checkbox,
 } from '@chakra-ui/react';
-import { ChevronDownIcon, ChevronUpIcon, InfoIcon } from '@chakra-ui/icons';
+import { ChevronDownIcon, ChevronUpIcon } from '@chakra-ui/icons';
 import { useSocket } from '@/hooks/useSocket';
 import { Policy } from '@/types';
 
@@ -47,7 +48,7 @@ function FieldWithInfo({ label, info, children }: FieldWithInfoProps) {
   
   return (
     <Box>
-      <HStack spacing={2} align="center" mb={info && isOpen ? 2 : 0}>
+      <HStack spacing={2} align="center" mb={info && isOpen ? 2 : 0} h="40px">
         <IconButton
           aria-label="Toggle info"
           icon={isOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
@@ -96,7 +97,7 @@ export function EditPolicyModal({ isOpen, onClose, onPolicySaved, isEditing = fa
     skip_live_photos: policy?.skip_live_photos || false,
     auto_delete: policy?.auto_delete || false,
     delete_after_download: policy?.delete_after_download || false,
-    interval: policy?.interval || null as number | null,
+    interval: policy?.interval || null as string | null,
     log_level: policy?.log_level || 'info'
   });
 
@@ -182,6 +183,19 @@ export function EditPolicyModal({ isOpen, onClose, onPolicySaved, isEditing = fa
                   </FieldWithInfo>
                 </FormControl>
 
+                <FormControl isRequired>
+                  <FieldWithInfo 
+                    label="Download Directory"
+                    info="The local directory where photos will be downloaded"
+                  >
+                    <Input 
+                      value={formData.directory}
+                      onChange={(e) => setFormData({ ...formData, directory: e.target.value })}
+                      maxW="300px"
+                    />
+                  </FieldWithInfo>
+                </FormControl>
+
                 <FormControl>
                   <FieldWithInfo 
                     label="Domain"
@@ -198,20 +212,10 @@ export function EditPolicyModal({ isOpen, onClose, onPolicySaved, isEditing = fa
                   </FieldWithInfo>
                 </FormControl>
 
-                <FormControl isRequired>
-                  <FieldWithInfo 
-                    label="Download Directory"
-                    info="The local directory where photos will be downloaded"
-                  >
-                    <Input 
-                      value={formData.directory}
-                      onChange={(e) => setFormData({ ...formData, directory: e.target.value })}
-                      maxW="300px"
-                    />
-                  </FieldWithInfo>
-                </FormControl>
               </VStack>
             </Box>
+
+
 
             {/* Download Options */}
             <Box>
@@ -227,6 +231,22 @@ export function EditPolicyModal({ isOpen, onClose, onPolicySaved, isEditing = fa
                       onChange={(e) => setFormData({ ...formData, folder_structure: e.target.value })}
                       maxW="200px"
                     />
+                  </FieldWithInfo>
+                </FormControl>
+
+                <FormControl>
+                  <FieldWithInfo 
+                    label="File Match Policy"
+                    info="The policy for matching files when downloading"
+                  >
+                    <Select
+                      value={formData.file_match_policy}
+                      onChange={(e) => setFormData({ ...formData, file_match_policy: e.target.value as 'name-size-dedup-with-suffix' | 'name-id7' })}
+                      maxW="150px"
+                    >
+                      <option value="name-size-dedup-with-suffix">Name-Size-Dedup-With-Suffix</option>
+                      <option value="name-id7">Name-Id7</option>
+                    </Select>
                   </FieldWithInfo>
                 </FormControl>
 
@@ -249,8 +269,65 @@ export function EditPolicyModal({ isOpen, onClose, onPolicySaved, isEditing = fa
 
                 <FormControl>
                   <FieldWithInfo 
-                    label="Force Size"
-                    info="Force a specific size when downloading photos"
+                    label="Live Photo Video Filename Policy"
+                    info="The policy for naming live photo videos"
+                  >
+                    <Select
+                      value={formData.live_photo_mov_filename_policy}
+                      onChange={(e) => setFormData({ ...formData, live_photo_mov_filename_policy: e.target.value as 'original' | 'suffix' })}
+                      maxW="150px"
+                    >
+                      <option value="original">Original</option>
+                      <option value="suffix">Suffix</option>
+                    </Select>
+                  </FieldWithInfo>
+                </FormControl>
+
+                <FormControl>
+                  <FieldWithInfo 
+                    label="Raw File Size"
+                    info="The size of raw files to download"
+                  >
+                    <Select
+                      value={formData.align_raw}
+                      onChange={(e) => setFormData({ ...formData, align_raw: e.target.value as 'original' | 'alternative' | 'as-is' })}
+                      maxW="150px"
+                    >
+                      <option value="original">Original</option>
+                      <option value="alternative">Alternative</option>
+                      <option value="as-is">As-Is</option>
+                    </Select>
+                  </FieldWithInfo>
+                </FormControl>
+
+                <FormControl>
+                  <FieldWithInfo 
+                    label="Download Sizes"
+                    info="Select one or more sizes for downloaded photos"
+                  >
+                      <HStack spacing={4} pl={2}>
+                        {(['original', 'medium', 'thumb', 'adjusted', 'alternative'] as const).map((sizeOption) => (
+                          <Checkbox
+                            key={sizeOption}
+                            isChecked={formData.size.includes(sizeOption)}
+                            onChange={(e) => {
+                              const newSizes = e.target.checked
+                                ? [...formData.size, sizeOption]
+                                : formData.size.filter(s => s !== sizeOption);
+                              setFormData({ ...formData, size: newSizes });
+                            }}
+                          >
+                            {sizeOption.charAt(0).toUpperCase() + sizeOption.slice(1)}
+                          </Checkbox>
+                        ))}
+                      </HStack>
+                  </FieldWithInfo>
+                </FormControl>
+
+                <FormControl>
+                  <FieldWithInfo 
+                    label="Force Sizes"
+                    info="Force the use of the selected sizes during download"
                   >
                     <Switch
                       checked={formData.force_size}
@@ -361,12 +438,28 @@ export function EditPolicyModal({ isOpen, onClose, onPolicySaved, isEditing = fa
 
                 <FormControl>
                   <FieldWithInfo 
-                    label="Download Recents"
-                    info="Number of recent photos to download (leave empty for all)"
+                    label="Download Recent X"
+                    info="Stop downloading after X recent photos are downloaded (leave empty for all)"
                   >
                     <NumberInput
                       value={formData.recent || ''}
                       onChange={(valueString) => setFormData({ ...formData, recent: valueString === '' ? null : parseInt(valueString) })}
+                      min={0}
+                      maxW="100px"
+                    >
+                      <NumberInputField />
+                    </NumberInput>
+                  </FieldWithInfo>
+                </FormControl>
+
+                <FormControl>
+                  <FieldWithInfo 
+                    label="Download Until Found X"
+                    info="Stop downloading after X existing photos are checked (leave empty for all)"
+                  >
+                    <NumberInput
+                      value={formData.until_found || ''}
+                      onChange={(valueString) => setFormData({ ...formData, until_found: valueString === '' ? null : parseInt(valueString) })}
                       min={0}
                       maxW="100px"
                     >
@@ -433,21 +526,18 @@ export function EditPolicyModal({ isOpen, onClose, onPolicySaved, isEditing = fa
 
             {/* UI Options */}
             <Box>
-              <Text fontSize="lg" fontWeight="semibold" mb={4}>UI Options</Text>
+              <Text fontSize="lg" fontWeight="semibold" mb={4}>Server Options</Text>
               <VStack spacing={4} align="stretch">
                 <FormControl>
                   <FieldWithInfo 
-                    label="Sync Interval (minutes)"
-                    info="How often to automatically sync photos (leave empty for manual sync)"
+                    label="Schedule Interval"
+                    info="The schedule to run the policy as a cron job (leave empty to keep it manual)"
                   >
-                    <NumberInput
+                    <Input
                       value={formData.interval || ''}
-                      onChange={(valueString) => setFormData({ ...formData, interval: valueString === '' ? null : parseInt(valueString) })}
-                      min={0}
-                      maxW="100px"
-                    >
-                      <NumberInputField />
-                    </NumberInput>
+                      onChange={(e) => setFormData({ ...formData, interval: e.target.value })}
+                      maxW="200px"
+                    />
                   </FieldWithInfo>
                 </FormControl>
 
@@ -459,7 +549,7 @@ export function EditPolicyModal({ isOpen, onClose, onPolicySaved, isEditing = fa
                     <Select
                       value={formData.log_level}
                       onChange={(e) => setFormData({ ...formData, log_level: e.target.value as 'debug' | 'info' | 'error' })}
-                      maxW="150px"
+                      maxW="200px"
                     >
                       <option value="debug">Debug</option>
                       <option value="info">Info</option>

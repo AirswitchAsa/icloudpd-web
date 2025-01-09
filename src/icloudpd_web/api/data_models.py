@@ -45,5 +45,5 @@ class PolicyConfigs(BaseModel):
     delete_after_download: bool = False
 
     # icloudpd-ui options
-    interval: Annotated[int, Field(ge=0)] | None = None
+    interval: str | None = None
     log_level: Literal["debug", "info", "error"] = "info"
