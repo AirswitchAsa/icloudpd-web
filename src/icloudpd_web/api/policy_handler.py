@@ -149,6 +149,7 @@ class PolicyHandler:
         assert self._status == PolicyStatus.STOPPED, "Can only authenticate when policy is stopped"
         assert not self.authenticated, "Can only authenticate when it is not authenticated"
         try:
+            self._icloud_manager.remove_instance(self.username)  # Remove the existing instance if any
             pyicloudservice_args = build_pyicloudservice_args(self._configs)
             self.icloud = PyiCloudService(
                 **pyicloudservice_args,
@@ -157,6 +158,7 @@ class PolicyHandler:
                 password=password,
             )
         except PyiCloudFailedLoginException as e:
+            self._icloud_manager.remove_instance(self.username)
             return AuthenticationResult.FAILED, e.args[0]
         if self.authenticated:
             return AuthenticationResult.SUCCESS, "Authenticated."
@@ -212,8 +214,8 @@ class PolicyHandler:
                 loop = asyncio.get_running_loop()
                 return await loop.run_in_executor(None, download_photo, *args, **kwargs)
 
-            directory = os.path.normpath(cast(str, self._configs.directory))
-            directory = os.path.abspath(os.path.expanduser(directory))
+            directory_path = os.path.abspath(os.path.expanduser(cast(str, self._configs.directory)))
+            directory = os.path.normpath(directory_path)
             check_folder_structure(logger, directory, self._configs.folder_structure, self._configs.dry_run)
 
             if (library_name := self.library_name) is None:

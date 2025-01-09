@@ -41,6 +41,12 @@ class ICloudManager:
         for key, value in attributes.items():
             setattr(instance, key, value)
 
+    def remove_instance(self, username: str):
+        """
+        Remove the instance for the given username.
+        """
+        self._icloud_instances.pop(username, None)
+
     def remove_instances(self, active_usernames: list[str]):
         """
         Remove all instances that are not in the list of active usernames.
