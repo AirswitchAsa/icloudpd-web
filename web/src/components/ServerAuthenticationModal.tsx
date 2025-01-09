@@ -69,7 +69,7 @@ export function ServerAuthenticationModal({ isOpen, socket, onAuthenticated }: S
     return () => {
       socket.off('server_config');
     };
-  }, [socket]);
+  }, [socket, onAuthenticated]);
 
   useEffect(() => {
     if (serverConfig.no_password) {
@@ -87,13 +87,14 @@ export function ServerAuthenticationModal({ isOpen, socket, onAuthenticated }: S
     socket.emit('authenticate_local', password);
   };
 
-  const handleReset = () => {
-    if (!socket) return;
-    socket.emit('reset_secret');
-  };
-
   const handleGuestLogin = () => {
-    onAuthenticated(generateGuestId(), true);
+    if (!socket) return;
+    // Listen for logout completion until login the guest
+    socket.once('logout_complete', () => {
+      const guestId = generateGuestId();
+      onAuthenticated(guestId, true);
+    });
+    socket.emit('logOut', 'default-user');
   };
 
   const handleSetNewPassword = () => {
@@ -101,6 +102,13 @@ export function ServerAuthenticationModal({ isOpen, socket, onAuthenticated }: S
     setIsSettingNewPassword(true);
     setError(undefined);
 
+    socket.once('server_secret_reset', () => {
+      setPassword('');
+    });
+    socket.once('failed_resetting_server_secret', (data: { error: string }) => {
+      setError(data.error);
+    });
+    socket.emit('reset_secret');
     socket.emit('save_secret', '', newPassword);
   };
 
@@ -117,9 +125,7 @@ export function ServerAuthenticationModal({ isOpen, socket, onAuthenticated }: S
   });
 
   socket?.once('server_secret_reset', () => {
-    setError(undefined);
     setPassword('');
-    onNewPasswordOpen();
   });
 
   socket?.once('failed_resetting_server_secret', (data: { error: string }) => {
@@ -173,14 +179,17 @@ export function ServerAuthenticationModal({ isOpen, socket, onAuthenticated }: S
                 </InputGroup>
               </FormControl>
               {error && (
-                <Text color="red.500" fontSize="sm">
+                <Text color="red.500" fontSize="sm" alignSelf="flex-start" py={0}>
                   {error}
                 </Text>
               )}
               <HStack spacing={4} width="100%" justify="space-between">
                 <Link
                   color="blue.500"
-                  onClick={handleReset}
+                  onClick={() => {
+                    setError('');
+                    onNewPasswordOpen();
+                  }}
                   textDecoration="underline"
                   cursor="pointer"
                 >
@@ -272,7 +281,7 @@ export function ServerAuthenticationModal({ isOpen, socket, onAuthenticated }: S
                 )}
               </FormControl>
               {error && (
-                <Text color="red.500" fontSize="sm">
+                <Text color="red.500" fontSize="sm" alignSelf="flex-start">
                   {error}
                 </Text>
               )}

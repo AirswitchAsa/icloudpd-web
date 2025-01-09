@@ -215,24 +215,24 @@ export function UserSettings({ socket, isGuest }: UserSettingsProps) {
         <Box>
           <Text fontWeight="bold" fontSize="lg" mb={4}>Access Control</Text>
           <VStack spacing={3} align="stretch" maxW="400px">
-            <FormControl>
-              <FormLabel fontSize="sm">No Password Required</FormLabel>
+            <FormControl display="flex" alignItems="center" justifyContent="space-between">
+              <FormLabel fontSize="sm" mb={0}>No Password Required</FormLabel>
               <Switch
                 isChecked={accessControl.no_password}
                 onChange={(e) => handleConfigChange('no_password')(e.target.checked)}
                 isDisabled={isGuest}
               />
             </FormControl>
-            <FormControl>
-              <FormLabel fontSize="sm">Always Use Guest Mode</FormLabel>
+            <FormControl display="flex" alignItems="center" justifyContent="space-between">
+              <FormLabel fontSize="sm" mb={0}>Always Use Guest Mode</FormLabel>
               <Switch
                 isChecked={accessControl.always_guest}
                 onChange={(e) => handleConfigChange('always_guest')(e.target.checked)}
                 isDisabled={isGuest && !accessControl.always_guest}
               />
             </FormControl>
-            <FormControl>
-              <FormLabel fontSize="sm">Disable Guest Access</FormLabel>
+            <FormControl display="flex" alignItems="center" justifyContent="space-between">
+              <FormLabel fontSize="sm" mb={0}>Disable Guest Access</FormLabel>
               <Switch
                 isChecked={accessControl.disable_guest}
                 onChange={(e) => handleConfigChange('disable_guest')(e.target.checked)}

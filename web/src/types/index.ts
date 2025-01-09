@@ -37,6 +37,7 @@ export interface Policy {
   delete_after_download: boolean;
 
   // icloudpd-ui options
+  dry_run: boolean;
   interval: string | null;
   log_level: 'debug' | 'info' | 'error';
 }

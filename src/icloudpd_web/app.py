@@ -1,13 +1,15 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from icloudpd_web.api.session_handler import SessionHandler
+from icloudpd_web.api.client_handler import ClientHandler
 from icloudpd_web.api.data_models import AuthenticationResult
 from icloudpd_web.api.policy_handler import PolicyStatus
 from icloudpd_web.api.logger import build_logger
 from icloudpd_web.api.authentication_local import authenticate_secret, save_secret_hash
-
+from typing import Literal
 from dataclasses import dataclass
+from asyncio import Task
+
 import socketio
 import asyncio
 import os
@@ -21,21 +23,24 @@ allowed_origins = allowed_origins.split(",") if allowed_origins != "*" else "*"
 @dataclass
 class AppConfig:
     client_ids: set[str]
-    allowed_origins: list[str]
-    max_sessions: int = os.environ.get("MAX_SESSIONS", 5)
+    allowed_origins: list[str] | Literal["*"]
+    max_sessions: int = int(os.environ.get("MAX_SESSIONS", 5))
     default_client_id: str = "default-user"
-    no_password: bool = os.environ.get("NO_PASSWORD", False)
-    always_guest: bool = os.environ.get("ALWAYS_GUEST", False)
-    disable_guest: bool = os.environ.get("DISABLE_GUEST", False)
+    no_password: bool = os.environ.get("NO_PASSWORD", "false").lower() == "true"
+    always_guest: bool = os.environ.get("ALWAYS_GUEST", "false").lower() == "true"
+    disable_guest: bool = os.environ.get("DISABLE_GUEST", "false").lower() == "true"
     toml_path: str = os.environ.get("TOML_PATH", "./policies.toml")
     secret_hash_path: str = secret_hash_path
+    guest_timeout_seconds: int = int(os.environ.get("GUEST_TIMEOUT_SECONDS", 300))  # 5 minutes default
 
 
 app_config = AppConfig(client_ids=set({"default-user"}), allowed_origins=allowed_origins)
 
+guest_timeout_tasks: dict[str, Task] = {}
+
 
 def create_app(
-    serve_static: bool = False, static_dir: str = None
+    serve_static: bool = False, static_dir: str | None = None
 ) -> tuple[FastAPI, socketio.AsyncServer]:
     # Socket.IO server
     sio = socketio.AsyncServer(
@@ -64,7 +69,7 @@ def create_app(
         app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
 
     # State
-    handler_manager: dict[str, SessionHandler] = {}
+    handler_manager: dict[str, ClientHandler] = {}
     # Mapping to track which sids ownership by clientId
     sid_to_client: dict[str, str] = {}
 
@@ -84,21 +89,21 @@ def create_app(
 
     @sio.event
     async def updateAppConfig(sid, key, value):
-        try:
-            client_id = sid_to_client.get(sid)
-            assert client_id, "Client ID not found"
-            assert key in {
-                "always_guest",
-                "disable_guest",
-                "no_password",
-            }, "Invalid setting to update"
-            if (key != "always_guest" or value) and client_id not in app_config.client_ids:
-                raise ValueError("Guest user is not allowed to update this setting")
+        if client_id := sid_to_client.get(sid):
+            try:
+                assert client_id, "Client ID not found"
+                assert key in {
+                    "always_guest",
+                    "disable_guest",
+                    "no_password",
+                }, "Invalid setting to update"
+                if (key != "always_guest" or value) and client_id not in app_config.client_ids:
+                    raise ValueError("Guest user is not allowed to update this setting")
 
-            setattr(app_config, key, value)
-            await maybe_emit("app_config_updated", client_id, sid)
-        except Exception as e:
-            await maybe_emit("error_updating_app_config", client_id, sid, {"error": repr(e)})
+                setattr(app_config, key, value)
+                await maybe_emit("app_config_updated", client_id, sid)
+            except Exception as e:
+                await maybe_emit("error_updating_app_config", client_id, sid, {"error": repr(e)})
 
     @sio.event
     async def authenticate_local(sid, password):
@@ -161,36 +166,55 @@ def create_app(
         # Store the sid to client mapping
         sid_to_client[sid] = client_id
 
+        # Cancel any pending timeout task for this client
+        if client_id in guest_timeout_tasks:
+            guest_timeout_tasks[client_id].cancel()
+            guest_timeout_tasks.pop(client_id)
+
         if len(sid_to_client) <= app_config.max_sessions:
             if client_id in handler_manager:
                 print(f"New session {sid} created for client {client_id}")
             else:
                 print(f"New client {client_id} connected with session {sid}")
-                handler_manager[client_id] = SessionHandler(
+                handler_manager[client_id] = ClientHandler(
                     saved_policies_path=app_config.toml_path
                 )
         else:
             print(f"Disconnecting client {client_id} due to reaching max sessions")
             for sid in sid_to_client.keys():
                 if sid_to_client[sid] == client_id:
-                    disconnect(sid)
+                    await disconnect(sid)
 
         print(f"Current clients: {list(handler_manager.keys())}")
 
     @sio.event
     async def disconnect(sid):
         """
-        Disconnect and remove handler using sid to client mapping for guest clients.
+        Disconnect and handle cleanup with timeout for guest users.
         """
         if client_id := sid_to_client.pop(sid, None):
             print(f"Client session disconnected: {client_id} (sid: {sid})")
-            # Only remove handler if no other sids are using this client_id and the client is a guest
-            if client_id not in app_config.client_ids and not any(
-                cid == client_id for cid in sid_to_client.values()
-            ):
-                if client_id in handler_manager:
-                    del handler_manager[client_id]
-                    print(f"Removed handler for guest {client_id}")
+            
+            # Only handle timeout for guest users
+            if client_id not in app_config.client_ids:
+                # Cancel any existing timeout task for this client
+                if client_id in guest_timeout_tasks:
+                    guest_timeout_tasks[client_id].cancel()
+                
+                # Create new timeout task if this was the last connection for this guest
+                if not any(cid == client_id for cid in sid_to_client.values()):
+                    async def remove_guest_handler():
+                        try:
+                            await asyncio.sleep(app_config.guest_timeout_seconds)
+                            if client_id in handler_manager and not any(
+                                cid == client_id for cid in sid_to_client.values()
+                            ):
+                                del handler_manager[client_id]
+                                print(f"Removed handler for guest {client_id} after timeout")
+                        finally:
+                            guest_timeout_tasks.pop(client_id, None)  # type: ignore
+
+                    guest_timeout_tasks[client_id] = asyncio.create_task(remove_guest_handler())
 
         # print clients and relevant handlers
         for client_id, _ in handler_manager.items():
@@ -198,14 +222,21 @@ def create_app(
                 f"Client {client_id} owns sessions {[sid for sid in sid_to_client if sid_to_client[sid] == client_id]}"
             )
 
+
     @sio.event
     async def logOut(sid, client_id):
         """
         Log out a client and remove the handler.
         """
-        if client_id := sid_to_client.get(sid, None) and client_id in handler_manager:
+        if client_id in handler_manager:
             del handler_manager[client_id]
             print(f"Removed handler for client {client_id}")
+            # Clean up any sessions associated with this client_id
+            sids_to_remove = [s for s, cid in sid_to_client.items() if cid == client_id]
+            for s in sids_to_remove:
+                await disconnect(s)
+            # Notify the requesting client that logout is complete
+            await sio.emit('logout_complete', to=sid)
 
     @sio.event
     async def getServerConfig(sid):
@@ -375,8 +406,8 @@ def create_app(
             if handler := handler_manager.get(client_id):
                 # Set up logging
                 logger, log_capture_stream = build_logger(policy_name)
-                try:
-                    if policy := handler.get_policy(policy_name):
+                if policy := handler.get_policy(policy_name):
+                    try:
                         # Check if another policy using the iCloud instance is running
                         if occupying_policy_name := handler.icloud_instance_occupied_by(
                             policy.username
@@ -432,27 +463,28 @@ def create_app(
                                 "logs": log_capture_stream.read_new_lines(),
                             },
                         )
-                except Exception as e:
-                    policy.status = PolicyStatus.ERRORED
-                    await maybe_emit(
-                        "download_failed",
-                        client_id,
-                        sid,
-                        {
-                            "policy": policy.dump(),
-                            "error": repr(e),
-                            "logs": f"Internal error: {repr(e)}\n",
-                        },
-                    )
-                finally:
-                    # Clean up logger and log capture stream
-                    if logger and hasattr(logger, "handlers"):
-                        for handler in logger.handlers[:]:
-                            handler.close()
-                            logger.removeHandler(handler)
+                    except Exception as e:
+                        policy.status = PolicyStatus.ERRORED
+                        await maybe_emit(
+                            "download_failed",
+                            client_id,
+                            sid,
+                            {
+                                "policy": policy.dump(),
+                                "error": repr(e),
+                                "logs": f"Internal error: {repr(e)}\n",
+                            },
+                        )
 
-                    if log_capture_stream and hasattr(log_capture_stream, "close"):
-                        log_capture_stream.close()
+                    finally:
+                        # Clean up logger and log capture stream
+                        if logger and hasattr(logger, "handlers"):
+                            for handler in logger.handlers[:]:
+                                handler.close()
+                                logger.removeHandler(handler)
+
+                        if log_capture_stream and hasattr(log_capture_stream, "close"):
+                            log_capture_stream.close()
 
     @sio.event
     async def interrupt(sid, policy_name):

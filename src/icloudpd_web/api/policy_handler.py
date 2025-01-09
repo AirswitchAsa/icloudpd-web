@@ -83,7 +83,7 @@ class PolicyHandler:
             return []
 
     @property
-    def library_name(self) -> str:
+    def library_name(self) -> str | None:
         """
         Find the actual library name from icloud given the library name in the configs.
         """
@@ -98,7 +98,7 @@ class PolicyHandler:
             return None
 
     @property
-    def icloud(self) -> PyiCloudService:
+    def icloud(self) -> PyiCloudService | None:
         return self._icloud_manager.get_instance(self.username)
 
     @icloud.setter
@@ -185,6 +185,16 @@ class PolicyHandler:
         self._status = PolicyStatus.RUNNING
         logger.setLevel(build_logger_level(self._configs.log_level))
 
+        # Pprepend [DRY RUN] to all messages if dry_run is enabled
+        if self._configs.dry_run:
+            class DryRunFilter(logging.Filter):
+                def filter(self, record):
+                    if record.msg.startswith("Downloaded"): # Duplicate message are logged by icloudpd
+                        return False
+                    record.msg = f"[DRY RUN] {record.msg}" if not record.msg.startswith("[DRY RUN]") else record.msg
+                    return True
+            logger.addFilter(DryRunFilter())
+
         try:
             logger.info(f"Starting policy: {self._name}...")
 
@@ -203,7 +213,7 @@ class PolicyHandler:
                 return await loop.run_in_executor(None, download_photo, *args, **kwargs)
 
             directory = os.path.normpath(cast(str, self._configs.directory))
-            check_folder_structure(logger, directory, self._configs.folder_structure)
+            check_folder_structure(logger, directory, self._configs.folder_structure, self._configs.dry_run)
 
             if (library_name := self.library_name) is None:
                 raise ValueError(f"Unavailable library: {self._configs.library}")
@@ -257,11 +267,11 @@ class PolicyHandler:
             if self._configs.auto_delete:
                 autodelete_photos(
                     logger=logger,
-                    dry_run=False,
+                    dry_run=self._configs.dry_run,
                     library_object=library,
                     folder_structure=self._configs.folder_structure,
                     directory=directory,
-                    primary_sizes=self._configs.size,
+                    _sizes=self._configs.size,
                 )
         except Exception as e:
             logger.error(f"Error running policy: {self._name}. Exiting.")

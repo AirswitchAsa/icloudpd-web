@@ -45,5 +45,6 @@ class PolicyConfigs(BaseModel):
     delete_after_download: bool = False
 
     # icloudpd-ui options
+    dry_run: bool = False
     interval: str | None = None
     log_level: Literal["debug", "info", "error"] = "info"

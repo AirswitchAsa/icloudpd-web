@@ -43,6 +43,12 @@ import os
     help="Disable guest login. This can be configured later in the web interface.",
 )
 
+@click.option(
+    "--guest-timeout-seconds",
+    type=int,
+    help="Timeout for guest users in seconds. Default: 300 (5 minutes)",
+)
+
 # dev options
 @click.option(
     "--server-only",
@@ -66,6 +72,7 @@ def main(
     no_password: bool,
     always_guest: bool,
     disable_guest: bool,
+    guest_timeout_seconds: int,
 ):
     """Launch the iCloud Photos Downloader server with the Web interface"""
 
@@ -80,6 +87,9 @@ def main(
 
     if max_sessions:
         os.environ["MAX_SESSIONS"] = str(max_sessions)
+
+    if guest_timeout_seconds:
+        os.environ["GUEST_TIMEOUT_SECONDS"] = str(guest_timeout_seconds)
 
     if no_password and always_guest:
         raise click.BadParameter("Cannot enable --no-password and --always-guest together")

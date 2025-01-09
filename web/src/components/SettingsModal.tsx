@@ -46,10 +46,10 @@ export function SettingsModal({ isOpen, onClose, socket, isGuest }: SettingsModa
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="4xl" isCentered>
       <ModalOverlay backdropFilter="blur(4px)" />
-      <ModalContent borderRadius="xl" maxH="85vh">
+      <ModalContent borderRadius="xl">
         <ModalHeader borderBottomWidth="1px">Settings</ModalHeader>
-        <ModalBody p={0} overflowY="auto">
-          <Flex minH="600px" maxH="600px">
+        <ModalBody p={0}>
+          <Flex h="600px">
             {/* Left sidebar */}
             <Box w="240px" borderRightWidth="1px" p={6}>
               <VStack spacing={2} align="stretch">
@@ -79,7 +79,7 @@ export function SettingsModal({ isOpen, onClose, socket, isGuest }: SettingsModa
             </Box>
 
             {/* Right content area */}
-            <Box flex={1} p={8} overflow="auto">
+            <Box flex={1} p={8} overflowY="auto">
               <ActiveComponent socket={socket} isGuest={isGuest} />
             </Box>
           </Flex>

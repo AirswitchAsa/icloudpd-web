@@ -193,6 +193,7 @@ export default function Home() {
             onPolicySaved={handlePolicySaved}
             isEditing={!!selectedPolicy}
             policy={selectedPolicy}
+            socketConfig={socketConfig}
           />
         )}
 

@@ -6,7 +6,7 @@ import toml
 import os
 
 
-class SessionHandler:
+class ClientHandler:
     @property
     def policies(self) -> list[dict]:
         return [policy.dump() for policy in self._policies]
@@ -21,7 +21,7 @@ class SessionHandler:
         self._icloud_manager = ICloudManager()
         self._load_policies()
 
-    def _load_policies_from_toml(self, saved_policies: list[dict]) -> list[dict]:
+    def _load_policies_from_toml(self, saved_policies: list[dict]):
         for policy in saved_policies:
             assert "name" in policy, "Policy must have a name"
             assert "username" in policy, "Policy must have a username"
@@ -70,17 +70,17 @@ class SessionHandler:
         Update the parameters of an existing policy.
         If policy with new name exists, update that policy.
         """
-        assert policy_name in [policy.name for policy in self._policies], "Policy does not exist"
+        assert policy_name in self.policy_names, "Policy does not exist"
         form_name = kwargs.get("name", "")
         if form_name == policy_name:  # name is not changed
-            self.get_policy(policy_name).update(config_updates=kwargs)
+            self.get_policy(policy_name).update(config_updates=kwargs)  # type: ignore
         else:  # name is changed
             assert (
                 form_name not in self.policy_names
             ), f"Policy with name {form_name} already exists"
             policy = self.get_policy(policy_name)
-            policy.name = form_name
-            policy.update(config_updates=kwargs)
+            policy.name = form_name  # type: ignore
+            policy.update(config_updates=kwargs)  # type: ignore
 
         self._save_policies()
 

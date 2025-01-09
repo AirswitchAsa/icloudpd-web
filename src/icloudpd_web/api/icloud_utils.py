@@ -67,7 +67,7 @@ def request_2sa(icloud: PyiCloudService) -> None:
 def build_downloader_builder_args(configs: PolicyConfigs) -> dict:
     downloader_args = {
         "only_print_filenames": False,
-        "dry_run": False,
+        "dry_run": configs.dry_run,
         **configs.model_dump(),
     }
     builder_params = signature(download_builder).parameters.keys()

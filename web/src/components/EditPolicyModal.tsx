@@ -26,7 +26,7 @@ import {
   Checkbox,
 } from '@chakra-ui/react';
 import { ChevronDownIcon, ChevronUpIcon } from '@chakra-ui/icons';
-import { useSocket } from '@/hooks/useSocket';
+import { useSocket, SocketConfig } from '@/hooks/useSocket';
 import { Policy } from '@/types';
 
 interface EditPolicyModalProps {
@@ -35,6 +35,7 @@ interface EditPolicyModalProps {
   onPolicySaved?: (policies: Policy[]) => void;
   isEditing?: boolean;
   policy?: Policy;
+  socketConfig: SocketConfig;
 }
 
 interface FieldWithInfoProps {
@@ -70,9 +71,9 @@ function FieldWithInfo({ label, info, children }: FieldWithInfoProps) {
   );
 }
 
-export function EditPolicyModal({ isOpen, onClose, onPolicySaved, isEditing = false, policy }: EditPolicyModalProps) {
+export function EditPolicyModal({ isOpen, onClose, onPolicySaved, isEditing = false, policy, socketConfig }: EditPolicyModalProps) {
   const toast = useToast();
-  const socket = useSocket();
+  const socket = useSocket(socketConfig);
   const [formData, setFormData] = useState<Omit<Policy, 'status' | 'progress' | 'logs'>>({
     name: policy?.name || '',
     username: policy?.username || '',
@@ -97,6 +98,7 @@ export function EditPolicyModal({ isOpen, onClose, onPolicySaved, isEditing = fa
     skip_live_photos: policy?.skip_live_photos || false,
     auto_delete: policy?.auto_delete || false,
     delete_after_download: policy?.delete_after_download || false,
+    dry_run: policy?.dry_run || false,
     interval: policy?.interval || null as string | null,
     log_level: policy?.log_level || 'info'
   });
@@ -528,6 +530,18 @@ export function EditPolicyModal({ isOpen, onClose, onPolicySaved, isEditing = fa
             <Box>
               <Text fontSize="lg" fontWeight="semibold" mb={4}>Server Options</Text>
               <VStack spacing={4} align="stretch">
+                <FormControl>
+                  <FieldWithInfo 
+                    label="Dry Run"
+                    info="Simulate the download process without actually downloading or modifying any files"
+                  >
+                    <Switch
+                      isChecked={formData.dry_run}
+                      onChange={(e) => setFormData({ ...formData, dry_run: e.target.checked })}
+                    />
+                  </FieldWithInfo>
+                </FormControl>
+
                 <FormControl>
                   <FieldWithInfo 
                     label="Schedule Interval"

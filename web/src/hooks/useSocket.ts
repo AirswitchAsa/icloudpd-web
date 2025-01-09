@@ -40,7 +40,7 @@ export interface SocketConfig {
   isGuest: boolean;
 }
 
-export function useSocket(config?: SocketConfig) {
+export function useSocket(config: SocketConfig) {
   const [socket, setSocket] = useState<Socket | null>(null);
 
   useEffect(() => {
@@ -51,7 +51,7 @@ export function useSocket(config?: SocketConfig) {
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
       auth: {
-        clientId: config?.clientId || 'default-user'
+        clientId: config.clientId
       }
     });
 
@@ -127,7 +127,7 @@ export function useSocket(config?: SocketConfig) {
       console.log('Cleaning up socket connection');
       newSocket.close();
     };
-  }, [config?.clientId]);
+  }, [config.clientId]);
 
   return socket;
 }

@@ -60,7 +60,7 @@ def should_break(counter: Counter, until_found: int | None) -> bool:
     return until_found is not None and counter.value() >= until_found
 
 
-def check_folder_structure(logger: logging.Logger, directory: str, folder_structure: str) -> None:
+def check_folder_structure(logger: logging.Logger, directory: str, folder_structure: str, dry_run: bool) -> None:
     """
     Check if there exists a .folderstructure file in the directory. If not, create it.
     If the file exists, check if the folder structure is the same as the one in the file.
@@ -74,11 +74,13 @@ def check_folder_structure(logger: logging.Logger, directory: str, folder_struct
     """
 
     def write_structure_file(structure_file_path: str, folder_structure: str) -> None:
+
         with open(structure_file_path, "w") as f:
             logger.info(
                 f"Creating .folderstructure file in {directory} with folder structure: {folder_structure}"
             )
-            f.write(folder_structure + "\n")
+            if not dry_run:
+                f.write(folder_structure + "\n")
         os.chmod(structure_file_path, 0o644)
 
     structure_file_path = os.path.join(directory, ".folderstructure")
