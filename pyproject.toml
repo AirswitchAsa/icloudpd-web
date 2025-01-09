@@ -1,0 +1,95 @@
+[project]
+name = "icloudpd-web"
+authors = [
+    { name = "Qian Zhang", email = "contact@qzsh.email" },
+]
+version = "2025.01.09"
+keywords = ["icloud", "photos", "downloader", "webapp"]
+description = "Web application for iCloud Photos Downloader, based on icloudpd"
+readme = "README.md"
+license = { file = "LICENSE" }
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "License :: Other/Proprietary License",
+    "Operating System :: OS Independent",
+]
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "python-socketio",
+    "toml>=0.10.2",
+    "click>=8.0.0",
+    "bcrypt>=4.0.0",
+    # from icloud_photos_downloader
+    "requests==2.32.3",
+    "schema==0.7.7",
+    "click==8.1.8",
+    "tqdm==4.67.1",
+    "piexif==1.1.3",
+    "python-dateutil==2.9.0.post0",
+    "urllib3==1.26.20",
+    "typing_extensions==4.12.2",
+    "Flask==3.1.0",
+    "waitress==3.0.2",
+    # from pyicloud_ipd
+    "six==1.17.0",
+    "tzlocal==5.2",
+    "pytz==2024.2",
+    "certifi==2024.12.14",
+    "keyring==25.6.0",
+    "keyrings-alt==5.0.2",
+    "srp==1.0.22",
+]
+
+[project.urls]
+Homepage = "https://github.com/AirswitchAsa/icloudpd-web"
+
+[project.scripts]
+icloudpd-web = "icloudpd_web.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+include = [
+    "src/icloudpd_web/**/*",  # icloudpd-web source files
+    "src/icloudpd_web/webapp/**/*",  # next.js build output
+    "src/foundation/**/*",
+    "icloud_photos_downloader/src/icloudpd/**/*",
+    "icloud_photos_downloader/src/pyicloud_ipd/**/*",
+]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.ruff]
+line-length = 100
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.2.0",
+]
+
+[tool.hatch.build.targets.sdist]
+ignore-vcs = true
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    "src/icloudpd_web",
+    "src/foundation",
+    "icloud_photos_downloader/src/icloudpd",
+    "icloud_photos_downloader/src/pyicloud_ipd",
+]
+artifacts = [
+  "src/icloudpd_web/webapp/**/*"
+]
+
+[tool.hatch.build.targets.wheel.sources]
+"icloud_photos_downloader/src/icloudpd" = "icloudpd"
+"icloud_photos_downloader/src/pyicloud_ipd" = "pyicloud_ipd"
+"src/foundation" = "foundation"
+"src/icloudpd_web" = "icloudpd_web"

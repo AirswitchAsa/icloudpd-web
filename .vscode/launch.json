@@ -10,12 +10,12 @@
       "request": "launch",
       "module": "icloudpd_web.cli",
       "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}/server/",
+      "cwd": "${workspaceFolder}/",
       "args": [
         "--host", "0.0.0.0",
         "--port", "5000",
         "--allowed-origins", "http://localhost:3000",
-        "--toml-path", "../example_policy/example.toml",
+        "--toml-path", "./example_policy/example.toml",
         "--server-only",
         "--reload"
       ],
@@ -26,12 +26,12 @@
       "request": "launch",
       "console": "integratedTerminal",
       "module": "icloudpd_web.cli",
-      "cwd": "${workspaceFolder}/server/",
+      "cwd": "${workspaceFolder}/",
       "args": [
         "--host", "0.0.0.0",
         "--port", "5000",
-        "--allowed-origins", "http://localhost:3000",
-        "--toml-path", "../example_policy/example.toml",
+        "--allowed-origins", "http://localhost:5000",
+        "--toml-path", "./example_policy/example.toml",
         "--reload"
       ],
     },

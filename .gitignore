@@ -4,4 +4,4 @@ node_modules
 __pycache__
 out
 web/.env.local
-server/src/icloudpd_web/webapp
+src/icloudpd_web/webapp

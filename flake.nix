@@ -27,8 +27,6 @@
             # Required for node-pty
             gnumake
             gcc
-            # icloudpd CLI
-            icloudpd
           ];
 
           shellHook = ''
