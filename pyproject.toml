@@ -42,9 +42,6 @@ dependencies = [
     "srp==1.0.22",
 ]
 
-[project.optional-dependencies]
-dev = ["ruff>=0.2.0"]
-
 [project.urls]
 Homepage = "https://github.com/AirswitchAsa/icloudpd-web"
 

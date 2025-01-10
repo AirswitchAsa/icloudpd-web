@@ -118,7 +118,7 @@ class PolicyHandler:
         self._progress = 0
         self._icloud_manager = icloud_manager
 
-    def dump(self, excludes: list[str] = []) -> dict:
+    def dump(self, excludes: list[str] | None = None) -> dict:
         policy_dict = {
             "name": self._name,
             "status": self._status.value,
@@ -127,17 +127,18 @@ class PolicyHandler:
             "albums": self.albums,
             **self._configs.model_dump(),
         }
-        for exclude in excludes:
-            policy_dict.pop(exclude, None)
+        if excludes is not None:
+            for exclude in excludes:
+                policy_dict.pop(exclude, None)
         return policy_dict
 
     def update(self, config_updates: dict):
         """
         Update the policy configs. Should only be called when status is STOPPED.
         """
-        assert self._status == PolicyStatus.STOPPED or self._status == PolicyStatus.ERRORED, (
-            "Can only update policy when policy is stopped or errored"
-        )
+        assert (
+            self._status == PolicyStatus.STOPPED or self._status == PolicyStatus.ERRORED
+        ), "Can only update policy when policy is stopped or errored"
         new_config_args = self._configs.model_dump()
         new_config_args.update(config_updates)
         self._configs = PolicyConfigs(**new_config_args)
@@ -145,7 +146,8 @@ class PolicyHandler:
 
     def authenticate(self, password: str):
         """
-        Create the icloud instance with the given password. User may need to provide MFA code to finish authentication.
+        Create the icloud instance with the given password. User may need to provide MFA code to
+        finish authentication.
         """
         assert self._status == PolicyStatus.STOPPED, "Can only authenticate when policy is stopped"
         assert not self.authenticated, "Can only authenticate when it is not authenticated"
@@ -225,9 +227,9 @@ class PolicyHandler:
             if (library_name := self.library_name) is None:
                 raise ValueError(f"Unavailable library: {self._configs.library}")
             library = self.icloud.photos.libraries[library_name]
-            assert self._configs.album in library.albums, (
-                f"Album {self._configs.album} not found in library {library_name}"
-            )
+            assert (
+                self._configs.album in library.albums
+            ), f"Album {self._configs.album} not found in library {library_name}"
             photos: PhotoAlbum = library.albums[self._configs.album]
             error_handler = build_photos_exception_handler(logger, self.icloud)
             photos.exception_handler = error_handler
@@ -287,7 +289,9 @@ class PolicyHandler:
             raise e
 
         logger.info(
-            f"Total of {photos_counter} items in {self._configs.library} from album {self._configs.album} have been downloaded at {self._configs.directory}"
+            f"Total of {photos_counter} items in {self._configs.library} "
+            f"from album {self._configs.album} have been downloaded "
+            f"at {self._configs.directory}"
         )
         self._status = PolicyStatus.STOPPED
 

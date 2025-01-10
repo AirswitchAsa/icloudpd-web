@@ -7,8 +7,10 @@ convention = "google"
 docstring-code-format = true
 quote-style = "double"
 indent-style = "space"
+line-ending = "lf"
+skip-magic-trailing-comma = false
 
-[isort]
+[lint.isort]
 lines-after-imports = 2
 known-first-party = ["icloudpd_web", "icloudpd", "pyicloud_ipd"]
 section-order = [
