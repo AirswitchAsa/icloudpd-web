@@ -3,7 +3,7 @@ name = "icloudpd-web"
 authors = [
     { name = "Qian Zhang", email = "contact@qzsh.email" },
 ]
-version = "2025.01.09.dev1"
+version = "2025.01.09.post1"
 keywords = ["icloud", "photos", "downloader", "webapp"]
 description = "Web application for iCloud Photos Downloader, based on icloudpd"
 readme = "README.md"
