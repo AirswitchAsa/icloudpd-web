@@ -38,35 +38,35 @@ class PolicyStatus(Enum):
 
 class PolicyHandler:
     @property
-    def name(self) -> str:
+    def name(self: "PolicyHandler") -> str:
         return self._name
 
     @name.setter
-    def name(self, value: str) -> None:
+    def name(self: "PolicyHandler", value: str) -> None:
         assert isinstance(value, str), "Policy name must be a string"
         self._name = value
 
     @property
-    def status(self) -> PolicyStatus:
+    def status(self: "PolicyHandler") -> PolicyStatus:
         return self._status
 
     @status.setter
-    def status(self, value: PolicyStatus) -> None:
+    def status(self: "PolicyHandler", value: PolicyStatus) -> None:
         assert isinstance(value, PolicyStatus), "Status must be a PolicyStatus"
         self._status = value
 
     @property
-    def progress(self) -> int:
+    def progress(self: "PolicyHandler") -> int:
         return self._progress
 
     @progress.setter
-    def progress(self, value: int) -> None:
+    def progress(self: "PolicyHandler", value: int) -> None:
         assert isinstance(value, int), "Progress must be an integer"
         assert 0 <= value <= 100, "Progress must be between 0 and 100"
         self._progress = value
 
     @property
-    def authenticated(self) -> bool:
+    def authenticated(self: "PolicyHandler") -> bool:
         return (
             self.icloud is not None
             and not self.icloud.requires_2sa
@@ -74,7 +74,7 @@ class PolicyHandler:
         )
 
     @property
-    def albums(self) -> list[str]:
+    def albums(self: "PolicyHandler") -> list[str]:
         """
         Return a list of all albums available to the user.
         """
@@ -85,7 +85,7 @@ class PolicyHandler:
             return []
 
     @property
-    def library_name(self) -> str | None:
+    def library_name(self: "PolicyHandler") -> str | None:
         """
         Find the actual library name from icloud given the library name in the configs.
         """
@@ -102,30 +102,30 @@ class PolicyHandler:
             return None
 
     @property
-    def icloud(self) -> PyiCloudService | None:
+    def icloud(self: "PolicyHandler") -> PyiCloudService | None:
         return self._icloud_manager.get_instance(self.username)
 
     @icloud.setter
-    def icloud(self, instance: PyiCloudService) -> None:
+    def icloud(self: "PolicyHandler", instance: PyiCloudService) -> None:
         self._icloud_manager.set_instance(self.username, instance)
 
     @property
-    def username(self) -> str:
+    def username(self: "PolicyHandler") -> str:
         return self._configs.username
 
-    def __init__(self, name: str, icloud_manager: ICloudManager, **kwargs) -> None:
+    def __init__(self: "PolicyHandler", name: str, icloud_manager: ICloudManager, **kwargs) -> None:
         self._name = name
         self._configs = PolicyConfigs(**kwargs)  # validate the configs and fill-in defaults
         self._status = PolicyStatus.STOPPED
         self._progress = 0
         self._icloud_manager = icloud_manager
 
-    def require_icloud(self, msg: str) -> PyiCloudService:
+    def require_icloud(self: "PolicyHandler", msg: str) -> PyiCloudService:
         if self.icloud is None or not self.authenticated:
             raise ICloudAccessError(msg)
         return self.icloud
 
-    def dump(self, excludes: list[str] | None = None) -> dict:
+    def dump(self: "PolicyHandler", excludes: list[str] | None = None) -> dict:
         policy_dict = {
             "name": self._name,
             "status": self._status.value,
@@ -139,7 +139,7 @@ class PolicyHandler:
                 policy_dict.pop(exclude, None)
         return policy_dict
 
-    def update(self, config_updates: dict) -> None:
+    def update(self: "PolicyHandler", config_updates: dict) -> None:
         """
         Update the policy configs. Should only be called when status is STOPPED.
         """
@@ -151,7 +151,7 @@ class PolicyHandler:
         self._configs = PolicyConfigs(**new_config_args)
         self._progress = 0
 
-    def authenticate(self, password: str) -> tuple[AuthenticationResult, str]:
+    def authenticate(self: "PolicyHandler", password: str) -> tuple[AuthenticationResult, str]:
         """
         Create the icloud instance with the given password. User may need to provide MFA code to
         finish authentication.
@@ -187,7 +187,7 @@ class PolicyHandler:
             else:
                 raise ICloudAccessError("iCloud instance should have been created")
 
-    def provide_mfa(self, mfa_code: str) -> tuple[AuthenticationResult, str]:
+    def provide_mfa(self: "PolicyHandler", mfa_code: str) -> tuple[AuthenticationResult, str]:
         """
         Provide the MFA code to the icloud instance to finish authentication.
         """
@@ -200,7 +200,7 @@ class PolicyHandler:
         else:
             raise ICloudAccessError("iCloud instance should have been created")
 
-    async def start(self, logger: logging.Logger) -> None:
+    async def start(self: "PolicyHandler", logger: logging.Logger) -> None:
         """
         Start running the policy for download.
         """
@@ -249,7 +249,10 @@ class PolicyHandler:
         self._status = PolicyStatus.STOPPED
 
     async def download(
-        self, icloud: PyiCloudService, logger: logging.Logger, async_download_photo: Callable
+        self: "PolicyHandler",
+        icloud: PyiCloudService,
+        logger: logging.Logger,
+        async_download_photo: Callable,
     ) -> int:
         directory_path = os.path.abspath(os.path.expanduser(cast(str, self._configs.directory)))
         directory = os.path.normpath(directory_path)
@@ -320,6 +323,6 @@ class PolicyHandler:
             )
         return photos_counter
 
-    def interrupt(self) -> None:
+    def interrupt(self: "PolicyHandler") -> None:
         assert self._status == PolicyStatus.RUNNING, "Can only interrupt when policy is running"
         self._status = PolicyStatus.STOPPED

@@ -160,14 +160,14 @@ export function EditPolicyModal({
         });
         // If error occurs, remove the success listener
         socket.off(successEvent);
-      }
+      },
     );
 
     // Send the request
     if (isEditing) {
-      socket.emit("savePolicy", policy?.name, formData);
+      socket.emit("save_policy", policy?.name, formData);
     } else {
-      socket.emit("createPolicy", formData);
+      socket.emit("create_policy", formData);
     }
   };
 

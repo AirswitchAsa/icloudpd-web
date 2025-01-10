@@ -116,7 +116,7 @@ export const PolicyList = ({
     if (!file || !socket) return;
 
     const content = await file.text();
-    socket.emit("uploadPolicies", content);
+    socket.emit("upload_policies", content);
 
     socket.once("uploaded_policies", (policies: Policy[]) => {
       setPolicies(policies);
@@ -148,7 +148,7 @@ export const PolicyList = ({
   const handleExport = () => {
     if (!socket) return;
 
-    socket.emit("downloadPolicies");
+    socket.emit("download_policies");
     socket.once(
       "error_downloading_policies",
       ({ error }: { error: string }) => {

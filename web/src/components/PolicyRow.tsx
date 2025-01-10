@@ -185,7 +185,7 @@ export const PolicyRow = ({
       },
     );
 
-    socket.emit("createPolicy", duplicatedPolicy);
+    socket.emit("create_policy", duplicatedPolicy);
   };
 
   const handleExportLogs = (e: React.MouseEvent) => {

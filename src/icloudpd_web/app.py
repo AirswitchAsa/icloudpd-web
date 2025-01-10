@@ -1,6 +1,7 @@
 import asyncio
 import os
 from asyncio import Task
+from contextlib import suppress
 from dataclasses import dataclass
 from typing import Literal
 
@@ -43,7 +44,7 @@ app_config = AppConfig(client_ids=set({"default-user"}), allowed_origins=allowed
 guest_timeout_tasks: dict[str, Task] = {}
 
 
-def create_app(
+def create_app(  # noqa: C901
     serve_static: bool = False, static_dir: str | None = None
 ) -> tuple[FastAPI, socketio.AsyncServer]:
     # Socket.IO server
@@ -83,7 +84,7 @@ def create_app(
                 return sid
         return None
 
-    async def maybe_emit(event: str, client_id: str, preferred_sid: str, *args, **kwargs):
+    async def maybe_emit(event: str, client_id: str, preferred_sid: str, *args, **kwargs) -> None:
         if preferred_sid in sid_to_client:
             await sio.emit(event, *args, **kwargs, to=preferred_sid)
         elif sid := find_active_client_id(client_id):
@@ -92,7 +93,7 @@ def create_app(
             print(f"No active session found for client {client_id} when emitting {event}")
 
     @sio.event
-    async def updateAppConfig(sid, key, value):
+    async def update_app_config(sid: str, key: str, value: bool | str) -> None:
         if client_id := sid_to_client.get(sid):
             try:
                 assert client_id, "Client ID not found"
@@ -110,7 +111,7 @@ def create_app(
                 await maybe_emit("error_updating_app_config", client_id, sid, {"error": repr(e)})
 
     @sio.event
-    async def authenticate_local(sid, password):
+    async def authenticate_local(sid: str, password: str) -> None:
         if client_id := sid_to_client.get(sid):
             try:
                 if authenticate_secret(password, app_config.secret_hash_path):
@@ -126,7 +127,7 @@ def create_app(
                 await maybe_emit("server_authentication_failed", client_id, sid, {"error": repr(e)})
 
     @sio.event
-    async def save_secret(sid, old_password, new_password):
+    async def save_secret(sid: str, old_password: str, new_password: str) -> None:
         if client_id := sid_to_client.get(sid):
             try:
                 if authenticate_secret(old_password, app_config.secret_hash_path):
@@ -144,15 +145,13 @@ def create_app(
                 await maybe_emit("failed_saving_server_secret", client_id, sid, {"error": repr(e)})
 
     @sio.event
-    async def reset_secret(sid):
+    async def reset_secret(sid: str) -> None:
         if client_id := sid_to_client.get(sid):
             try:
                 print("Resetting server secret, removing all sessions")
                 handler_manager.clear()
-                try:
+                with suppress(FileNotFoundError):
                     os.remove(app_config.secret_hash_path)
-                except FileNotFoundError:
-                    pass
                 await maybe_emit("server_secret_reset", client_id, sid)
             except Exception as e:
                 await maybe_emit(
@@ -160,7 +159,7 @@ def create_app(
                 )
 
     @sio.event
-    async def connect(sid, environ, auth):
+    async def connect(sid: str, environ: dict, auth: dict) -> None:
         """
         Connect a client to the server using clientId for identification.
         """
@@ -190,7 +189,7 @@ def create_app(
         print(f"Current clients: {list(handler_manager.keys())}")
 
     @sio.event
-    async def disconnect(sid):
+    async def disconnect(sid: str) -> None:
         """
         Disconnect and handle cleanup with timeout for guest users.
         """
@@ -206,7 +205,7 @@ def create_app(
                 # Create new timeout task if this was the last connection for this guest
                 if not any(cid == client_id for cid in sid_to_client.values()):
 
-                    async def remove_guest_handler():
+                    async def remove_guest_handler() -> None:
                         try:
                             await asyncio.sleep(app_config.guest_timeout_seconds)
                             if client_id in handler_manager and not any(
@@ -222,11 +221,12 @@ def create_app(
         # print clients and relevant handlers
         for client_id, _ in handler_manager.items():
             print(
-                f"Client {client_id} owns sessions {[sid for sid in sid_to_client if sid_to_client[sid] == client_id]}"
+                f"Client {client_id} owns sessions "
+                f"{[sid for sid in sid_to_client if sid_to_client[sid] == client_id]}"
             )
 
     @sio.event
-    async def logOut(sid, client_id):
+    async def log_out(sid: str, client_id: str) -> None:
         """
         Log out a client and remove the handler.
         """
@@ -241,7 +241,7 @@ def create_app(
             await sio.emit("logout_complete", to=sid)
 
     @sio.event
-    async def getServerConfig(sid):
+    async def get_server_config(sid: str) -> None:
         """
         Get the server config for the client with sid.
         """
@@ -257,7 +257,7 @@ def create_app(
                 await maybe_emit("server_config_not_found", client_id, sid, {"error": repr(e)})
 
     @sio.event
-    async def uploadPolicies(sid, toml_content):
+    async def upload_policies(sid: str, toml_content: str) -> None:
         """
         Create policies for the user with sid. Existing policies are replaced.
         """
@@ -270,7 +270,7 @@ def create_app(
                     await maybe_emit("error_uploading_policies", client_id, sid, {"error": repr(e)})
 
     @sio.event
-    async def downloadPolicies(sid):
+    async def download_policies(sid: str) -> None:
         """
         Download the policies for the user with sid as a TOML string.
         """
@@ -286,7 +286,7 @@ def create_app(
                     )
 
     @sio.event
-    async def getPolicies(sid):
+    async def get_policies(sid: str) -> None:
         """
         Get the policies for the user with sid as a list of dictionaries.
         """
@@ -298,9 +298,10 @@ def create_app(
                     await maybe_emit("internal_error", client_id, sid, {"error": repr(e)})
 
     @sio.event
-    async def savePolicy(sid, policy_name, policy_update):
+    async def save_policy(sid: str, policy_name: str, policy_update: dict) -> None:
         """
-        Save the policy with the given name and update the parameters. Create a new policy if the name does not exist.
+        Save the policy with the given name and update the parameters.
+        Create a new policy if the name does not exist.
         """
         if client_id := sid_to_client.get(sid):
             if handler := handler_manager.get(client_id):
@@ -316,7 +317,7 @@ def create_app(
                     )
 
     @sio.event
-    async def createPolicy(sid, policy):
+    async def create_policy(sid: str, policy: dict) -> None:
         """
         Create a new policy with the given name and update the parameters.
         """
@@ -334,7 +335,7 @@ def create_app(
                     )
 
     @sio.event
-    async def deletePolicy(sid, policy_name):
+    async def delete_policy(sid: str, policy_name: str) -> None:
         """
         Delete a policy with the given name.
         """
@@ -352,7 +353,7 @@ def create_app(
                     )
 
     @sio.event
-    async def authenticate(sid, policy_name, password):
+    async def authenticate(sid: str, policy_name: str, password: str) -> None:
         """
         Authenticate the policy with the given password. Note that this may lead to a MFA request.
         """
@@ -377,9 +378,10 @@ def create_app(
                     await maybe_emit("authentication_failed", client_id, sid, repr(e))
 
     @sio.event
-    async def provideMFA(sid, policy_name, mfa_code):
+    async def provide_mfa(sid: str, policy_name: str, mfa_code: str) -> None:
         """
-        Finish the authentication for a policy with the MFA code. Note that this may lead to a MFA request if the MFA code is incorrect.
+        Finish the authentication for a policy with the MFA code.
+        User can try again if the MFA code is incorrect.
         """
         if client_id := sid_to_client.get(sid):
             if handler := handler_manager.get(client_id):
@@ -400,7 +402,7 @@ def create_app(
                     await maybe_emit("authentication_failed", client_id, sid, repr(e))
 
     @sio.event
-    async def start(sid, policy_name):
+    async def start(sid: str, policy_name: str) -> None:  # noqa: C901 # TODO: simplify
         """
         Start the download for the policy with the given name.
         """
@@ -418,7 +420,8 @@ def create_app(
                                 "icloud_is_busy",
                                 client_id,
                                 sid,
-                                f"iCloud user {policy.username} has another policy running: {occupying_policy_name}",
+                                f"iCloud user {policy.username} has another policy running: "
+                                f"{occupying_policy_name}",
                             )
                             return
 
@@ -489,7 +492,7 @@ def create_app(
                             log_capture_stream.close()
 
     @sio.event
-    async def interrupt(sid, policy_name):
+    async def interrupt(sid: str, policy_name: str) -> None:
         """
         Interrupt the download for the policy with the given name.
         """

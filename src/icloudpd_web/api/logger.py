@@ -23,16 +23,16 @@ def build_logger_level(level: str) -> int:
 
 
 class LogCaptureStream(io.StringIO):
-    def __init__(self) -> None:
+    def __init__(self: "LogCaptureStream") -> None:
         super().__init__()
         self.buffer: list[str] = []
 
-    def write(self, message: str) -> None:
+    def write(self: "LogCaptureStream", message: str) -> None:
         # Store each log message in the buffer
         self.buffer.append(message)
         super().write(message)
 
-    def read_new_lines(self) -> str:
+    def read_new_lines(self: "LogCaptureStream") -> str:
         # Return new lines and clear the buffer
         if self.buffer:
             new_lines = "".join(self.buffer)

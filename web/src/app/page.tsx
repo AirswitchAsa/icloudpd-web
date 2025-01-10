@@ -128,7 +128,7 @@ export default function Home() {
   const confirmDelete = () => {
     if (!policyToDelete) return;
 
-    socket?.emit("deletePolicy", policyToDelete.name);
+    socket?.emit("delete_policy", policyToDelete.name);
     onDeleteClose();
     setPolicyToDelete(undefined);
   };
@@ -153,7 +153,7 @@ export default function Home() {
   const handleMfaSubmit = (code: string) => {
     if (!socket || !policyToAuth) return;
     setMfaError(undefined);
-    socket.emit("provideMFA", policyToAuth.name, code);
+    socket.emit("provide_mfa", policyToAuth.name, code);
   };
 
   const handlePolicyInterrupt = (policy: Policy) => {
@@ -163,7 +163,7 @@ export default function Home() {
 
   const handleLogout = () => {
     if (!socket) return;
-    socket.emit("logOut", socketConfig.clientId);
+    socket.emit("log_out", socketConfig.clientId);
     setIsServerAuthenticated(false);
     setSocketConfig({
       clientId: "default-user",

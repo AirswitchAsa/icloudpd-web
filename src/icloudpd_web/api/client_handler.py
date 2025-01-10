@@ -9,20 +9,20 @@ from icloudpd_web.api.policy_handler import PolicyHandler, PolicyStatus
 
 class ClientHandler:
     @property
-    def policies(self) -> list[dict]:
+    def policies(self: "ClientHandler") -> list[dict]:
         return [policy.dump() for policy in self._policies]
 
     @property
-    def policy_names(self) -> list[str]:
+    def policy_names(self: "ClientHandler") -> list[str]:
         return [policy.name for policy in self._policies]
 
-    def __init__(self, saved_policies_path: str) -> None:
+    def __init__(self: "ClientHandler", saved_policies_path: str) -> None:
         self._policies: list[PolicyHandler] = []
         self._saved_policies_path: str = saved_policies_path
         self._icloud_manager = ICloudManager()
         self._load_policies()
 
-    def _load_policies_from_toml(self, saved_policies: list[dict]) -> None:
+    def _load_policies_from_toml(self: "ClientHandler", saved_policies: list[dict]) -> None:
         for policy in saved_policies:
             assert "name" in policy, "Policy must have a name"
             assert "username" in policy, "Policy must have a username"
@@ -30,7 +30,7 @@ class ClientHandler:
             assert policy["name"] not in self.policy_names, "Policy name must be unique"
             self._policies.append(PolicyHandler(icloud_manager=self._icloud_manager, **policy))
 
-    def _load_policies(self) -> None:
+    def _load_policies(self: "ClientHandler") -> None:
         """
         Load the policies from the file if it exists.
         """
@@ -39,7 +39,7 @@ class ClientHandler:
                 saved_policies = toml.load(file).get("policy", [])
                 self._load_policies_from_toml(saved_policies)
 
-    def _save_policies(self) -> None:
+    def _save_policies(self: "ClientHandler") -> None:
         """
         Save the policies to a toml file at the given path.
         """
@@ -49,7 +49,7 @@ class ClientHandler:
             }
             toml.dump(policies_to_save, file)
 
-    def dump_policies_as_toml(self) -> str:
+    def dump_policies_as_toml(self: "ClientHandler") -> str:
         """
         Dump the policies as a TOML string.
         """
@@ -57,7 +57,7 @@ class ClientHandler:
             {"policy": [policy.dump(excludes=NON_POLICY_FIELDS) for policy in self._policies]}
         )
 
-    def get_policy(self, name: str) -> PolicyHandler | None:
+    def get_policy(self: "ClientHandler", name: str) -> PolicyHandler | None:
         """
         Return the policy with the given name.
         """
@@ -66,7 +66,7 @@ class ClientHandler:
                 return policy
         return None
 
-    def save_policy(self, policy_name: str, **kwargs) -> None:
+    def save_policy(self: "ClientHandler", policy_name: str, **kwargs) -> None:
         """
         Update the parameters of an existing policy.
         If policy with new name exists, update that policy.
@@ -85,7 +85,7 @@ class ClientHandler:
 
         self._save_policies()
 
-    def create_policy(self, **kwargs) -> None:
+    def create_policy(self: "ClientHandler", **kwargs) -> None:
         """
         Create a new policy with the given parameters.
         """
@@ -97,7 +97,7 @@ class ClientHandler:
         self._policies.append(PolicyHandler(icloud_manager=self._icloud_manager, **kwargs))
         self._save_policies()
 
-    def delete_policy(self, policy_name: str) -> None:
+    def delete_policy(self: "ClientHandler", policy_name: str) -> None:
         """
         Delete the policy with the given name.
         """
@@ -105,7 +105,7 @@ class ClientHandler:
         self._policies = [policy for policy in self._policies if policy.name != policy_name]
         self._save_policies()
 
-    def replace_policies(self, toml_content: str) -> None:
+    def replace_policies(self: "ClientHandler", toml_content: str) -> None:
         """
         Replace the current policies with the policies defined in the list of dictionaries.
         """
@@ -115,7 +115,7 @@ class ClientHandler:
         self._load_policies_from_toml(read_policies)
         self._save_policies()
 
-    def icloud_instance_occupied_by(self, username: str) -> str | None:
+    def icloud_instance_occupied_by(self: "ClientHandler", username: str) -> str | None:
         """
         Check if another policy using the same username is running.
         """

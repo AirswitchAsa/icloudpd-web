@@ -10,7 +10,7 @@ from pyicloud_ipd.services.photos import PhotoAsset
 
 
 class DryRunFilter(logging.Filter):
-    def filter(self, record: logging.LogRecord) -> bool:
+    def filter(self: "DryRunFilter", record: logging.LogRecord) -> bool:
         if record.msg.startswith("Downloaded"):  # Duplicate message are logged by icloudpd
             return False
         record.msg = (
@@ -88,7 +88,8 @@ def check_folder_structure(
     def write_structure_file(structure_file_path: str, folder_structure: str) -> None:
         with open(structure_file_path, "w") as f:
             logger.info(
-                f"Creating .folderstructure file in {directory} with folder structure: {folder_structure}"
+                f"Creating .folderstructure file in {directory} "
+                f"with folder structure: {folder_structure}"
             )
             if not dry_run:
                 f.write(folder_structure + "\n")
@@ -111,14 +112,17 @@ def check_folder_structure(
     # folder not empty but no .structure file
     if not directory_empty and not os.path.exists(structure_file_path):
         raise ValueError(
-            "Cannot determine the structure of a non-empty directory. Please provide a .folderstructure file manually or use an empty directory."
+            "Cannot determine the structure of a non-empty directory. "
+            "Please provide a .folderstructure file manually or "
+            "use an empty directory."
         )
 
     # folder exists and .structure file exists
     with open(structure_file_path) as f:
         if (provided_structure := f.read().strip()) != folder_structure:
             raise ValueError(
-                f"The specified folder structure: {folder_structure} is different from the one found in the existing .folderstructure file: {provided_structure}"
+                f"The specified folder structure: {folder_structure} is different from the one "
+                f"found in the existing .folderstructure file: {provided_structure}"
             )
         else:
             logger.info(

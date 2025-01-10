@@ -128,7 +128,7 @@ export function UserSettings({ socket, isGuest }: UserSettingsProps) {
         });
       });
 
-      socket.emit("updateAppConfig", key, value);
+      socket.emit("update_app_config", key, value);
     };
 
   return (

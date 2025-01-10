@@ -9,16 +9,19 @@ import uvicorn
 @click.option("--port", default=5000, help="Port to bind to. Default: 5000")
 @click.option(
     "--toml-path",
-    help="Path to the toml file containing policies definition. The policies will be save to ./policies.toml by default.",
+    help="Path to the toml file containing policies definition. "
+    "The policies will be save to ./policies.toml by default.",
 )
 @click.option(
     "--allowed-origins",
     multiple=True,
-    help="Allowed CORS origins. Pass values with space to specify multiple origins. Warning: '*' will be used if not specified, and this is not recommended for production.",
+    help="Allowed CORS origins. Pass values with space to specify multiple origins. "
+    "Warning: '*' will be used if not specified, and this is not recommended for production.",
 )
 @click.option(
     "--secret-hash-path",
-    help="Path to the secret hash file. The secret hash will be saved to ~/.icloudpd_web/secret_hash by default.",
+    help="Path to the secret hash file. The secret hash will be saved to "
+    "~/.icloudpd_web/secret_hash by default.",
 )
 @click.option(
     "--max-sessions",
@@ -28,7 +31,8 @@ import uvicorn
 @click.option(
     "--no-password",
     is_flag=True,
-    help="Disable server password authentication. Use it only when access is trusted. This can be configured later in the web interface.",
+    help="Disable server password authentication. Use it only when access is trusted. "
+    "This can be configured later in the web interface.",
 )
 @click.option(
     "--always-guest",
@@ -56,7 +60,7 @@ import uvicorn
     is_flag=True,
     help="Enable auto-reload. This is intended to be used during development.",
 )
-def main(
+def main(  # noqa: C901 # TODO: simplify
     host: str,
     port: int,
     reload: bool,
@@ -69,7 +73,7 @@ def main(
     always_guest: bool,
     disable_guest: bool,
     guest_timeout_seconds: int,
-):
+) -> None:
     """Launch the iCloud Photos Downloader server with the Web interface"""
 
     if toml_path:
