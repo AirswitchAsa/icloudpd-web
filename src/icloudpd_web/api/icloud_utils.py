@@ -9,7 +9,7 @@ from icloudpd_web.api.data_models import PolicyConfigs
 from typing import Callable
 
 from inspect import signature
-
+import os
 
 class ICloudManager:
     def __init__(self):
@@ -76,6 +76,8 @@ def build_downloader_builder_args(configs: PolicyConfigs) -> dict:
         "dry_run": configs.dry_run,
         **configs.model_dump(),
     }
+    # update the directory to be absolute path
+    downloader_args["directory"] = os.path.abspath(os.path.expanduser(downloader_args["directory"]))
     builder_params = signature(download_builder).parameters.keys()
     downloader_args = {k: v for k, v in downloader_args.items() if k in builder_params}
     # Map size to primary_sizes

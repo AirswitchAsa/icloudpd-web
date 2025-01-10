@@ -188,14 +188,13 @@ class PolicyHandler:
         self._status = PolicyStatus.RUNNING
         logger.setLevel(build_logger_level(self._configs.log_level))
 
+        # Remove the dry run filter, if it exists
+        for filter in logger.filters:
+            if isinstance(filter, DryRunFilter):
+                logger.removeFilter(filter)
         # Pprepend [DRY RUN] to all messages if dry_run is enabled
-        if self._configs.dry_run:
+        if self._configs.dry_run :
             logger.addFilter(DryRunFilter())
-        else:
-            # Remove the dry run filter, if it exists
-            for filter in logger.filters:
-                if isinstance(filter, DryRunFilter):
-                    logger.removeFilter(filter)
 
         try:
             logger.info(f"Starting policy: {self._name}...")
