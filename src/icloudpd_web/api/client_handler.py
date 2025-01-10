@@ -71,14 +71,14 @@ class ClientHandler:
         Update the parameters of an existing policy.
         If policy with new name exists, update that policy.
         """
-        assert policy_name in self.policy_names, "Policy does not exist"
+        if policy_name not in self.policy_names:
+            raise ValueError(f"Policy with name {policy_name} does not exist")
         form_name = kwargs.get("name", "")
         if form_name == policy_name:  # name is not changed
             self.get_policy(policy_name).update(config_updates=kwargs)  # type: ignore
         else:  # name is changed
-            assert (
-                form_name not in self.policy_names
-            ), f"Policy with name {form_name} already exists"
+            if form_name in self.policy_names:
+                raise ValueError(f"Policy with name {form_name} already exists")
             policy = self.get_policy(policy_name)
             policy.name = form_name  # type: ignore
             policy.update(config_updates=kwargs)  # type: ignore
@@ -91,9 +91,8 @@ class ClientHandler:
         """
         policy_name = kwargs.get("name")
         assert policy_name, "Policy name must be provided"
-        assert (
-            policy_name not in self.policy_names
-        ), f"Policy with name {policy_name} already exists"
+        if policy_name in self.policy_names:
+            raise ValueError(f"Policy with name {policy_name} already exists")
         self._policies.append(PolicyHandler(icloud_manager=self._icloud_manager, **kwargs))
         self._save_policies()
 
