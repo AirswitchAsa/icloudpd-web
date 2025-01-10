@@ -1,5 +1,7 @@
-from icloudpd_web.app import create_app
 import socketio
+
+from icloudpd_web.app import create_app
+
 
 # Create the app without static file serving
 app, sio = create_app(serve_static=False)

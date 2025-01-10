@@ -1,12 +1,13 @@
-import logging
 import io
-from typing import Tuple, Callable
-from pyicloud_ipd.base import PyiCloudService
+import logging
+from typing import Callable
+
 from icloudpd.base import (
     compose_handlers,
-    session_error_handle_builder,
     internal_error_handle_builder,
+    session_error_handle_builder,
 )
+from pyicloud_ipd.base import PyiCloudService
 
 
 def build_logger_level(level: str) -> int:
@@ -22,16 +23,16 @@ def build_logger_level(level: str) -> int:
 
 
 class LogCaptureStream(io.StringIO):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.buffer: list[str] = []
 
-    def write(self, message):
+    def write(self, message: str) -> None:
         # Store each log message in the buffer
         self.buffer.append(message)
         super().write(message)
 
-    def read_new_lines(self) -> list[str]:
+    def read_new_lines(self) -> str:
         # Return new lines and clear the buffer
         if self.buffer:
             new_lines = "".join(self.buffer)
@@ -40,7 +41,7 @@ class LogCaptureStream(io.StringIO):
         return ""
 
 
-def build_logger(policy_name: str) -> Tuple[logging.Logger, LogCaptureStream]:
+def build_logger(policy_name: str) -> tuple[logging.Logger, LogCaptureStream]:
     log_capture_stream = LogCaptureStream()
     logger = logging.getLogger(f"{policy_name}-logger")
     logger.handlers.clear()

@@ -9,13 +9,20 @@ import {
   useDisclosure,
   Spinner,
   UseToastOptions,
-} from '@chakra-ui/react';
-import { ChevronDownIcon, ChevronUpIcon, EditIcon, DeleteIcon, CopyIcon, DownloadIcon } from '@chakra-ui/icons';
-import { FaPlay, FaPause } from 'react-icons/fa';
-import { Policy } from '@/types/index';
-import { InterruptConfirmationDialog } from './InterruptConfirmationDialog';
-import { useState, useEffect } from 'react';
-import { Socket } from 'socket.io-client';
+} from "@chakra-ui/react";
+import {
+  ChevronDownIcon,
+  ChevronUpIcon,
+  EditIcon,
+  DeleteIcon,
+  CopyIcon,
+  DownloadIcon,
+} from "@chakra-ui/icons";
+import { FaPlay, FaPause } from "react-icons/fa";
+import { Policy } from "@/types/index";
+import { InterruptConfirmationDialog } from "./InterruptConfirmationDialog";
+import { useState, useEffect } from "react";
+import { Socket } from "socket.io-client";
 
 interface PolicyRowProps {
   policy: Policy;
@@ -28,21 +35,21 @@ interface PolicyRowProps {
   toast: (options: UseToastOptions) => void;
 }
 
-export const PolicyRow = ({ 
-  policy, 
+export const PolicyRow = ({
+  policy,
   setPolicies,
-  onEdit, 
-  onDelete, 
-  onRun, 
-  onInterrupt, 
-  socket, 
-  toast 
+  onEdit,
+  onDelete,
+  onRun,
+  onInterrupt,
+  socket,
+  toast,
 }: PolicyRowProps) => {
   const { isOpen, onToggle } = useDisclosure();
-  const { 
-    isOpen: isInterruptOpen, 
-    onOpen: onInterruptOpen, 
-    onClose: onInterruptClose 
+  const {
+    isOpen: isInterruptOpen,
+    onOpen: onInterruptOpen,
+    onClose: onInterruptClose,
   } = useDisclosure();
   const [isWaitingRun, setIsWaitingRun] = useState(false);
 
@@ -60,10 +67,13 @@ export const PolicyRow = ({
     e.stopPropagation();
     if (socket && policy.authenticated) {
       setIsWaitingRun(true);
-      socket.once('icloud_is_busy', () => {
+      socket.once("icloud_is_busy", () => {
         setIsWaitingRun(false);
       });
-      socket.once('download_failed', () => {
+      socket.once("download_failed", () => {
+        setIsWaitingRun(false);
+      });
+      socket.once("download_finished", () => {
         setIsWaitingRun(false);
       });
     }
@@ -72,39 +82,39 @@ export const PolicyRow = ({
 
   // Reset waiting state when we get progress or policy changes
   useEffect(() => {
-    if (policy.status === 'running') {
+    if (policy.status === "running") {
       setIsWaitingRun(false);
     }
   }, [policy.status]);
 
   const getStatusDisplay = (policy: Policy) => {
-    if (policy.status === 'running') {
+    if (policy.status === "running") {
       return {
-        text: 'running',
-        color: 'blue.500'
+        text: "running",
+        color: "blue.500",
       };
     }
-    if (policy.status === 'errored') {
+    if (policy.status === "errored") {
       return {
-        text: 'errored',
-        color: 'red.500'
+        text: "errored",
+        color: "red.500",
       };
     }
     if (policy.authenticated) {
       if (policy.progress === 100) {
         return {
-          text: 'done',
-          color: 'green.500'
+          text: "done",
+          color: "green.500",
         };
       }
       return {
-        text: 'ready',
-        color: 'green.500'
+        text: "ready",
+        color: "green.500",
       };
     }
     return {
-      text: 'unauthenticated',
-      color: 'gray.500'
+      text: "unauthenticated",
+      color: "gray.500",
     };
   };
 
@@ -123,7 +133,7 @@ export const PolicyRow = ({
       );
     }
 
-    if (policy.status === 'running') {
+    if (policy.status === "running") {
       return (
         <IconButton
           aria-label="Pause download"
@@ -135,7 +145,7 @@ export const PolicyRow = ({
         />
       );
     }
-    
+
     return (
       <IconButton
         aria-label="Run policy"
@@ -155,33 +165,36 @@ export const PolicyRow = ({
     const duplicatedPolicy = {
       ...policy,
       name: `${policy.name} COPY`,
-      authenticated: false // Reset authentication state for the new policy
+      authenticated: false, // Reset authentication state for the new policy
     };
 
-    socket.once('policies_after_create', (policies: Policy[]) => {
+    socket.once("policies_after_create", (policies: Policy[]) => {
       setPolicies(policies);
     });
 
-    socket.once('error_creating_policy', ({ policy_name, error }: { policy_name: string; error: string }) => {
-      toast({
-        title: 'Error',
-        description: `Failed to create policy "${policy_name}": ${error}`,
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-    });
+    socket.once(
+      "error_creating_policy",
+      ({ policy_name, error }: { policy_name: string; error: string }) => {
+        toast({
+          title: "Error",
+          description: `Failed to create policy "${policy_name}": ${error}`,
+          status: "error",
+          duration: 5000,
+          isClosable: true,
+        });
+      },
+    );
 
-    socket.emit('createPolicy', duplicatedPolicy);
+    socket.emit("createPolicy", duplicatedPolicy);
   };
 
   const handleExportLogs = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!policy.logs) return;
 
-    const blob = new Blob([policy.logs], { type: 'text/plain' });
+    const blob = new Blob([policy.logs], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = `${policy.name}-logs.txt`;
     document.body.appendChild(a);
@@ -196,10 +209,10 @@ export const PolicyRow = ({
         p={4}
         justify="space-between"
         align="center"
-        bg={isOpen ? 'gray.50' : 'white'}
+        bg={isOpen ? "gray.50" : "white"}
         onClick={onToggle}
         cursor="pointer"
-        _hover={{ bg: 'gray.50' }}
+        _hover={{ bg: "gray.50" }}
       >
         <Flex flex={1} gap={4}>
           <IconButton
@@ -213,10 +226,7 @@ export const PolicyRow = ({
               {policy.name}
             </Text>
             <Flex gap={2} color="gray.500" fontSize="14px">
-              <Text 
-                color={status.color}
-                fontWeight="medium"
-              >
+              <Text color={status.color} fontWeight="medium">
                 {status.text}
               </Text>
               <Text>•</Text>
@@ -228,12 +238,20 @@ export const PolicyRow = ({
           <Box width="150px" display="flex">
             <Box flex="1" mt={1}>
               <Text fontSize="12px" color="gray.600" fontWeight="medium">
-                {policy.status === 'running' ? `${policy.progress || 0}%` : 'IDLE'}
+                {policy.status === "running"
+                  ? `${policy.progress || 0}%`
+                  : "IDLE"}
               </Text>
               <Progress
                 value={policy.progress || 0}
                 size="sm"
-                colorScheme={policy.status === 'running' ? 'blue' : policy.status === 'errored' ? 'red' : 'green'}
+                colorScheme={
+                  policy.status === "running"
+                    ? "blue"
+                    : policy.status === "errored"
+                      ? "red"
+                      : "green"
+                }
                 borderRadius="full"
               />
             </Box>
@@ -251,7 +269,7 @@ export const PolicyRow = ({
               e.stopPropagation();
               onEdit(policy);
             }}
-            isDisabled={policy.status === 'running'}
+            isDisabled={policy.status === "running"}
           />
           <IconButton
             aria-label="Duplicate policy"
@@ -260,7 +278,7 @@ export const PolicyRow = ({
             variant="ghost"
             size="sm"
             onClick={handleDuplicate}
-            isDisabled={policy.status === 'running'}
+            isDisabled={policy.status === "running"}
           />
           <IconButton
             aria-label="Delete policy"
@@ -272,7 +290,7 @@ export const PolicyRow = ({
               e.stopPropagation();
               onDelete(policy);
             }}
-            isDisabled={policy.status === 'running'}
+            isDisabled={policy.status === "running"}
           />
         </Flex>
       </Flex>
@@ -286,37 +304,37 @@ export const PolicyRow = ({
 
       <Collapse in={isOpen}>
         <Box p={4} bg="gray.50">
-          <Box 
+          <Box
             ml={12}
             maxH="300px"
             overflowY="auto"
             sx={{
-              '&::-webkit-scrollbar': {
-                width: '8px',
-                borderRadius: '8px',
-                backgroundColor: 'rgba(0, 0, 0, 0.05)',
+              "&::-webkit-scrollbar": {
+                width: "8px",
+                borderRadius: "8px",
+                backgroundColor: "rgba(0, 0, 0, 0.05)",
               },
-              '&::-webkit-scrollbar-thumb': {
-                backgroundColor: 'rgba(0, 0, 0, 0.1)',
-                borderRadius: '8px',
-                '&:hover': {
-                  backgroundColor: 'rgba(0, 0, 0, 0.15)',
+              "&::-webkit-scrollbar-thumb": {
+                backgroundColor: "rgba(0, 0, 0, 0.1)",
+                borderRadius: "8px",
+                "&:hover": {
+                  backgroundColor: "rgba(0, 0, 0, 0.15)",
                 },
               },
             }}
           >
-            <Text 
-              fontSize="14px" 
-              fontFamily="monospace" 
+            <Text
+              fontSize="14px"
+              fontFamily="monospace"
               whiteSpace="pre-wrap"
               sx={{
-                wordBreak: 'break-word',
+                wordBreak: "break-word",
               }}
             >
-              {policy.logs || 'No logs available'}
+              {policy.logs || "No logs available"}
             </Text>
           </Box>
-          {policy.logs && policy.status !== 'running' && (
+          {policy.logs && policy.status !== "running" && (
             <Flex justify="flex-start" mt={4} ml={12}>
               <Button
                 leftIcon={<DownloadIcon />}
@@ -333,4 +351,4 @@ export const PolicyRow = ({
       </Collapse>
     </Box>
   );
-}; 
+};

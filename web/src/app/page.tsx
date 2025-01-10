@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import {
   Box,
   Container,
@@ -8,19 +8,19 @@ import {
   VStack,
   useDisclosure,
   useToast,
-} from '@chakra-ui/react';
-import { EditPolicyModal } from '@/components/EditPolicyModal';
-import { DeleteConfirmationDialog } from '@/components/DeleteConfirmationDialog';
-import { Banner } from '@/components/Banner';
-import { Panel } from '@/components/Panel';
-import { PolicyList } from '@/components/PolicyList';
-import { useSocket, SocketConfig } from '@/hooks/useSocket';
-import { useSocketEvents } from '@/hooks/useSocketEvents';
-import { Policy } from '@/types/index';
-import { AuthenticationModal } from '@/components/AuthenticationModal';
-import { MFAModal } from '@/components/MFAModal';
-import { ServerAuthenticationModal } from '@/components/ServerAuthenticationModal';
-import { SettingsModal } from '@/components/SettingsModal';
+} from "@chakra-ui/react";
+import { EditPolicyModal } from "@/components/EditPolicyModal";
+import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
+import { Banner } from "@/components/Banner";
+import { Panel } from "@/components/Panel";
+import { PolicyList } from "@/components/PolicyList";
+import { useSocket, SocketConfig } from "@/hooks/useSocket";
+import { useSocketEvents } from "@/hooks/useSocketEvents";
+import { Policy } from "@/types/index";
+import { AuthenticationModal } from "@/components/AuthenticationModal";
+import { MFAModal } from "@/components/MFAModal";
+import { ServerAuthenticationModal } from "@/components/ServerAuthenticationModal";
+import { SettingsModal } from "@/components/SettingsModal";
 
 export default function Home() {
   const [policies, setPolicies] = useState<Policy[]>([]);
@@ -30,15 +30,35 @@ export default function Home() {
   const [mfaError, setMfaError] = useState<string>();
   const [isServerAuthenticated, setIsServerAuthenticated] = useState(false);
   const [socketConfig, setSocketConfig] = useState<SocketConfig>({
-    clientId: 'default-user',
+    clientId: "default-user",
     isGuest: false,
   });
 
-  const { isOpen: isEditPolicyOpen, onOpen: onEditPolicyOpen, onClose: onEditPolicyClose } = useDisclosure();
-  const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
-  const { isOpen: isAuthOpen, onOpen: onAuthOpen, onClose: onAuthClose } = useDisclosure();
-  const { isOpen: isMfaOpen, onOpen: onMfaOpen, onClose: onMfaClose } = useDisclosure();
-  const { isOpen: isSettingsOpen, onOpen: onSettingsOpen, onClose: onSettingsClose } = useDisclosure();
+  const {
+    isOpen: isEditPolicyOpen,
+    onOpen: onEditPolicyOpen,
+    onClose: onEditPolicyClose,
+  } = useDisclosure();
+  const {
+    isOpen: isDeleteOpen,
+    onOpen: onDeleteOpen,
+    onClose: onDeleteClose,
+  } = useDisclosure();
+  const {
+    isOpen: isAuthOpen,
+    onOpen: onAuthOpen,
+    onClose: onAuthClose,
+  } = useDisclosure();
+  const {
+    isOpen: isMfaOpen,
+    onOpen: onMfaOpen,
+    onClose: onMfaClose,
+  } = useDisclosure();
+  const {
+    isOpen: isSettingsOpen,
+    onOpen: onSettingsOpen,
+    onClose: onSettingsClose,
+  } = useDisclosure();
 
   const socket = useSocket(socketConfig);
   const toast = useToast();
@@ -64,14 +84,14 @@ export default function Home() {
       setIsServerAuthenticated(true);
     };
 
-    socket.on('authenticated', handleAuthenticated);
-    socket.on('mfa_required', handleMfaRequired);
-    socket.on('server_authenticated', handleServerAuthenticated);
+    socket.on("authenticated", handleAuthenticated);
+    socket.on("mfa_required", handleMfaRequired);
+    socket.on("server_authenticated", handleServerAuthenticated);
 
     return () => {
-      socket.off('authenticated', handleAuthenticated);
-      socket.off('mfa_required', handleMfaRequired);
-      socket.off('server_authenticated', handleServerAuthenticated);
+      socket.off("authenticated", handleAuthenticated);
+      socket.off("mfa_required", handleMfaRequired);
+      socket.off("server_authenticated", handleServerAuthenticated);
     };
   }, [socket, policyToAuth, onAuthClose, onMfaClose, onMfaOpen]);
 
@@ -108,7 +128,7 @@ export default function Home() {
   const confirmDelete = () => {
     if (!policyToDelete) return;
 
-    socket?.emit('deletePolicy', policyToDelete.name);
+    socket?.emit("deletePolicy", policyToDelete.name);
     onDeleteClose();
     setPolicyToDelete(undefined);
   };
@@ -120,39 +140,45 @@ export default function Home() {
       setPolicyToAuth(policy);
       onAuthOpen();
     } else {
-      policy.logs = '';
-      socket.emit('start', policy.name );
+      policy.logs = "";
+      socket.emit("start", policy.name);
     }
   };
 
   const handleAuthSubmit = (password: string) => {
     if (!socket || !policyToAuth) return;
-    socket.emit('authenticate', policyToAuth.name, password);
+    socket.emit("authenticate", policyToAuth.name, password);
   };
 
   const handleMfaSubmit = (code: string) => {
     if (!socket || !policyToAuth) return;
     setMfaError(undefined);
-    socket.emit('provideMFA', policyToAuth.name, code);
+    socket.emit("provideMFA", policyToAuth.name, code);
   };
 
   const handlePolicyInterrupt = (policy: Policy) => {
     if (!socket) return;
-    socket.emit('interrupt', policy.name);
+    socket.emit("interrupt", policy.name);
   };
 
   const handleLogout = () => {
     if (!socket) return;
-    socket.emit('logOut', socketConfig.clientId);
+    socket.emit("logOut", socketConfig.clientId);
     setIsServerAuthenticated(false);
     setSocketConfig({
-      clientId: 'default-user',
+      clientId: "default-user",
       isGuest: false,
     });
   };
 
   if (!isServerAuthenticated) {
-    return <ServerAuthenticationModal isOpen={true} socket={socket} onAuthenticated={handleServerAuthenticated} />;
+    return (
+      <ServerAuthenticationModal
+        isOpen={true}
+        socket={socket}
+        onAuthenticated={handleServerAuthenticated}
+      />
+    );
   }
 
   return (
@@ -170,7 +196,7 @@ export default function Home() {
                 <Button
                   bg="black"
                   color="white"
-                  _hover={{ bg: 'gray.800' }}
+                  _hover={{ bg: "gray.800" }}
                   borderRadius="xl"
                   fontFamily="Inter, sans-serif"
                   fontSize="12px"
@@ -212,7 +238,7 @@ export default function Home() {
             isOpen={isDeleteOpen}
             onClose={onDeleteClose}
             onConfirm={confirmDelete}
-            policyName={policyToDelete?.name || ''}
+            policyName={policyToDelete?.name || ""}
           />
         )}
 
@@ -224,7 +250,7 @@ export default function Home() {
               setPolicyToAuth(undefined);
             }}
             onSubmit={handleAuthSubmit}
-            username={policyToAuth?.username || ''}
+            username={policyToAuth?.username || ""}
             socket={socket}
           />
         )}

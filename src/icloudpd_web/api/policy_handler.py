@@ -17,6 +17,7 @@ from icloudpd_web.api.download_option_utils import (
     log_at_download_start,
     should_break,
 )
+from icloudpd_web.api.error import ICloudAccessError, ICloudAuthenticationError
 from icloudpd_web.api.icloud_utils import (
     ICloudManager,
     build_downloader_builder_args,
@@ -41,7 +42,7 @@ class PolicyHandler:
         return self._name
 
     @name.setter
-    def name(self, value: str):
+    def name(self, value: str) -> None:
         assert isinstance(value, str), "Policy name must be a string"
         self._name = value
 
@@ -50,7 +51,7 @@ class PolicyHandler:
         return self._status
 
     @status.setter
-    def status(self, value: PolicyStatus):
+    def status(self, value: PolicyStatus) -> None:
         assert isinstance(value, PolicyStatus), "Status must be a PolicyStatus"
         self._status = value
 
@@ -59,7 +60,7 @@ class PolicyHandler:
         return self._progress
 
     @progress.setter
-    def progress(self, value: int):
+    def progress(self, value: int) -> None:
         assert isinstance(value, int), "Progress must be an integer"
         assert 0 <= value <= 100, "Progress must be between 0 and 100"
         self._progress = value
@@ -77,10 +78,9 @@ class PolicyHandler:
         """
         Return a list of all albums available to the user.
         """
-        if not self.authenticated:
-            return []
         if library := self.library_name:
-            return [str(a) for a in self.icloud.photos.libraries[library].albums.values()]
+            icloud = self.require_icloud("Can only get albums when authenticated")
+            return [str(a) for a in icloud.photos.libraries[library].albums.values()]
         else:
             return []
 
@@ -89,8 +89,10 @@ class PolicyHandler:
         """
         Find the actual library name from icloud given the library name in the configs.
         """
-        assert self.authenticated, "Can only get library name when authenticated"
-        libraries = list(self.icloud.photos.libraries.keys())
+        if not self.authenticated:
+            return None
+        icloud = self.require_icloud("Can only get library name when authenticated")
+        libraries = list(icloud.photos.libraries.keys())
         shared_library_name = next((lib for lib in libraries if "SharedSync" in lib), None)
         if shared_library_name and self._configs.library == "Shared Library":
             return shared_library_name
@@ -104,19 +106,24 @@ class PolicyHandler:
         return self._icloud_manager.get_instance(self.username)
 
     @icloud.setter
-    def icloud(self, instance: PyiCloudService):
+    def icloud(self, instance: PyiCloudService) -> None:
         self._icloud_manager.set_instance(self.username, instance)
 
     @property
     def username(self) -> str:
         return self._configs.username
 
-    def __init__(self, name: str, icloud_manager: ICloudManager, **kwargs):
+    def __init__(self, name: str, icloud_manager: ICloudManager, **kwargs) -> None:
         self._name = name
         self._configs = PolicyConfigs(**kwargs)  # validate the configs and fill-in defaults
         self._status = PolicyStatus.STOPPED
         self._progress = 0
         self._icloud_manager = icloud_manager
+
+    def require_icloud(self, msg: str) -> PyiCloudService:
+        if self.icloud is None or not self.authenticated:
+            raise ICloudAccessError(msg)
+        return self.icloud
 
     def dump(self, excludes: list[str] | None = None) -> dict:
         policy_dict = {
@@ -132,7 +139,7 @@ class PolicyHandler:
                 policy_dict.pop(exclude, None)
         return policy_dict
 
-    def update(self, config_updates: dict):
+    def update(self, config_updates: dict) -> None:
         """
         Update the policy configs. Should only be called when status is STOPPED.
         """
@@ -144,13 +151,17 @@ class PolicyHandler:
         self._configs = PolicyConfigs(**new_config_args)
         self._progress = 0
 
-    def authenticate(self, password: str):
+    def authenticate(self, password: str) -> tuple[AuthenticationResult, str]:
         """
         Create the icloud instance with the given password. User may need to provide MFA code to
         finish authentication.
         """
-        assert self._status == PolicyStatus.STOPPED, "Can only authenticate when policy is stopped"
-        assert not self.authenticated, "Can only authenticate when it is not authenticated"
+        if self._status != PolicyStatus.STOPPED and self._status != PolicyStatus.ERRORED:
+            raise ICloudAuthenticationError("Can only authenticate when policy is stopped")
+        if self.authenticated:
+            raise ICloudAuthenticationError(
+                "Can only authenticate when policy is not authenticated"
+            )
         try:
             self._icloud_manager.remove_instance(
                 self.username
@@ -168,28 +179,33 @@ class PolicyHandler:
         if self.authenticated:
             return AuthenticationResult.SUCCESS, "Authenticated."
         else:
-            if (
-                self.icloud.requires_2sa and not self.icloud.requires_2fa
-            ):  # User does not have MFA enabled, request 2SA using SMS manually
-                request_2sa(self.icloud)
-            return AuthenticationResult.MFA_REQUIRED, "MFA required."
+            if icloud := self.icloud:
+                if icloud.requires_2sa and not icloud.requires_2fa:
+                    # User does not have MFA enabled, request 2SA using SMS manually
+                    request_2sa(icloud)
+                return AuthenticationResult.MFA_REQUIRED, "MFA required."
+            else:
+                raise ICloudAccessError("iCloud instance should have been created")
 
-    def provide_mfa(self, mfa_code: str):
+    def provide_mfa(self, mfa_code: str) -> tuple[AuthenticationResult, str]:
         """
         Provide the MFA code to the icloud instance to finish authentication.
         """
-        assert not self.authenticated, "Can only provide MFA when policy is not authenticated"
-        self.icloud.validate_2fa_code(mfa_code)
-        if not self.authenticated:
-            return AuthenticationResult.MFA_REQUIRED, "Wrong MFA code."
+        if icloud := self.icloud:
+            icloud.validate_2fa_code(mfa_code)
+            if not self.authenticated:
+                return AuthenticationResult.MFA_REQUIRED, "Wrong MFA code."
+            else:
+                return AuthenticationResult.SUCCESS, "Authenticated."
         else:
-            return AuthenticationResult.SUCCESS, "Authenticated."
+            raise ICloudAccessError("iCloud instance should have been created")
 
-    async def start(self, logger: logging.Logger):
+    async def start(self, logger: logging.Logger) -> None:
         """
         Start running the policy for download.
         """
-        assert self.authenticated, "Can only start when authenticated"
+        if not self.authenticated:
+            raise ICloudAccessError("Can only start when authenticated")
         self._status = PolicyStatus.RUNNING
         logger.setLevel(build_logger_level(self._configs.log_level))
 
@@ -209,79 +225,16 @@ class PolicyHandler:
                 username=self.username,
                 attributes=pyicloudservice_args,
             )
-
+            icloud = self.require_icloud("Can only start when icloud access is available")
             download_photo: Callable = download_builder(
                 logger=logger, **build_downloader_builder_args(self._configs)
-            )(self.icloud)
+            )(icloud)
 
-            async def async_download_photo(*args, **kwargs):
+            async def async_download_photo(*args, **kwargs):  # noqa: ANN202
                 loop = asyncio.get_running_loop()
                 return await loop.run_in_executor(None, download_photo, *args, **kwargs)
 
-            directory_path = os.path.abspath(os.path.expanduser(cast(str, self._configs.directory)))
-            directory = os.path.normpath(directory_path)
-            check_folder_structure(
-                logger, directory, self._configs.folder_structure, self._configs.dry_run
-            )
-
-            if (library_name := self.library_name) is None:
-                raise ValueError(f"Unavailable library: {self._configs.library}")
-            library = self.icloud.photos.libraries[library_name]
-            assert (
-                self._configs.album in library.albums
-            ), f"Album {self._configs.album} not found in library {library_name}"
-            photos: PhotoAlbum = library.albums[self._configs.album]
-            error_handler = build_photos_exception_handler(logger, self.icloud)
-            photos.exception_handler = error_handler
-            photos_count: int | None = len(photos)
-
-            photos_count, photos_iterator = handle_recent_until_found(
-                photos_count, photos, self._configs.recent, self._configs.until_found
-            )
-            log_at_download_start(
-                logger, photos_count, self._configs.size, self._configs.skip_videos, directory
-            )
-            consecutive_files_found = Counter(0)
-            photos_counter = 0
-            while True:
-                try:
-                    if self._status == PolicyStatus.STOPPED:  # policy is interrupted
-                        logger.info(f"Policy: {self._name} is interrupted by user. Exiting.")
-                        break
-                    if should_break(consecutive_files_found, self._configs.until_found):
-                        logger.info(
-                            "Found %s consecutive previously downloaded photos. Exiting",
-                            self._configs.until_found,
-                        )
-                        break
-                    item = next(photos_iterator)
-                    download_result = await async_download_photo(consecutive_files_found, item)
-                    if download_result and self._configs.delete_after_download:
-                        delete_local = partial(
-                            delete_photo,
-                            logger,
-                            self.icloud.photos,
-                            library,
-                            item,
-                        )
-
-                        retrier(delete_local, error_handler)
-
-                    photos_counter += 1
-                    if (progress := int(photos_counter / photos_count * 100)) != self._progress:
-                        self._progress = progress
-                except StopIteration:
-                    break
-
-            if self._configs.auto_delete:
-                autodelete_photos(
-                    logger=logger,
-                    dry_run=self._configs.dry_run,
-                    library_object=library,
-                    folder_structure=self._configs.folder_structure,
-                    directory=directory,
-                    _sizes=self._configs.size,
-                )
+            photos_counter = await self.download(icloud, logger, async_download_photo)
         except Exception as e:
             logger.error(f"Error running policy: {self._name}. Exiting.")
             self._status = PolicyStatus.ERRORED
@@ -295,6 +248,78 @@ class PolicyHandler:
         )
         self._status = PolicyStatus.STOPPED
 
-    def interrupt(self):
+    async def download(
+        self, icloud: PyiCloudService, logger: logging.Logger, async_download_photo: Callable
+    ) -> int:
+        directory_path = os.path.abspath(os.path.expanduser(cast(str, self._configs.directory)))
+        directory = os.path.normpath(directory_path)
+        check_folder_structure(
+            logger, directory, self._configs.folder_structure, self._configs.dry_run
+        )
+
+        if (library_name := self.library_name) is None:
+            raise ValueError(f"Unavailable library: {self._configs.library}")
+        library = icloud.photos.libraries[library_name]
+        assert (
+            self._configs.album in library.albums
+        ), f"Album {self._configs.album} not found in library {library_name}"
+        photos: PhotoAlbum = library.albums[self._configs.album]
+        error_handler = build_photos_exception_handler(logger, icloud)
+        photos.exception_handler = error_handler
+        photos_count: int | None = len(photos)
+
+        photos_count, photos_iterator = handle_recent_until_found(
+            photos_count, photos, self._configs.recent, self._configs.until_found
+        )
+        log_at_download_start(
+            logger, photos_count, self._configs.size, self._configs.skip_videos, directory
+        )
+        consecutive_files_found = Counter(0)
+        photos_counter = 0
+        while True:
+            try:
+                if self._status == PolicyStatus.STOPPED:  # policy is interrupted
+                    logger.info(f"Policy: {self._name} is interrupted by user. Exiting.")
+                    break
+                if should_break(consecutive_files_found, self._configs.until_found):
+                    logger.info(
+                        "Found %s consecutive previously downloaded photos. Exiting",
+                        self._configs.until_found,
+                    )
+                    break
+                item = next(photos_iterator)  # type: ignore
+                download_result = await async_download_photo(consecutive_files_found, item)
+                if download_result and self._configs.delete_after_download:
+                    delete_local = partial(
+                        delete_photo,
+                        logger,
+                        icloud.photos,
+                        library,
+                        item,
+                    )
+
+                    retrier(delete_local, error_handler)
+
+                photos_counter += 1
+                if photos_count is not None:
+                    if (progress := int(photos_counter / photos_count * 100)) != self._progress:
+                        self._progress = progress
+                else:
+                    self._progress = 0  # set progress to 0 when using until_found
+            except StopIteration:
+                break
+
+        if self._configs.auto_delete:
+            autodelete_photos(
+                logger=logger,
+                dry_run=self._configs.dry_run,
+                library_object=library,
+                folder_structure=self._configs.folder_structure,
+                directory=directory,
+                _sizes=self._configs.size,  # type: ignore # string enum
+            )
+        return photos_counter
+
+    def interrupt(self) -> None:
         assert self._status == PolicyStatus.RUNNING, "Can only interrupt when policy is running"
         self._status = PolicyStatus.STOPPED

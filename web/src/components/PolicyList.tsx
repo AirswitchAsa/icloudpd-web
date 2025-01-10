@@ -6,15 +6,15 @@ import {
   UseToastOptions,
   IconButton,
   useDisclosure,
-} from '@chakra-ui/react';
+} from "@chakra-ui/react";
 import { PiUploadBold } from "react-icons/pi";
 import { TbFileExport } from "react-icons/tb";
-import { Policy } from '@/types/index';
-import { PolicyRow } from './PolicyRow';
-import { ImportModal, ExportModal } from './PolicyModals';
-import { FilterMenu, SortMenu } from './PolicyFilters';
-import { useState, useEffect, useRef } from 'react';
-import { Socket } from 'socket.io-client';
+import { Policy } from "@/types/index";
+import { PolicyRow } from "./PolicyRow";
+import { ImportModal, ExportModal } from "./PolicyModals";
+import { FilterMenu, SortMenu } from "./PolicyFilters";
+import { useState, useEffect, useRef } from "react";
+import { Socket } from "socket.io-client";
 
 interface PolicyListProps {
   policies: Policy[];
@@ -27,74 +27,81 @@ interface PolicyListProps {
   toast: (options: UseToastOptions) => void;
 }
 
-export const PolicyList = ({ 
-  policies, 
+export const PolicyList = ({
+  policies,
   setPolicies,
-  onEdit, 
-  onDelete, 
-  onRun, 
-  onInterrupt, 
-  socket, 
-  toast 
+  onEdit,
+  onDelete,
+  onRun,
+  onInterrupt,
+  socket,
+  toast,
 }: PolicyListProps) => {
   const [filteredPolicies, setFilteredPolicies] = useState<Policy[]>(policies);
-  const [selectedUsernames, setSelectedUsernames] = useState<string[]>(['All']);
-  const [sortConfig, setSortConfig] = useState<{ field: 'none' | 'name' | 'username' | 'status', direction: 'asc' | 'desc' }>({ field: 'none', direction: 'asc' });
+  const [selectedUsernames, setSelectedUsernames] = useState<string[]>(["All"]);
+  const [sortConfig, setSortConfig] = useState<{
+    field: "none" | "name" | "username" | "status";
+    direction: "asc" | "desc";
+  }>({ field: "none", direction: "asc" });
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const {
     isOpen: isImportOpen,
     onOpen: onImportOpen,
-    onClose: onImportClose
+    onClose: onImportClose,
   } = useDisclosure();
-  
+
   const {
     isOpen: isExportOpen,
     onOpen: onExportOpen,
-    onClose: onExportClose
+    onClose: onExportClose,
   } = useDisclosure();
 
   // Get unique usernames from policies
-  const uniqueUsernames = Array.from(new Set(policies.map(p => p.username)));
+  const uniqueUsernames = Array.from(new Set(policies.map((p) => p.username)));
 
   const getStatusOrder = (policy: Policy) => {
     if (!policy.authenticated) return 4;
     switch (policy.status?.toLowerCase()) {
-      case 'running': return 1;
-      case 'errored': return 0;
-      case 'stopped': return 2;
-      default: return 3;
+      case "running":
+        return 1;
+      case "errored":
+        return 0;
+      case "stopped":
+        return 2;
+      default:
+        return 3;
     }
   };
 
   // Update filtered policies when policies, filter, or sort changes
   useEffect(() => {
     let result = [...policies];
-    
+
     // Apply username filter
-    if (!selectedUsernames.includes('All')) {
-      result = result.filter(p => selectedUsernames.includes(p.username));
+    if (!selectedUsernames.includes("All")) {
+      result = result.filter((p) => selectedUsernames.includes(p.username));
     }
-    
+
     // Apply sort
-    if (sortConfig.field !== 'none') {
+    if (sortConfig.field !== "none") {
       result.sort((a, b) => {
         let comparison = 0;
         switch (sortConfig.field) {
-          case 'name':
+          case "name":
             comparison = a.name.localeCompare(b.name);
             break;
-          case 'username':
+          case "username":
             comparison = a.username.localeCompare(b.username);
             break;
-          case 'status':
+          case "status":
             comparison = getStatusOrder(a) - getStatusOrder(b);
             break;
         }
-        return sortConfig.direction === 'asc' ? comparison : -comparison;
+        return sortConfig.direction === "asc" ? comparison : -comparison;
       });
     }
-    
+
     setFilteredPolicies(result);
   }, [policies, selectedUsernames, sortConfig]);
 
@@ -102,29 +109,31 @@ export const PolicyList = ({
     fileInputRef.current?.click();
   };
 
-  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = event.target.files?.[0];
     if (!file || !socket) return;
 
     const content = await file.text();
-    socket.emit('uploadPolicies', content);
-    
-    socket.once('uploaded_policies', (policies: Policy[]) => {
+    socket.emit("uploadPolicies", content);
+
+    socket.once("uploaded_policies", (policies: Policy[]) => {
       setPolicies(policies);
       toast({
-        title: 'Success',
-        description: 'Policies imported successfully',
-        status: 'success',
+        title: "Success",
+        description: "Policies imported successfully",
+        status: "success",
         duration: 3000,
         isClosable: true,
       });
     });
 
-    socket.once('error_uploading_policies', ({ error }: { error: string }) => {
+    socket.once("error_uploading_policies", ({ error }: { error: string }) => {
       toast({
-        title: 'Error',
+        title: "Error",
         description: `Failed to import policies: ${error}`,
-        status: 'error',
+        status: "error",
         duration: 5000,
         isClosable: true,
       });
@@ -132,29 +141,32 @@ export const PolicyList = ({
 
     onImportClose();
     if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      fileInputRef.current.value = "";
     }
   };
 
   const handleExport = () => {
     if (!socket) return;
 
-    socket.emit('downloadPolicies');
-    socket.once('error_downloading_policies', ({ error }: { error: string }) => {
-      toast({
-        title: 'Error',
-        description: `Failed to export policies: ${error}`,
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-    });
-    socket.once('downloaded_policies', (content: string) => {
-      const blob = new Blob([content], { type: 'text/plain' });
+    socket.emit("downloadPolicies");
+    socket.once(
+      "error_downloading_policies",
+      ({ error }: { error: string }) => {
+        toast({
+          title: "Error",
+          description: `Failed to export policies: ${error}`,
+          status: "error",
+          duration: 5000,
+          isClosable: true,
+        });
+      },
+    );
+    socket.once("downloaded_policies", (content: string) => {
+      const blob = new Blob([content], { type: "text/plain" });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      a.download = 'policies.toml';
+      a.download = "policies.toml";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -172,9 +184,9 @@ export const PolicyList = ({
             ref={fileInputRef}
             onChange={handleFileSelect}
             accept=".toml"
-            style={{ display: 'none' }}
+            style={{ display: "none" }}
           />
-          
+
           <IconButton
             aria-label="Import policies"
             icon={<PiUploadBold />}
@@ -182,7 +194,7 @@ export const PolicyList = ({
             variant="ghost"
             colorScheme="gray"
           />
-          
+
           <IconButton
             aria-label="Export policies"
             icon={<TbFileExport />}
@@ -229,16 +241,17 @@ export const PolicyList = ({
           />
         ))
       ) : (
-        <Box
-          height="100px"
-          display="grid"
-          placeItems="center"
-        >
-          <Text color="gray.500" textAlign="center" fontFamily="Inter, sans-serif" fontSize="14px">
-          No available policies. Create a new one or import from a file.
+        <Box height="100px" display="grid" placeItems="center">
+          <Text
+            color="gray.500"
+            textAlign="center"
+            fontFamily="Inter, sans-serif"
+            fontSize="14px"
+          >
+            Create a new policy or import from a file.
           </Text>
         </Box>
       )}
     </VStack>
   );
-}; 
+};

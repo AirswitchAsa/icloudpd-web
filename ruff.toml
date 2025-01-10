@@ -22,17 +22,33 @@ section-order = [
 ]
 
 [lint]
+# see https://docs.astral.sh/ruff/rules/
 select = [
-  # pycodestyle
-  "E",
   # Pyflakes
   "F",
+  # pep8-naming
+  "N",
+  # pycodestyle
+  "E",
+  # pycodestyle warnings
+  "W",
+  # complexity
+  "C901",
   # pyupgrade
   "UP",
   # flake8-bugbear
   "B",
   # flake8-simplify
   "SIM",
+  # flake8-annotations
+  "ANN",
+  # flake8-async
+  "ASYNC",
+  # flake8-comprehensions
+  "C4",
+  # pytest style
+  "PT",
   # isort
   "I",
 ]
+ignore = ["ANN002", "ANN003"]

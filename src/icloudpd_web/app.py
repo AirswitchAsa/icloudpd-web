@@ -1,18 +1,20 @@
+import asyncio
+import os
+from asyncio import Task
+from dataclasses import dataclass
+from typing import Literal
+
+import socketio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+
+from icloudpd_web.api.authentication_local import authenticate_secret, save_secret_hash
 from icloudpd_web.api.client_handler import ClientHandler
 from icloudpd_web.api.data_models import AuthenticationResult
-from icloudpd_web.api.policy_handler import PolicyStatus
 from icloudpd_web.api.logger import build_logger
-from icloudpd_web.api.authentication_local import authenticate_secret, save_secret_hash
-from typing import Literal
-from dataclasses import dataclass
-from asyncio import Task
+from icloudpd_web.api.policy_handler import PolicyStatus
 
-import socketio
-import asyncio
-import os
 
 secret_hash_path = os.environ.get("SECRET_HASH_PATH", "~/.icloudpd_web/secret_hash")
 secret_hash_path = os.path.abspath(os.path.expanduser(secret_hash_path))
@@ -31,7 +33,9 @@ class AppConfig:
     disable_guest: bool = os.environ.get("DISABLE_GUEST", "false").lower() == "true"
     toml_path: str = os.environ.get("TOML_PATH", "./policies.toml")
     secret_hash_path: str = secret_hash_path
-    guest_timeout_seconds: int = int(os.environ.get("GUEST_TIMEOUT_SECONDS", 300))  # 5 minutes default
+    guest_timeout_seconds: int = int(
+        os.environ.get("GUEST_TIMEOUT_SECONDS", 300)
+    )  # 5 minutes default
 
 
 app_config = AppConfig(client_ids=set({"default-user"}), allowed_origins=allowed_origins)
@@ -176,12 +180,10 @@ def create_app(
                 print(f"New session {sid} created for client {client_id}")
             else:
                 print(f"New client {client_id} connected with session {sid}")
-                handler_manager[client_id] = ClientHandler(
-                    saved_policies_path=app_config.toml_path
-                )
+                handler_manager[client_id] = ClientHandler(saved_policies_path=app_config.toml_path)
         else:
             print(f"Disconnecting client {client_id} due to reaching max sessions")
-            for sid in sid_to_client.keys():
+            for sid in sid_to_client:
                 if sid_to_client[sid] == client_id:
                     await disconnect(sid)
 
@@ -194,15 +196,16 @@ def create_app(
         """
         if client_id := sid_to_client.pop(sid, None):
             print(f"Client session disconnected: {client_id} (sid: {sid})")
-            
+
             # Only handle timeout for guest users
             if client_id not in app_config.client_ids:
                 # Cancel any existing timeout task for this client
                 if client_id in guest_timeout_tasks:
                     guest_timeout_tasks[client_id].cancel()
-                
+
                 # Create new timeout task if this was the last connection for this guest
                 if not any(cid == client_id for cid in sid_to_client.values()):
+
                     async def remove_guest_handler():
                         try:
                             await asyncio.sleep(app_config.guest_timeout_seconds)
@@ -222,7 +225,6 @@ def create_app(
                 f"Client {client_id} owns sessions {[sid for sid in sid_to_client if sid_to_client[sid] == client_id]}"
             )
 
-
     @sio.event
     async def logOut(sid, client_id):
         """
@@ -236,7 +238,7 @@ def create_app(
             for s in sids_to_remove:
                 await disconnect(s)
             # Notify the requesting client that logout is complete
-            await sio.emit('logout_complete', to=sid)
+            await sio.emit("logout_complete", to=sid)
 
     @sio.event
     async def getServerConfig(sid):

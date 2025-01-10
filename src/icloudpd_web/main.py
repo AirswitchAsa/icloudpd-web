@@ -1,6 +1,9 @@
-from icloudpd_web.app import create_app
 from importlib import resources
+
 import socketio
+
+from icloudpd_web.app import create_app
+
 
 # Get the path to the static files
 STATIC_DIR = str(resources.files("icloudpd_web")) + "/webapp"

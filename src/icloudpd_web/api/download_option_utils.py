@@ -1,18 +1,23 @@
-from pyicloud_ipd.services.photos import PhotoAsset
-
-from typing import Iterable
-from icloudpd.counter import Counter
-from icloudpd.download import mkdirs_for_path
-
 import itertools
 import logging
 import os
+from collections.abc import Iterable, Sequence
+from typing import Literal
+
+from icloudpd.counter import Counter
+from icloudpd.download import mkdirs_for_path
+from pyicloud_ipd.services.photos import PhotoAsset
+
+
 class DryRunFilter(logging.Filter):
-    def filter(self, record):
-        if record.msg.startswith("Downloaded"): # Duplicate message are logged by icloudpd
+    def filter(self, record: logging.LogRecord) -> bool:
+        if record.msg.startswith("Downloaded"):  # Duplicate message are logged by icloudpd
             return False
-        record.msg = f"[DRY RUN] {record.msg}" if not record.msg.startswith("[DRY RUN]") else record.msg
+        record.msg = (
+            f"[DRY RUN] {record.msg}" if not record.msg.startswith("[DRY RUN]") else record.msg
+        )
         return True
+
 
 def handle_recent_until_found(
     photos_count: int | None,
@@ -35,7 +40,7 @@ def handle_recent_until_found(
 def log_at_download_start(
     logger: logging.Logger,
     photos_count: int | None,
-    primary_sizes: list[str],
+    primary_sizes: Sequence[Literal["original", "medium", "thumb", "adjusted", "alternative"]],
     skip_videos: bool,
     directory: str,
 ) -> None:
@@ -53,7 +58,7 @@ def log_at_download_start(
     logger.info(
         ("Downloading %s %s" + " photo%s%s to %s ..."),
         photos_count_str,
-        ",".join(primary_sizes),
+        ",".join(primary_sizes),  # type: ignore # string enum is treated as string
         plural_suffix,
         video_suffix,
         directory,
@@ -65,7 +70,9 @@ def should_break(counter: Counter, until_found: int | None) -> bool:
     return until_found is not None and counter.value() >= until_found
 
 
-def check_folder_structure(logger: logging.Logger, directory: str, folder_structure: str, dry_run: bool) -> None:
+def check_folder_structure(
+    logger: logging.Logger, directory: str, folder_structure: str, dry_run: bool
+) -> None:
     """
     Check if there exists a .folderstructure file in the directory. If not, create it.
     If the file exists, check if the folder structure is the same as the one in the file.
@@ -79,7 +86,6 @@ def check_folder_structure(logger: logging.Logger, directory: str, folder_struct
     """
 
     def write_structure_file(structure_file_path: str, folder_structure: str) -> None:
-
         with open(structure_file_path, "w") as f:
             logger.info(
                 f"Creating .folderstructure file in {directory} with folder structure: {folder_structure}"
@@ -109,7 +115,7 @@ def check_folder_structure(logger: logging.Logger, directory: str, folder_struct
         )
 
     # folder exists and .structure file exists
-    with open(structure_file_path, "r") as f:
+    with open(structure_file_path) as f:
         if (provided_structure := f.read().strip()) != folder_structure:
             raise ValueError(
                 f"The specified folder structure: {folder_structure} is different from the one found in the existing .folderstructure file: {provided_structure}"

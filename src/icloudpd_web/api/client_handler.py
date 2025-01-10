@@ -1,9 +1,10 @@
-from icloudpd_web.api.icloud_utils import ICloudManager
-from icloudpd_web.api.policy_handler import PolicyHandler, PolicyStatus
-from icloudpd_web.api.data_models import NON_POLICY_FIELDS
+import os
 
 import toml
-import os
+
+from icloudpd_web.api.data_models import NON_POLICY_FIELDS
+from icloudpd_web.api.icloud_utils import ICloudManager
+from icloudpd_web.api.policy_handler import PolicyHandler, PolicyStatus
 
 
 class ClientHandler:
@@ -15,13 +16,13 @@ class ClientHandler:
     def policy_names(self) -> list[str]:
         return [policy.name for policy in self._policies]
 
-    def __init__(self, saved_policies_path: str):
+    def __init__(self, saved_policies_path: str) -> None:
         self._policies: list[PolicyHandler] = []
         self._saved_policies_path: str = saved_policies_path
         self._icloud_manager = ICloudManager()
         self._load_policies()
 
-    def _load_policies_from_toml(self, saved_policies: list[dict]):
+    def _load_policies_from_toml(self, saved_policies: list[dict]) -> None:
         for policy in saved_policies:
             assert "name" in policy, "Policy must have a name"
             assert "username" in policy, "Policy must have a username"
@@ -29,16 +30,16 @@ class ClientHandler:
             assert policy["name"] not in self.policy_names, "Policy name must be unique"
             self._policies.append(PolicyHandler(icloud_manager=self._icloud_manager, **policy))
 
-    def _load_policies(self):
+    def _load_policies(self) -> None:
         """
         Load the policies from the file if it exists.
         """
         if os.path.exists(self._saved_policies_path):
-            with open(self._saved_policies_path, "r") as file:
+            with open(self._saved_policies_path) as file:
                 saved_policies = toml.load(file).get("policy", [])
                 self._load_policies_from_toml(saved_policies)
 
-    def _save_policies(self):
+    def _save_policies(self) -> None:
         """
         Save the policies to a toml file at the given path.
         """
@@ -65,7 +66,7 @@ class ClientHandler:
                 return policy
         return None
 
-    def save_policy(self, policy_name: str, **kwargs):
+    def save_policy(self, policy_name: str, **kwargs) -> None:
         """
         Update the parameters of an existing policy.
         If policy with new name exists, update that policy.
@@ -84,7 +85,7 @@ class ClientHandler:
 
         self._save_policies()
 
-    def create_policy(self, **kwargs):
+    def create_policy(self, **kwargs) -> None:
         """
         Create a new policy with the given parameters.
         """
@@ -96,7 +97,7 @@ class ClientHandler:
         self._policies.append(PolicyHandler(icloud_manager=self._icloud_manager, **kwargs))
         self._save_policies()
 
-    def delete_policy(self, policy_name: str):
+    def delete_policy(self, policy_name: str) -> None:
         """
         Delete the policy with the given name.
         """
@@ -104,7 +105,7 @@ class ClientHandler:
         self._policies = [policy for policy in self._policies if policy.name != policy_name]
         self._save_policies()
 
-    def replace_policies(self, toml_content: str):
+    def replace_policies(self, toml_content: str) -> None:
         """
         Replace the current policies with the policies defined in the list of dictionaries.
         """

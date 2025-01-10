@@ -1,6 +1,7 @@
-import uvicorn
-import click
 import os
+
+import click
+import uvicorn
 
 
 @click.command()
@@ -24,31 +25,26 @@ import os
     type=int,
     help="Maximum number of sessions to allow. Default: 5",
 )
-
 @click.option(
     "--no-password",
     is_flag=True,
     help="Disable server password authentication. Use it only when access is trusted. This can be configured later in the web interface.",
 )
-
 @click.option(
     "--always-guest",
     is_flag=True,
     help="Always login the user as a guest. This can be configured later in the web interface.",
 )
-
 @click.option(
     "--disable-guest",
     is_flag=True,
     help="Disable guest login. This can be configured later in the web interface.",
 )
-
 @click.option(
     "--guest-timeout-seconds",
     type=int,
     help="Timeout for guest users in seconds. Default: 300 (5 minutes)",
 )
-
 # dev options
 @click.option(
     "--server-only",
