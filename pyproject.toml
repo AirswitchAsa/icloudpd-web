@@ -1,8 +1,6 @@
 [project]
 name = "icloudpd-web"
-authors = [
-    { name = "Qian Zhang", email = "contact@qzsh.email" },
-]
+authors = [{ name = "Qian Zhang", email = "contact@qzsh.email" }]
 version = "2025.01.09.post1"
 keywords = ["icloud", "photos", "downloader", "webapp"]
 description = "Web application for iCloud Photos Downloader, based on icloudpd"
@@ -44,6 +42,9 @@ dependencies = [
     "srp==1.0.22",
 ]
 
+[project.optional-dependencies]
+dev = ["ruff>=0.2.0"]
+
 [project.urls]
 Homepage = "https://github.com/AirswitchAsa/icloudpd-web"
 
@@ -56,8 +57,8 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build]
 include = [
-    "src/icloudpd_web/**/*",  # icloudpd-web source files
-    "src/icloudpd_web/webapp/**/*",  # next.js build output
+    "src/icloudpd_web/**/*",                          # icloudpd-web source files
+    "src/icloudpd_web/webapp/**/*",                   # next.js build output
     "src/foundation/**/*",
     "icloud_photos_downloader/src/icloudpd/**/*",
     "icloud_photos_downloader/src/pyicloud_ipd/**/*",
@@ -65,14 +66,6 @@ include = [
 
 [tool.hatch.metadata]
 allow-direct-references = true
-
-[tool.ruff]
-line-length = 100
-
-[project.optional-dependencies]
-dev = [
-    "ruff>=0.2.0",
-]
 
 [tool.hatch.build.targets.sdist]
 ignore-vcs = true
@@ -84,9 +77,7 @@ packages = [
     "icloud_photos_downloader/src/icloudpd",
     "icloud_photos_downloader/src/pyicloud_ipd",
 ]
-artifacts = [
-  "src/icloudpd_web/webapp/**/*"
-]
+artifacts = ["src/icloudpd_web/webapp/**/*"]
 
 [tool.hatch.build.targets.wheel.sources]
 "icloud_photos_downloader/src/icloudpd" = "icloudpd"

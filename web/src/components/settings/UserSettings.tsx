@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import {
   Box,
   VStack,
@@ -13,9 +13,9 @@ import {
   useToast,
   FormErrorMessage,
   Switch,
-} from '@chakra-ui/react';
-import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
-import { Socket } from 'socket.io-client';
+} from "@chakra-ui/react";
+import { ViewIcon, ViewOffIcon } from "@chakra-ui/icons";
+import { Socket } from "socket.io-client";
 
 interface UserSettingsProps {
   socket: Socket | null;
@@ -29,9 +29,9 @@ interface AccessControlConfig {
 }
 
 export function UserSettings({ socket, isGuest }: UserSettingsProps) {
-  const [oldPassword, setOldPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showOldPassword, setShowOldPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -44,20 +44,20 @@ export function UserSettings({ socket, isGuest }: UserSettingsProps) {
   const toast = useToast();
 
   const passwordsMatch = newPassword === confirmPassword;
-  const showMismatchError = confirmPassword !== '' && !passwordsMatch;
+  const showMismatchError = confirmPassword !== "" && !passwordsMatch;
 
   useEffect(() => {
     if (!socket) return;
 
     // Get server config
-    socket.emit('getServerConfig');
+    socket.emit("getServerConfig");
 
-    socket.on('server_config', (config: AccessControlConfig) => {
+    socket.on("server_config", (config: AccessControlConfig) => {
       setAccessControl(config);
     });
 
     return () => {
-      socket.off('server_config');
+      socket.off("server_config");
     };
   }, [socket]);
 
@@ -66,87 +66,92 @@ export function UserSettings({ socket, isGuest }: UserSettingsProps) {
     setIsSaving(true);
 
     // Set up listeners before emitting
-    socket.once('server_secret_saved', () => {
+    socket.once("server_secret_saved", () => {
       setIsSaving(false);
-      setOldPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
+      setOldPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
       toast({
-        title: 'Success',
-        description: 'Server password has been updated',
-        status: 'success',
+        title: "Success",
+        description: "Server password has been updated",
+        status: "success",
         duration: 3000,
         isClosable: true,
       });
     });
 
-    socket.once('failed_saving_server_secret', (data: { error: string }) => {
+    socket.once("failed_saving_server_secret", (data: { error: string }) => {
       setIsSaving(false);
       toast({
-        title: 'Error',
+        title: "Error",
         description: data.error,
-        status: 'error',
+        status: "error",
         duration: 5000,
         isClosable: true,
       });
     });
 
-    socket.emit('save_secret', oldPassword, newPassword);
+    socket.emit("save_secret", oldPassword, newPassword);
   };
 
-  const handleConfigChange = (key: keyof AccessControlConfig) => (value: boolean) => {
-    if (!socket) return;
+  const handleConfigChange =
+    (key: keyof AccessControlConfig) => (value: boolean) => {
+      if (!socket) return;
 
-    // Set up listeners before emitting
-    socket.once('app_config_updated', () => {
-      // Update local state immediately after successful update
-      setAccessControl(prev => ({
-        ...prev,
-        [key]: value
-      }));
-      
-      toast({
-        title: 'Success',
-        description: 'Access control settings updated',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
+      // Set up listeners before emitting
+      socket.once("app_config_updated", () => {
+        // Update local state immediately after successful update
+        setAccessControl((prev) => ({
+          ...prev,
+          [key]: value,
+        }));
+
+        toast({
+          title: "Success",
+          description: "Access control settings updated",
+          status: "success",
+          duration: 3000,
+          isClosable: true,
+        });
       });
-    });
 
-    socket.once('error_updating_app_config', (data: { error: string }) => {
-      // Revert the switch back to its previous state by re-fetching config
-      socket.emit('getServerConfig');
-      
-      toast({
-        title: 'Error',
-        description: data.error,
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
+      socket.once("error_updating_app_config", (data: { error: string }) => {
+        // Revert the switch back to its previous state by re-fetching config
+        socket.emit("getServerConfig");
+
+        toast({
+          title: "Error",
+          description: data.error,
+          status: "error",
+          duration: 5000,
+          isClosable: true,
+        });
       });
-    });
 
-    socket.emit('updateAppConfig', key, value);
-  };
+      socket.emit("updateAppConfig", key, value);
+    };
 
   return (
     <Box>
       <VStack spacing={8} align="stretch">
         <Box>
-          <Text fontWeight="bold" fontSize="lg" mb={4}>Change Password</Text>
+          <Text fontWeight="bold" fontSize="lg" mb={4}>
+            Change Password
+          </Text>
           <VStack spacing={3} align="stretch" maxW="400px">
             <FormControl>
               <FormLabel fontSize="sm">Current Password</FormLabel>
               <InputGroup size="sm">
                 <Input
-                  type={showOldPassword ? 'text' : 'password'}
+                  type={showOldPassword ? "text" : "password"}
                   value={oldPassword}
                   onChange={(e) => setOldPassword(e.target.value)}
                 />
                 <InputRightElement>
                   <IconButton
-                    aria-label={showOldPassword ? 'Hide password' : 'Show password'}
+                    aria-label={
+                      showOldPassword ? "Hide password" : "Show password"
+                    }
                     icon={showOldPassword ? <ViewOffIcon /> : <ViewIcon />}
                     variant="ghost"
                     onClick={() => setShowOldPassword(!showOldPassword)}
@@ -159,13 +164,15 @@ export function UserSettings({ socket, isGuest }: UserSettingsProps) {
               <FormLabel fontSize="sm">New Password</FormLabel>
               <InputGroup size="sm">
                 <Input
-                  type={showNewPassword ? 'text' : 'password'}
+                  type={showNewPassword ? "text" : "password"}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                 />
                 <InputRightElement>
                   <IconButton
-                    aria-label={showNewPassword ? 'Hide password' : 'Show password'}
+                    aria-label={
+                      showNewPassword ? "Hide password" : "Show password"
+                    }
                     icon={showNewPassword ? <ViewOffIcon /> : <ViewIcon />}
                     variant="ghost"
                     onClick={() => setShowNewPassword(!showNewPassword)}
@@ -178,13 +185,15 @@ export function UserSettings({ socket, isGuest }: UserSettingsProps) {
               <FormLabel fontSize="sm">Confirm New Password</FormLabel>
               <InputGroup size="sm">
                 <Input
-                  type={showConfirmPassword ? 'text' : 'password'}
+                  type={showConfirmPassword ? "text" : "password"}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                 />
                 <InputRightElement>
                   <IconButton
-                    aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                    aria-label={
+                      showConfirmPassword ? "Hide password" : "Show password"
+                    }
                     icon={showConfirmPassword ? <ViewOffIcon /> : <ViewIcon />}
                     variant="ghost"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
@@ -200,9 +209,16 @@ export function UserSettings({ socket, isGuest }: UserSettingsProps) {
               <Button
                 bg="black"
                 color="white"
-                _hover={{ bg: 'gray.800' }}
+                _hover={{ bg: "gray.800" }}
                 onClick={handleSave}
-                isDisabled={!oldPassword || !newPassword || !confirmPassword || !passwordsMatch || isSaving || isGuest}
+                isDisabled={
+                  !oldPassword ||
+                  !newPassword ||
+                  !confirmPassword ||
+                  !passwordsMatch ||
+                  isSaving ||
+                  isGuest
+                }
                 isLoading={isSaving}
                 size="sm"
               >
@@ -213,29 +229,55 @@ export function UserSettings({ socket, isGuest }: UserSettingsProps) {
         </Box>
 
         <Box>
-          <Text fontWeight="bold" fontSize="lg" mb={4}>Access Control</Text>
+          <Text fontWeight="bold" fontSize="lg" mb={4}>
+            Access Control
+          </Text>
           <VStack spacing={3} align="stretch" maxW="400px">
-            <FormControl display="flex" alignItems="center" justifyContent="space-between">
-              <FormLabel fontSize="sm" mb={0}>No Password Required</FormLabel>
+            <FormControl
+              display="flex"
+              alignItems="center"
+              justifyContent="space-between"
+            >
+              <FormLabel fontSize="sm" mb={0}>
+                No Password Required
+              </FormLabel>
               <Switch
                 isChecked={accessControl.no_password}
-                onChange={(e) => handleConfigChange('no_password')(e.target.checked)}
+                onChange={(e) =>
+                  handleConfigChange("no_password")(e.target.checked)
+                }
                 isDisabled={isGuest}
               />
             </FormControl>
-            <FormControl display="flex" alignItems="center" justifyContent="space-between">
-              <FormLabel fontSize="sm" mb={0}>Always Use Guest Mode</FormLabel>
+            <FormControl
+              display="flex"
+              alignItems="center"
+              justifyContent="space-between"
+            >
+              <FormLabel fontSize="sm" mb={0}>
+                Always Use Guest Mode
+              </FormLabel>
               <Switch
                 isChecked={accessControl.always_guest}
-                onChange={(e) => handleConfigChange('always_guest')(e.target.checked)}
+                onChange={(e) =>
+                  handleConfigChange("always_guest")(e.target.checked)
+                }
                 isDisabled={isGuest && !accessControl.always_guest}
               />
             </FormControl>
-            <FormControl display="flex" alignItems="center" justifyContent="space-between">
-              <FormLabel fontSize="sm" mb={0}>Disable Guest Access</FormLabel>
+            <FormControl
+              display="flex"
+              alignItems="center"
+              justifyContent="space-between"
+            >
+              <FormLabel fontSize="sm" mb={0}>
+                Disable Guest Access
+              </FormLabel>
               <Switch
                 isChecked={accessControl.disable_guest}
-                onChange={(e) => handleConfigChange('disable_guest')(e.target.checked)}
+                onChange={(e) =>
+                  handleConfigChange("disable_guest")(e.target.checked)
+                }
                 isDisabled={isGuest}
               />
             </FormControl>
@@ -244,4 +286,4 @@ export function UserSettings({ socket, isGuest }: UserSettingsProps) {
       </VStack>
     </Box>
   );
-} 
+}

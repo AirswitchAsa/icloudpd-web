@@ -1,31 +1,32 @@
-from icloudpd_web.api.data_models import PolicyConfigs, AuthenticationResult
-from icloudpd_web.api.icloud_utils import (
-    build_pyicloudservice_args,
-    build_downloader_builder_args,
-    request_2sa,
-    ICloudManager,
-)
-from icloudpd_web.api.logger import build_logger_level, build_photos_exception_handler
-from icloudpd_web.api.download_option_utils import (
-    handle_recent_until_found,
-    log_at_download_start,
-    should_break,
-    check_folder_structure,
-    DryRunFilter,
-)
-from pyicloud_ipd.base import PyiCloudService
-from pyicloud_ipd.exceptions import PyiCloudFailedLoginException
-from pyicloud_ipd.services.photos import PhotoAlbum
-from icloudpd.base import download_builder, delete_photo, retrier
-from icloudpd.counter import Counter
-from icloudpd.autodelete import autodelete_photos
-
-from enum import Enum
-from typing import cast, Callable
-from functools import partial
 import asyncio
 import logging
 import os
+from collections.abc import Callable
+from enum import Enum
+from functools import partial
+from typing import cast
+
+from icloudpd.autodelete import autodelete_photos
+from icloudpd.base import delete_photo, download_builder, retrier
+from icloudpd.counter import Counter
+from icloudpd_web.api.data_models import AuthenticationResult, PolicyConfigs
+from icloudpd_web.api.download_option_utils import (
+    DryRunFilter,
+    check_folder_structure,
+    handle_recent_until_found,
+    log_at_download_start,
+    should_break,
+)
+from icloudpd_web.api.icloud_utils import (
+    ICloudManager,
+    build_downloader_builder_args,
+    build_pyicloudservice_args,
+    request_2sa,
+)
+from icloudpd_web.api.logger import build_logger_level, build_photos_exception_handler
+from pyicloud_ipd.base import PyiCloudService
+from pyicloud_ipd.exceptions import PyiCloudFailedLoginException
+from pyicloud_ipd.services.photos import PhotoAlbum
 
 
 class PolicyStatus(Enum):
@@ -134,9 +135,9 @@ class PolicyHandler:
         """
         Update the policy configs. Should only be called when status is STOPPED.
         """
-        assert (
-            self._status == PolicyStatus.STOPPED or self._status == PolicyStatus.ERRORED
-        ), "Can only update policy when policy is stopped or errored"
+        assert self._status == PolicyStatus.STOPPED or self._status == PolicyStatus.ERRORED, (
+            "Can only update policy when policy is stopped or errored"
+        )
         new_config_args = self._configs.model_dump()
         new_config_args.update(config_updates)
         self._configs = PolicyConfigs(**new_config_args)
@@ -149,7 +150,9 @@ class PolicyHandler:
         assert self._status == PolicyStatus.STOPPED, "Can only authenticate when policy is stopped"
         assert not self.authenticated, "Can only authenticate when it is not authenticated"
         try:
-            self._icloud_manager.remove_instance(self.username)  # Remove the existing instance if any
+            self._icloud_manager.remove_instance(
+                self.username
+            )  # Remove the existing instance if any
             pyicloudservice_args = build_pyicloudservice_args(self._configs)
             self.icloud = PyiCloudService(
                 **pyicloudservice_args,
@@ -193,7 +196,7 @@ class PolicyHandler:
             if isinstance(filter, DryRunFilter):
                 logger.removeFilter(filter)
         # Pprepend [DRY RUN] to all messages if dry_run is enabled
-        if self._configs.dry_run :
+        if self._configs.dry_run:
             logger.addFilter(DryRunFilter())
 
         try:
@@ -215,14 +218,16 @@ class PolicyHandler:
 
             directory_path = os.path.abspath(os.path.expanduser(cast(str, self._configs.directory)))
             directory = os.path.normpath(directory_path)
-            check_folder_structure(logger, directory, self._configs.folder_structure, self._configs.dry_run)
+            check_folder_structure(
+                logger, directory, self._configs.folder_structure, self._configs.dry_run
+            )
 
             if (library_name := self.library_name) is None:
                 raise ValueError(f"Unavailable library: {self._configs.library}")
             library = self.icloud.photos.libraries[library_name]
-            assert (
-                self._configs.album in library.albums
-            ), f"Album {self._configs.album} not found in library {library_name}"
+            assert self._configs.album in library.albums, (
+                f"Album {self._configs.album} not found in library {library_name}"
+            )
             photos: PhotoAlbum = library.albums[self._configs.album]
             error_handler = build_photos_exception_handler(logger, self.icloud)
             photos.exception_handler = error_handler

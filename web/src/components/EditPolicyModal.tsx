@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState } from "react";
 import {
   Modal,
   ModalOverlay,
@@ -24,10 +24,10 @@ import {
   Collapse,
   useDisclosure,
   Checkbox,
-} from '@chakra-ui/react';
-import { ChevronDownIcon, ChevronUpIcon } from '@chakra-ui/icons';
-import { useSocket, SocketConfig } from '@/hooks/useSocket';
-import { Policy } from '@/types';
+} from "@chakra-ui/react";
+import { ChevronDownIcon, ChevronUpIcon } from "@chakra-ui/icons";
+import { useSocket, SocketConfig } from "@/hooks/useSocket";
+import { Policy } from "@/types";
 
 interface EditPolicyModalProps {
   isOpen: boolean;
@@ -46,7 +46,7 @@ interface FieldWithInfoProps {
 
 function FieldWithInfo({ label, info, children }: FieldWithInfoProps) {
   const { isOpen, onToggle } = useDisclosure();
-  
+
   return (
     <Box>
       <HStack spacing={2} align="center" mb={info && isOpen ? 2 : 0} h="40px">
@@ -57,13 +57,17 @@ function FieldWithInfo({ label, info, children }: FieldWithInfoProps) {
           variant="ghost"
           onClick={onToggle}
         />
-        <FormLabel flex="1" mb="0">{label}</FormLabel>
-          {children}
+        <FormLabel flex="1" mb="0">
+          {label}
+        </FormLabel>
+        {children}
       </HStack>
       {info && (
         <Collapse in={isOpen}>
           <Box pl={10} pr={4} py={2} bg="gray.50" borderRadius="md">
-            <Text fontSize="sm" color="gray.600">{info}</Text>
+            <Text fontSize="sm" color="gray.600">
+              {info}
+            </Text>
           </Box>
         </Collapse>
       )}
@@ -71,27 +75,38 @@ function FieldWithInfo({ label, info, children }: FieldWithInfoProps) {
   );
 }
 
-export function EditPolicyModal({ isOpen, onClose, onPolicySaved, isEditing = false, policy, socketConfig }: EditPolicyModalProps) {
+export function EditPolicyModal({
+  isOpen,
+  onClose,
+  onPolicySaved,
+  isEditing = false,
+  policy,
+  socketConfig,
+}: EditPolicyModalProps) {
   const toast = useToast();
   const socket = useSocket(socketConfig);
-  const [formData, setFormData] = useState<Omit<Policy, 'status' | 'progress' | 'logs'>>({
-    name: policy?.name || '',
-    username: policy?.username || '',
-    directory: policy?.directory || '',
-    domain: policy?.domain || 'com',
-    folder_structure: policy?.folder_structure || '{:%Y/%m/%d}',
-    size: policy?.size || ['original'],
-    live_photo_size: policy?.live_photo_size || 'original',
+  const [formData, setFormData] = useState<
+    Omit<Policy, "status" | "progress" | "logs">
+  >({
+    name: policy?.name || "",
+    username: policy?.username || "",
+    directory: policy?.directory || "",
+    domain: policy?.domain || "com",
+    folder_structure: policy?.folder_structure || "{:%Y/%m/%d}",
+    size: policy?.size || ["original"],
+    live_photo_size: policy?.live_photo_size || "original",
     force_size: policy?.force_size || false,
-    align_raw: policy?.align_raw || 'original',
+    align_raw: policy?.align_raw || "original",
     keep_unicode_in_filenames: policy?.keep_unicode_in_filenames || false,
     set_exif_datetime: policy?.set_exif_datetime || false,
-    live_photo_mov_filename_policy: policy?.live_photo_mov_filename_policy || 'suffix',
-    file_match_policy: policy?.file_match_policy || 'name-size-dedup-with-suffix',
+    live_photo_mov_filename_policy:
+      policy?.live_photo_mov_filename_policy || "suffix",
+    file_match_policy:
+      policy?.file_match_policy || "name-size-dedup-with-suffix",
     xmp_sidecar: policy?.xmp_sidecar || false,
     use_os_locale: policy?.use_os_locale || false,
-    album: policy?.album || 'All Photos',
-    library: policy?.library || 'Personal Library',
+    album: policy?.album || "All Photos",
+    library: policy?.library || "Personal Library",
     recent: policy?.recent || null,
     until_found: policy?.until_found || null,
     skip_videos: policy?.skip_videos || false,
@@ -99,22 +114,28 @@ export function EditPolicyModal({ isOpen, onClose, onPolicySaved, isEditing = fa
     auto_delete: policy?.auto_delete || false,
     delete_after_download: policy?.delete_after_download || false,
     dry_run: policy?.dry_run || false,
-    interval: policy?.interval || null as string | null,
-    log_level: policy?.log_level || 'info'
+    interval: policy?.interval || (null as string | null),
+    log_level: policy?.log_level || "info",
   });
 
   const handleSave = () => {
     if (!socket) return;
 
     // Listen for the response before closing
-    const successEvent = isEditing ? 'policies_after_save' : 'policies_after_create';
-    const errorEvent = isEditing ? 'error_saving_policy' : 'error_creating_policy';
+    const successEvent = isEditing
+      ? "policies_after_save"
+      : "policies_after_create";
+    const errorEvent = isEditing
+      ? "error_saving_policy"
+      : "error_creating_policy";
 
     socket.once(successEvent, (policies: Policy[]) => {
       toast({
-        title: 'Success',
-        description: `Policy "${formData.name}" ${isEditing ? 'saved' : 'created'} successfully`,
-        status: 'success',
+        title: "Success",
+        description: `Policy "${formData.name}" ${
+          isEditing ? "saved" : "created"
+        } successfully`,
+        status: "success",
         duration: 3000,
         isClosable: true,
       });
@@ -124,88 +145,123 @@ export function EditPolicyModal({ isOpen, onClose, onPolicySaved, isEditing = fa
       }
     });
 
-    socket.once(errorEvent, ({ policy_name, error }: { policy_name: string; error: string }) => {
-      const errorMessage = `Failed to ${isEditing ? 'save' : 'create'} policy "${policy_name}": ${error}`;
-      toast({
-        title: 'Error',
-        description: errorMessage,
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
-      // If error occurs, remove the success listener
-      socket.off(successEvent);
-    });
+    socket.once(
+      errorEvent,
+      ({ policy_name, error }: { policy_name: string; error: string }) => {
+        const errorMessage = `Failed to ${
+          isEditing ? "save" : "create"
+        } policy "${policy_name}": ${error}`;
+        toast({
+          title: "Error",
+          description: errorMessage,
+          status: "error",
+          duration: 5000,
+          isClosable: true,
+        });
+        // If error occurs, remove the success listener
+        socket.off(successEvent);
+      }
+    );
 
     // Send the request
     if (isEditing) {
-      socket.emit('savePolicy', policy?.name, formData);
+      socket.emit("savePolicy", policy?.name, formData);
     } else {
-      socket.emit('createPolicy', formData);
+      socket.emit("createPolicy", formData);
     }
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} isCentered motionPreset="slideInBottom" size="xl" scrollBehavior="inside">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      isCentered
+      motionPreset="slideInBottom"
+      size="xl"
+      scrollBehavior="inside"
+    >
       <ModalOverlay backdropFilter="blur(4px)" />
-      <ModalContent maxW="800px" w="90%" bg="white" borderRadius="2xl" boxShadow="xl">
+      <ModalContent
+        maxW="800px"
+        w="90%"
+        bg="white"
+        borderRadius="2xl"
+        boxShadow="xl"
+      >
         <ModalHeader fontFamily="Inter, sans-serif">
-          {isEditing ? 'Edit Policy' : 'New Policy'}
+          {isEditing ? "Edit Policy" : "New Policy"}
         </ModalHeader>
         <ModalCloseButton />
         <ModalBody pb={6}>
-          <VStack spacing={4} align="stretch" divider={<Box h="1px" bg="gray.100" />}>
+          <VStack
+            spacing={4}
+            align="stretch"
+            divider={<Box h="1px" bg="gray.100" />}
+          >
             {/* Basic Settings */}
             <Box>
-              <Text fontSize="lg" fontWeight="semibold" mb={4}>Basic Settings</Text>
+              <Text fontSize="lg" fontWeight="semibold" mb={4}>
+                Basic Settings
+              </Text>
               <VStack spacing={4} align="stretch">
                 <FormControl isRequired>
-                  <FieldWithInfo 
+                  <FieldWithInfo
                     label="Policy Name"
                     info="A unique name to identify this policy"
                   >
-                    <Input 
+                    <Input
                       value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, name: e.target.value })
+                      }
                       maxW="300px"
                     />
                   </FieldWithInfo>
                 </FormControl>
 
                 <FormControl isRequired>
-                  <FieldWithInfo 
+                  <FieldWithInfo
                     label="iCloud Username"
                     info="Your iCloud account email address"
                   >
-                    <Input 
+                    <Input
                       value={formData.username}
-                      onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, username: e.target.value })
+                      }
                       maxW="300px"
                     />
                   </FieldWithInfo>
                 </FormControl>
 
                 <FormControl isRequired>
-                  <FieldWithInfo 
+                  <FieldWithInfo
                     label="Download Directory"
                     info="The local directory where photos will be downloaded"
                   >
-                    <Input 
+                    <Input
                       value={formData.directory}
-                      onChange={(e) => setFormData({ ...formData, directory: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, directory: e.target.value })
+                      }
                       maxW="300px"
                     />
                   </FieldWithInfo>
                 </FormControl>
 
                 <FormControl>
-                  <FieldWithInfo 
+                  <FieldWithInfo
                     label="Domain"
                     info="The iCloud service domain to use"
                   >
                     <Select
                       value={formData.domain}
-                      onChange={(e) => setFormData({ ...formData, domain: e.target.value as 'com' | 'cn' })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          domain: e.target.value as "com" | "cn",
+                        })
+                      }
                       maxW="100px"
                     >
                       <option value="com">com</option>
@@ -213,53 +269,74 @@ export function EditPolicyModal({ isOpen, onClose, onPolicySaved, isEditing = fa
                     </Select>
                   </FieldWithInfo>
                 </FormControl>
-
               </VStack>
             </Box>
 
-
-
             {/* Download Options */}
             <Box>
-              <Text fontSize="lg" fontWeight="semibold" mb={4}>Download Options</Text>
+              <Text fontSize="lg" fontWeight="semibold" mb={4}>
+                Download Options
+              </Text>
               <VStack spacing={4} align="stretch">
                 <FormControl>
-                  <FieldWithInfo 
+                  <FieldWithInfo
                     label="Folder Structure"
                     info="The folder structure pattern using Python's strftime format"
                   >
                     <Input
                       value={formData.folder_structure}
-                      onChange={(e) => setFormData({ ...formData, folder_structure: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          folder_structure: e.target.value,
+                        })
+                      }
                       maxW="200px"
                     />
                   </FieldWithInfo>
                 </FormControl>
 
                 <FormControl>
-                  <FieldWithInfo 
+                  <FieldWithInfo
                     label="File Match Policy"
                     info="The policy for matching files when downloading"
                   >
                     <Select
                       value={formData.file_match_policy}
-                      onChange={(e) => setFormData({ ...formData, file_match_policy: e.target.value as 'name-size-dedup-with-suffix' | 'name-id7' })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          file_match_policy: e.target.value as
+                            | "name-size-dedup-with-suffix"
+                            | "name-id7",
+                        })
+                      }
                       maxW="150px"
                     >
-                      <option value="name-size-dedup-with-suffix">Name-Size-Dedup-With-Suffix</option>
+                      <option value="name-size-dedup-with-suffix">
+                        Name-Size-Dedup-With-Suffix
+                      </option>
                       <option value="name-id7">Name-Id7</option>
                     </Select>
                   </FieldWithInfo>
                 </FormControl>
 
                 <FormControl>
-                  <FieldWithInfo 
+                  <FieldWithInfo
                     label="Live Photo Size"
                     info="The size of live photos to download"
                   >
                     <Select
                       value={formData.live_photo_size}
-                      onChange={(e) => setFormData({ ...formData, live_photo_size: e.target.value as 'original' | 'medium' | 'thumb' })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          live_photo_size: e.target.value as
+                            | "original"
+                            | "medium"
+                            | "thumb",
+                        })
+                      }
                       maxW="150px"
                     >
                       <option value="original">Original</option>
@@ -270,13 +347,20 @@ export function EditPolicyModal({ isOpen, onClose, onPolicySaved, isEditing = fa
                 </FormControl>
 
                 <FormControl>
-                  <FieldWithInfo 
+                  <FieldWithInfo
                     label="Live Photo Video Filename Policy"
                     info="The policy for naming live photo videos"
                   >
                     <Select
                       value={formData.live_photo_mov_filename_policy}
-                      onChange={(e) => setFormData({ ...formData, live_photo_mov_filename_policy: e.target.value as 'original' | 'suffix' })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          live_photo_mov_filename_policy: e.target.value as
+                            | "original"
+                            | "suffix",
+                        })
+                      }
                       maxW="150px"
                     >
                       <option value="original">Original</option>
@@ -286,13 +370,21 @@ export function EditPolicyModal({ isOpen, onClose, onPolicySaved, isEditing = fa
                 </FormControl>
 
                 <FormControl>
-                  <FieldWithInfo 
+                  <FieldWithInfo
                     label="Raw File Size"
                     info="The size of raw files to download"
                   >
                     <Select
                       value={formData.align_raw}
-                      onChange={(e) => setFormData({ ...formData, align_raw: e.target.value as 'original' | 'alternative' | 'as-is' })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          align_raw: e.target.value as
+                            | "original"
+                            | "alternative"
+                            | "as-is",
+                        })
+                      }
                       maxW="150px"
                     >
                       <option value="original">Original</option>
@@ -303,86 +395,120 @@ export function EditPolicyModal({ isOpen, onClose, onPolicySaved, isEditing = fa
                 </FormControl>
 
                 <FormControl>
-                  <FieldWithInfo 
+                  <FieldWithInfo
                     label="Download Sizes"
                     info="Select one or more sizes for downloaded photos"
                   >
-                      <HStack spacing={4} pl={2}>
-                        {(['original', 'medium', 'thumb', 'adjusted', 'alternative'] as const).map((sizeOption) => (
-                          <Checkbox
-                            key={sizeOption}
-                            isChecked={formData.size.includes(sizeOption)}
-                            onChange={(e) => {
-                              const newSizes = e.target.checked
-                                ? [...formData.size, sizeOption]
-                                : formData.size.filter(s => s !== sizeOption);
-                              setFormData({ ...formData, size: newSizes });
-                            }}
-                          >
-                            {sizeOption.charAt(0).toUpperCase() + sizeOption.slice(1)}
-                          </Checkbox>
-                        ))}
-                      </HStack>
+                    <HStack spacing={4} pl={2}>
+                      {(
+                        [
+                          "original",
+                          "medium",
+                          "thumb",
+                          "adjusted",
+                          "alternative",
+                        ] as const
+                      ).map((sizeOption) => (
+                        <Checkbox
+                          key={sizeOption}
+                          isChecked={formData.size.includes(sizeOption)}
+                          onChange={(e) => {
+                            const newSizes = e.target.checked
+                              ? [...formData.size, sizeOption]
+                              : formData.size.filter((s) => s !== sizeOption);
+                            setFormData({ ...formData, size: newSizes });
+                          }}
+                        >
+                          {sizeOption.charAt(0).toUpperCase() +
+                            sizeOption.slice(1)}
+                        </Checkbox>
+                      ))}
+                    </HStack>
                   </FieldWithInfo>
                 </FormControl>
 
                 <FormControl>
-                  <FieldWithInfo 
+                  <FieldWithInfo
                     label="Force Sizes"
                     info="Force the use of the selected sizes during download"
                   >
                     <Switch
                       checked={formData.force_size}
-                      onChange={(e) => setFormData({ ...formData, force_size: e.target.checked })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          force_size: e.target.checked,
+                        })
+                      }
                     />
                   </FieldWithInfo>
                 </FormControl>
 
                 {/* Add similar pattern for other fields */}
                 <FormControl>
-                  <FieldWithInfo 
+                  <FieldWithInfo
                     label="Keep Unicode in Filenames"
                     info="Preserve Unicode characters in filenames instead of converting them"
                   >
                     <Switch
                       checked={formData.keep_unicode_in_filenames}
-                      onChange={(e) => setFormData({ ...formData, keep_unicode_in_filenames: e.target.checked })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          keep_unicode_in_filenames: e.target.checked,
+                        })
+                      }
                     />
                   </FieldWithInfo>
                 </FormControl>
 
                 <FormControl>
-                  <FieldWithInfo 
+                  <FieldWithInfo
                     label="Set EXIF Datetime"
                     info="Set the EXIF datetime in the downloaded photos"
                   >
                     <Switch
                       checked={formData.set_exif_datetime}
-                      onChange={(e) => setFormData({ ...formData, set_exif_datetime: e.target.checked })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          set_exif_datetime: e.target.checked,
+                        })
+                      }
                     />
                   </FieldWithInfo>
                 </FormControl>
 
                 <FormControl>
-                  <FieldWithInfo 
+                  <FieldWithInfo
                     label="XMP Sidecar"
                     info="Create XMP sidecar files for the downloaded photos"
                   >
                     <Switch
                       checked={formData.xmp_sidecar}
-                      onChange={(e) => setFormData({ ...formData, xmp_sidecar: e.target.checked })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          xmp_sidecar: e.target.checked,
+                        })
+                      }
                     />
                   </FieldWithInfo>
                 </FormControl>
 
                 <FormControl>
-                  <FieldWithInfo 
+                  <FieldWithInfo
                     label="Use OS Locale"
                     info="Use the operating system's locale settings"
                   >
                     <Switch
                       checked={formData.use_os_locale}
-                      onChange={(e) => setFormData({ ...formData, use_os_locale: e.target.checked })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          use_os_locale: e.target.checked,
+                        })
+                      }
                     />
                   </FieldWithInfo>
                 </FormControl>
@@ -391,17 +517,25 @@ export function EditPolicyModal({ isOpen, onClose, onPolicySaved, isEditing = fa
 
             {/* Filter Options */}
             <Box>
-              <Text fontSize="lg" fontWeight="semibold" mb={4}>Filter Options</Text>
+              <Text fontSize="lg" fontWeight="semibold" mb={4}>
+                Filter Options
+              </Text>
               <VStack spacing={4} align="stretch">
                 <FormControl>
-                  <FieldWithInfo 
+                  <FieldWithInfo
                     label="Album"
                     info="The album to download from. Choose from a list of albums when the policy is authenticated. Note that user-created albums only exist in Personal Library and trying to download them from a Shared Library will result in an error. Default: All Photos"
                   >
                     {policy?.authenticated && policy.albums ? (
                       <Select
-                        value={policy.albums.includes(formData.album) ? formData.album : ''}
-                        onChange={(e) => setFormData({ ...formData, album: e.target.value })}
+                        value={
+                          policy.albums.includes(formData.album)
+                            ? formData.album
+                            : ""
+                        }
+                        onChange={(e) =>
+                          setFormData({ ...formData, album: e.target.value })
+                        }
                         maxW="200px"
                         placeholder="Select an album"
                       >
@@ -414,7 +548,9 @@ export function EditPolicyModal({ isOpen, onClose, onPolicySaved, isEditing = fa
                     ) : (
                       <Input
                         value={formData.album}
-                        onChange={(e) => setFormData({ ...formData, album: e.target.value })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, album: e.target.value })
+                        }
                         maxW="200px"
                         placeholder="Enter album name"
                       />
@@ -423,13 +559,20 @@ export function EditPolicyModal({ isOpen, onClose, onPolicySaved, isEditing = fa
                 </FormControl>
 
                 <FormControl>
-                  <FieldWithInfo 
+                  <FieldWithInfo
                     label="Library"
                     info="The library to download from. Personal Library will be used if you do not have a shared library. Default: Personal Library"
                   >
                     <Select
                       value={formData.library}
-                      onChange={(e) => setFormData({ ...formData, library: e.target.value as 'Personal Library' | 'Shared Library' })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          library: e.target.value as
+                            | "Personal Library"
+                            | "Shared Library",
+                        })
+                      }
                       maxW="200px"
                     >
                       <option value="Personal Library">Personal Library</option>
@@ -439,13 +582,19 @@ export function EditPolicyModal({ isOpen, onClose, onPolicySaved, isEditing = fa
                 </FormControl>
 
                 <FormControl>
-                  <FieldWithInfo 
+                  <FieldWithInfo
                     label="Download Recent X"
                     info="Stop downloading after X recent photos are downloaded (leave empty for all)"
                   >
                     <NumberInput
-                      value={formData.recent || ''}
-                      onChange={(valueString) => setFormData({ ...formData, recent: valueString === '' ? null : parseInt(valueString) })}
+                      value={formData.recent || ""}
+                      onChange={(valueString) =>
+                        setFormData({
+                          ...formData,
+                          recent:
+                            valueString === "" ? null : parseInt(valueString),
+                        })
+                      }
                       min={0}
                       maxW="100px"
                     >
@@ -455,13 +604,19 @@ export function EditPolicyModal({ isOpen, onClose, onPolicySaved, isEditing = fa
                 </FormControl>
 
                 <FormControl>
-                  <FieldWithInfo 
+                  <FieldWithInfo
                     label="Download Until Found X"
                     info="Stop downloading after X existing photos are checked (leave empty for all)"
                   >
                     <NumberInput
-                      value={formData.until_found || ''}
-                      onChange={(valueString) => setFormData({ ...formData, until_found: valueString === '' ? null : parseInt(valueString) })}
+                      value={formData.until_found || ""}
+                      onChange={(valueString) =>
+                        setFormData({
+                          ...formData,
+                          until_found:
+                            valueString === "" ? null : parseInt(valueString),
+                        })
+                      }
                       min={0}
                       maxW="100px"
                     >
@@ -471,25 +626,35 @@ export function EditPolicyModal({ isOpen, onClose, onPolicySaved, isEditing = fa
                 </FormControl>
 
                 <FormControl>
-                  <FieldWithInfo 
+                  <FieldWithInfo
                     label="Skip Videos"
                     info="Skip downloading video files"
                   >
                     <Switch
                       checked={formData.skip_videos}
-                      onChange={(e) => setFormData({ ...formData, skip_videos: e.target.checked })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          skip_videos: e.target.checked,
+                        })
+                      }
                     />
                   </FieldWithInfo>
                 </FormControl>
 
                 <FormControl>
-                  <FieldWithInfo 
+                  <FieldWithInfo
                     label="Skip Live Photos"
                     info="Skip downloading live photos"
                   >
                     <Switch
                       checked={formData.skip_live_photos}
-                      onChange={(e) => setFormData({ ...formData, skip_live_photos: e.target.checked })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          skip_live_photos: e.target.checked,
+                        })
+                      }
                     />
                   </FieldWithInfo>
                 </FormControl>
@@ -498,28 +663,40 @@ export function EditPolicyModal({ isOpen, onClose, onPolicySaved, isEditing = fa
 
             {/* Delete Options */}
             <Box>
-              <Text fontSize="lg" fontWeight="semibold" mb={4}>Delete Options</Text>
+              <Text fontSize="lg" fontWeight="semibold" mb={4}>
+                Delete Options
+              </Text>
               <VStack spacing={4} align="stretch">
                 <FormControl>
-                  <FieldWithInfo 
+                  <FieldWithInfo
                     label="Auto Delete"
                     info="Automatically delete photos that are no longer in iCloud"
                   >
                     <Switch
                       checked={formData.auto_delete}
-                      onChange={(e) => setFormData({ ...formData, auto_delete: e.target.checked })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          auto_delete: e.target.checked,
+                        })
+                      }
                     />
                   </FieldWithInfo>
                 </FormControl>
 
                 <FormControl>
-                  <FieldWithInfo 
+                  <FieldWithInfo
                     label="Delete After Download"
                     info="Delete photos from iCloud after successful download"
                   >
                     <Switch
                       checked={formData.delete_after_download}
-                      onChange={(e) => setFormData({ ...formData, delete_after_download: e.target.checked })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          delete_after_download: e.target.checked,
+                        })
+                      }
                     />
                   </FieldWithInfo>
                 </FormControl>
@@ -528,41 +705,55 @@ export function EditPolicyModal({ isOpen, onClose, onPolicySaved, isEditing = fa
 
             {/* UI Options */}
             <Box>
-              <Text fontSize="lg" fontWeight="semibold" mb={4}>Server Options</Text>
+              <Text fontSize="lg" fontWeight="semibold" mb={4}>
+                Server Options
+              </Text>
               <VStack spacing={4} align="stretch">
                 <FormControl>
-                  <FieldWithInfo 
+                  <FieldWithInfo
                     label="Dry Run"
                     info="Simulate the download process without actually downloading or modifying any files"
                   >
                     <Switch
                       isChecked={formData.dry_run}
-                      onChange={(e) => setFormData({ ...formData, dry_run: e.target.checked })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, dry_run: e.target.checked })
+                      }
                     />
                   </FieldWithInfo>
                 </FormControl>
 
                 <FormControl>
-                  <FieldWithInfo 
+                  <FieldWithInfo
                     label="Schedule Interval"
                     info="The schedule to run the policy as a cron job (leave empty to keep it manual)"
                   >
                     <Input
-                      value={formData.interval || ''}
-                      onChange={(e) => setFormData({ ...formData, interval: e.target.value })}
+                      value={formData.interval || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, interval: e.target.value })
+                      }
                       maxW="200px"
                     />
                   </FieldWithInfo>
                 </FormControl>
 
                 <FormControl>
-                  <FieldWithInfo 
+                  <FieldWithInfo
                     label="Log Level"
                     info="The level of detail in log messages"
                   >
                     <Select
                       value={formData.log_level}
-                      onChange={(e) => setFormData({ ...formData, log_level: e.target.value as 'debug' | 'info' | 'error' })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          log_level: e.target.value as
+                            | "debug"
+                            | "info"
+                            | "error",
+                        })
+                      }
                       maxW="200px"
                     >
                       <option value="debug">Debug</option>
@@ -579,7 +770,7 @@ export function EditPolicyModal({ isOpen, onClose, onPolicySaved, isEditing = fa
           <Button
             bg="black"
             color="white"
-            _hover={{ bg: 'gray.800' }}
+            _hover={{ bg: "gray.800" }}
             mr={3}
             borderRadius="xl"
             fontFamily="Inter, sans-serif"
@@ -587,12 +778,12 @@ export function EditPolicyModal({ isOpen, onClose, onPolicySaved, isEditing = fa
           >
             Save
           </Button>
-          <Button 
-            onClick={onClose} 
-            borderRadius="xl" 
+          <Button
+            onClick={onClose}
+            borderRadius="xl"
             fontFamily="Inter, sans-serif"
             variant="ghost"
-            _hover={{ bg: 'gray.100' }}
+            _hover={{ bg: "gray.100" }}
           >
             Cancel
           </Button>
@@ -600,4 +791,4 @@ export function EditPolicyModal({ isOpen, onClose, onPolicySaved, isEditing = fa
       </ModalContent>
     </Modal>
   );
-} 
+}

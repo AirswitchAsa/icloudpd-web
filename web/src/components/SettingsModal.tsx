@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState } from "react";
 import {
   Modal,
   ModalOverlay,
@@ -11,11 +11,11 @@ import {
   Flex,
   VStack,
   Text,
-} from '@chakra-ui/react';
-import { Socket } from 'socket.io-client';
-import { GeneralSettings } from './settings/GeneralSettings';
-import { DownloadSettings } from './settings/DownloadSettings';
-import { UserSettings } from './settings/UserSettings';
+} from "@chakra-ui/react";
+import { Socket } from "socket.io-client";
+import { GeneralSettings } from "./settings/GeneralSettings";
+import { DownloadSettings } from "./settings/DownloadSettings";
+import { UserSettings } from "./settings/UserSettings";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -24,7 +24,7 @@ interface SettingsModalProps {
   isGuest: boolean;
 }
 
-type TabType = 'general' | 'download' | 'user';
+type TabType = "general" | "download" | "user";
 
 interface TabConfig {
   id: TabType;
@@ -33,15 +33,21 @@ interface TabConfig {
 }
 
 const TABS: TabConfig[] = [
-  { id: 'general', label: 'General', component: GeneralSettings },
-  { id: 'download', label: 'Download', component: DownloadSettings },
-  { id: 'user', label: 'User', component: UserSettings },
+  { id: "general", label: "General", component: GeneralSettings },
+  { id: "download", label: "Download", component: DownloadSettings },
+  { id: "user", label: "User", component: UserSettings },
 ];
 
-export function SettingsModal({ isOpen, onClose, socket, isGuest }: SettingsModalProps) {
-  const [activeTab, setActiveTab] = useState<TabType>('general');
+export function SettingsModal({
+  isOpen,
+  onClose,
+  socket,
+  isGuest,
+}: SettingsModalProps) {
+  const [activeTab, setActiveTab] = useState<TabType>("general");
 
-  const ActiveComponent = TABS.find(tab => tab.id === activeTab)?.component || GeneralSettings;
+  const ActiveComponent =
+    TABS.find((tab) => tab.id === activeTab)?.component || GeneralSettings;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="4xl" isCentered>
@@ -53,23 +59,23 @@ export function SettingsModal({ isOpen, onClose, socket, isGuest }: SettingsModa
             {/* Left sidebar */}
             <Box w="240px" borderRightWidth="1px" p={6}>
               <VStack spacing={2} align="stretch">
-                {TABS.map(tab => (
+                {TABS.map((tab) => (
                   <Box
                     key={tab.id}
                     py={2}
                     px={4}
                     cursor="pointer"
                     borderRadius="md"
-                    bg={activeTab === tab.id ? 'gray.100' : 'transparent'}
+                    bg={activeTab === tab.id ? "gray.100" : "transparent"}
                     _hover={{
-                      bg: activeTab === tab.id ? 'gray.100' : 'gray.50'
+                      bg: activeTab === tab.id ? "gray.100" : "gray.50",
                     }}
                     onClick={() => setActiveTab(tab.id)}
                   >
                     <Text
                       fontSize="sm"
-                      fontWeight={activeTab === tab.id ? 'semibold' : 'normal'}
-                      color={activeTab === tab.id ? 'black' : 'gray.600'}
+                      fontWeight={activeTab === tab.id ? "semibold" : "normal"}
+                      color={activeTab === tab.id ? "black" : "gray.600"}
                     >
                       {tab.label}
                     </Text>
@@ -92,4 +98,4 @@ export function SettingsModal({ isOpen, onClose, socket, isGuest }: SettingsModa
       </ModalContent>
     </Modal>
   );
-} 
+}

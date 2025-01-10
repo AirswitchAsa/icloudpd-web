@@ -1,6 +1,9 @@
-from pydantic import BaseModel, Field
-from typing import Sequence, Literal, Annotated
+from collections.abc import Sequence
 from enum import Enum
+from typing import Annotated, Literal
+
+from pydantic import BaseModel, Field
+
 
 NON_POLICY_FIELDS = ["status", "progress", "authenticated", "albums"]
 

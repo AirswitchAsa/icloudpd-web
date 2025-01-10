@@ -1,0 +1,36 @@
+line-length = 100
+
+[lint.pydocstyle]
+convention = "google"
+
+[format]
+docstring-code-format = true
+quote-style = "double"
+indent-style = "space"
+
+[isort]
+lines-after-imports = 2
+known-first-party = ["icloudpd_web", "icloudpd", "pyicloud_ipd"]
+section-order = [
+  "future",
+  "standard-library",
+  "third-party",
+  "first-party",
+  "local-folder",
+]
+
+[lint]
+select = [
+  # pycodestyle
+  "E",
+  # Pyflakes
+  "F",
+  # pyupgrade
+  "UP",
+  # flake8-bugbear
+  "B",
+  # flake8-simplify
+  "SIM",
+  # isort
+  "I",
+]
