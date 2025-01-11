@@ -22,6 +22,7 @@ from icloudpd_web.api.download_option_utils import (
     handle_recent_until_found,
     log_at_download_start,
     should_break,
+    should_skip,
 )
 from icloudpd_web.api.error import ICloudAccessError, ICloudAuthenticationError
 from icloudpd_web.api.icloud_utils import (
@@ -314,6 +315,8 @@ class PolicyHandler:
                     )
                     break
                 item: PhotoAsset = next(photos_iterator)  # type: ignore
+                if should_skip(logger, item, self._configs):
+                    continue
                 download_result = await async_download_photo(consecutive_files_found, item)
                 if download_result and self._configs.delete_after_download:
                     delete_local = partial(

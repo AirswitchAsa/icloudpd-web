@@ -43,6 +43,12 @@ class PolicyConfigs(BaseModel):
     until_found: Annotated[int, Field(ge=0)] | None = None
     skip_videos: bool = False
     skip_live_photos: bool = False
+    file_suffixes: list[str] = []
+    match_pattern: str = ""
+    created_after: str = ""
+    created_before: str = ""
+    added_after: str = ""
+    added_before: str = ""
 
     # Delete options
     auto_delete: bool = False

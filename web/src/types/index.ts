@@ -32,6 +32,12 @@ export interface Policy {
   until_found: number | null;
   skip_videos: boolean;
   skip_live_photos: boolean;
+  file_suffixes: string[] | null;
+  match_pattern: string | null;
+  created_after: string | null;
+  created_before: string | null;
+  added_after: string | null;
+  added_before: string | null;
 
   // Delete options
   auto_delete: boolean;

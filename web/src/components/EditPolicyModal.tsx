@@ -18,58 +18,18 @@ import {
   NumberInputField,
   Box,
   Text,
-  HStack,
-  Checkbox,
-  FormLabel,
-  IconButton,
-  Collapse,
-  useDisclosure,
 } from "@chakra-ui/react";
 import { useSocket, SocketConfig } from "@/hooks/useSocket";
 import { Policy } from "@/types";
-import { ChevronDownIcon, ChevronUpIcon } from "@chakra-ui/icons";
+import {
+  FieldWithInfo,
+  AlbumField,
+  SuffixField,
+  PatternMatchField,
+  DateRangeField,
+  DownloadSizesField,
+} from "@/components/EditModalFields";
 
-interface FieldWithInfoProps {
-  label: string;
-  info?: string;
-  children: React.ReactNode;
-}
-
-function FieldWithInfo({ label, info, children }: FieldWithInfoProps) {
-  const { isOpen, onToggle } = useDisclosure();
-  return (
-    <Box>
-      <HStack spacing={2} align="center" mb={info && isOpen ? 2 : 0} h="40px">
-        <IconButton
-          aria-label="Toggle info"
-          icon={isOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
-          size="sm"
-          variant="ghost"
-          onClick={onToggle}
-        />
-        <FormLabel flex="1" mb="0">
-          {label}
-        </FormLabel>
-        {children}
-      </HStack>
-      {info && (
-        <Collapse in={isOpen}>
-          <Box pl={10} pr={4} py={2} bg="gray.50" borderRadius="md">
-            <Text fontSize="sm" color="gray.600">
-              {info}
-            </Text>
-          </Box>
-        </Collapse>
-      )}
-    </Box>
-  );
-}
-
-interface AlbumFieldProps {
-  policy: Policy | undefined;
-  value: string;
-  onChange: (value: string) => void;
-}
 interface EditPolicyModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -121,6 +81,12 @@ export function EditPolicyModal({
     dry_run: policy?.dry_run || false,
     interval: policy?.interval || (null as string | null),
     log_level: policy?.log_level || "info",
+    file_suffixes: policy?.file_suffixes || null,
+    match_pattern: policy?.match_pattern || null,
+    created_after: policy?.created_after || null,
+    created_before: policy?.created_before || null,
+    added_after: policy?.added_after || null,
+    added_before: policy?.added_before || null,
   });
 
   const handleSave = () => {
@@ -441,38 +407,21 @@ export function EditPolicyModal({
                   </FieldWithInfo>
                 </FormControl>
 
-                <FormControl>
-                  <FieldWithInfo
-                    label="Download Sizes"
-                    info="Select one or more sizes for downloaded photos"
-                  >
-                    <HStack spacing={4} pl={2}>
-                      {(
-                        [
-                          "original",
-                          "medium",
-                          "thumb",
-                          "adjusted",
-                          "alternative",
-                        ] as const
-                      ).map((sizeOption) => (
-                        <Checkbox
-                          key={sizeOption}
-                          isChecked={formData.size.includes(sizeOption)}
-                          onChange={(e) => {
-                            const newSizes = e.target.checked
-                              ? [...formData.size, sizeOption]
-                              : formData.size.filter((s) => s !== sizeOption);
-                            setFormData({ ...formData, size: newSizes });
-                          }}
-                        >
-                          {sizeOption.charAt(0).toUpperCase() +
-                            sizeOption.slice(1)}
-                        </Checkbox>
-                      ))}
-                    </HStack>
-                  </FieldWithInfo>
-                </FormControl>
+                <DownloadSizesField
+                  value={formData.size}
+                  onChange={(value: string[]) =>
+                    setFormData({
+                      ...formData,
+                      size: value as (
+                        | "original"
+                        | "medium"
+                        | "thumb"
+                        | "adjusted"
+                        | "alternative"
+                      )[],
+                    })
+                  }
+                />
 
                 <FormControl>
                   <FieldWithInfo
@@ -568,44 +517,13 @@ export function EditPolicyModal({
                 Filter Options
               </Text>
               <VStack spacing={4} align="stretch">
-                <FormControl>
-                  <FieldWithInfo
-                    label="Album"
-                    info="The album to download from. Choose from a list of albums when the policy is authenticated. Note that user-created albums only exist in Personal Library and trying to download them from a Shared Library will result in an error. Default: All Photos"
-                  >
-                    {policy?.authenticated && policy.albums ? (
-                      <Select
-                        value={formData.album}
-                        onChange={(e) =>
-                          setFormData({ ...formData, album: e.target.value })
-                        }
-                        maxW="200px"
-                        placeholder="Select an album"
-                        borderColor={
-                          policy.albums &&
-                          !policy.albums.includes(formData.album)
-                            ? "red.300"
-                            : undefined
-                        }
-                      >
-                        {policy.albums.map((album) => (
-                          <option key={album} value={album}>
-                            {album}
-                          </option>
-                        ))}
-                      </Select>
-                    ) : (
-                      <Input
-                        value={formData.album}
-                        onChange={(e) =>
-                          setFormData({ ...formData, album: e.target.value })
-                        }
-                        maxW="200px"
-                        placeholder="Enter album name"
-                      />
-                    )}
-                  </FieldWithInfo>
-                </FormControl>
+                <AlbumField
+                  policy={policy}
+                  value={formData.album}
+                  onChange={(value) =>
+                    setFormData({ ...formData, album: value })
+                  }
+                />
                 <FormControl>
                   <FieldWithInfo
                     label="Library"
@@ -627,6 +545,44 @@ export function EditPolicyModal({
                     </Select>
                   </FieldWithInfo>
                 </FormControl>
+                <SuffixField
+                  value={formData.file_suffixes}
+                  onChange={(value) =>
+                    setFormData({ ...formData, file_suffixes: value })
+                  }
+                />
+                <PatternMatchField
+                  value={formData.match_pattern}
+                  onChange={(value) =>
+                    setFormData({ ...formData, match_pattern: value })
+                  }
+                />
+                <DateRangeField
+                  label="Created Date Range"
+                  info="Filter files by creation date"
+                  startDate={formData.created_after}
+                  endDate={formData.created_before}
+                  onChange={(start, end) =>
+                    setFormData({
+                      ...formData,
+                      created_after: start,
+                      created_before: end,
+                    })
+                  }
+                />
+                <DateRangeField
+                  label="Added Date Range"
+                  info="Filter files by the date they were added to iCloud"
+                  startDate={formData.added_after}
+                  endDate={formData.added_before}
+                  onChange={(start, end) =>
+                    setFormData({
+                      ...formData,
+                      added_after: start,
+                      added_before: end,
+                    })
+                  }
+                />
 
                 <FormControl>
                   <FieldWithInfo

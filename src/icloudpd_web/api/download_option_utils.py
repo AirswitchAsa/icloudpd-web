@@ -1,11 +1,14 @@
+import fnmatch
 import itertools
 import logging
 import os
 from collections.abc import Iterable, Sequence
+from datetime import datetime
 from typing import Literal
 
 from icloudpd.counter import Counter
 from icloudpd.download import mkdirs_for_path
+from icloudpd_web.api.data_models import PolicyConfigs
 from pyicloud_ipd.services.photos import PhotoAsset
 
 
@@ -68,6 +71,50 @@ def log_at_download_start(
 def should_break(counter: Counter, until_found: int | None) -> bool:
     """Exit if until_found condition is reached"""
     return until_found is not None and counter.value() >= until_found
+
+
+def should_skip(logger: logging.Logger, item: PhotoAsset, configs: PolicyConfigs) -> bool:  # noqa: C901
+    # convert created_after, created_before, added_after, added_before to datetime if not empty
+    created_after = (
+        datetime.strptime(configs.created_after, "%Y-%m-%d") if configs.created_after else None
+    )
+    created_before = (
+        datetime.strptime(configs.created_before, "%Y-%m-%d") if configs.created_before else None
+    )
+    added_after = (
+        datetime.strptime(configs.added_after, "%Y-%m-%d") if configs.added_after else None
+    )
+    added_before = (
+        datetime.strptime(configs.added_before, "%Y-%m-%d") if configs.added_before else None
+    )
+    if created_after and item.created < created_after.replace(tzinfo=item.created.tzinfo):
+        logger.info(f"Skipping {item.filename} because it was created before {created_after}")
+        return True
+    if created_before and item.created > created_before.replace(tzinfo=item.created.tzinfo):
+        logger.info(f"Skipping {item.filename} because it was created after {created_before}")
+        return True
+    if added_after and item.added_date < added_after.replace(tzinfo=item.added_date.tzinfo):
+        logger.info(f"Skipping {item.filename} because it was added before {added_after}")
+        return True
+    if added_before and item.added_date > added_before.replace(tzinfo=item.added_date.tzinfo):
+        logger.info(f"Skipping {item.filename} because it was added after {added_before}")
+        return True
+    # check suffix first to avoid unnecessary glob pattern matching
+    if configs.file_suffixes:
+        for suffix in configs.file_suffixes:
+            if item.filename.endswith(suffix):
+                return False
+    # split match_pattern by comma and check if any of the glob patterns match the item
+    if configs.match_pattern:
+        for pattern in configs.match_pattern.split(","):
+            if fnmatch.fnmatch(item.filename, pattern):
+                return False
+
+    logger.info(
+        f"Skipping {item.filename} because it does not end with any of {configs.file_suffixes} "
+        f"or match any of {configs.match_pattern}"
+    )
+    return True
 
 
 def check_folder_structure(
