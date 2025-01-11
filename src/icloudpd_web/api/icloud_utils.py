@@ -1,15 +1,15 @@
-from foundation.core import compose, identity
-from icloudpd.paths import clean_filename, remove_unicode_chars
-from icloudpd.base import lp_filename_concatinator, lp_filename_original, download_builder
-
-from pyicloud_ipd.file_match import FileMatchPolicy
-from pyicloud_ipd.base import PyiCloudService
-from icloudpd_web.api.data_models import PolicyConfigs
-
+import os
+from inspect import signature
 from typing import Callable
 
-from inspect import signature
-import os
+from foundation.core import compose, identity
+
+from icloudpd.base import download_builder, lp_filename_concatinator, lp_filename_original
+from icloudpd.paths import clean_filename, remove_unicode_chars
+from icloudpd_web.api.data_models import PolicyConfigs
+from pyicloud_ipd.base import PyiCloudService
+from pyicloud_ipd.file_match import FileMatchPolicy
+
 
 class ICloudManager:
     def __init__(self):

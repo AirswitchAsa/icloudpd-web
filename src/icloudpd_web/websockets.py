@@ -1,14 +1,15 @@
-from fastapi import WebSocket, WebSocketDisconnect
-from typing import Dict, Set
 import json
 import logging
+
+from fastapi import WebSocket, WebSocketDisconnect
+
 
 logger = logging.getLogger(__name__)
 
 
 class ConnectionManager:
     def __init__(self):
-        self.active_connections: Dict[str, Set[WebSocket]] = {}
+        self.active_connections: dict[str, set[WebSocket]] = {}
 
     async def connect(self, websocket: WebSocket, client_id: str):
         await websocket.accept()
@@ -46,9 +47,7 @@ async def handle_websocket(websocket: WebSocket, client_id: str):
                 data = await websocket.receive_text()
                 message = json.loads(data)
                 # Handle incoming messages here
-                await manager.send_message(
-                    {"type": "acknowledgment", "data": message}, client_id
-                )
+                await manager.send_message({"type": "acknowledgment", "data": message}, client_id)
             except json.JSONDecodeError:
                 await manager.send_message(
                     {"type": "error", "message": "Invalid JSON format"}, client_id

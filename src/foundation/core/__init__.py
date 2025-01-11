@@ -1,5 +1,6 @@
 from typing import Callable, Tuple, TypeVar
-from . import optional
+
+
 _T_contra = TypeVar("_T_contra", contravariant=True)
 _T2_contra = TypeVar("_T2_contra", contravariant=True)
 _T3_contra = TypeVar("_T3_contra", contravariant=True)
@@ -202,19 +203,20 @@ def pipe2(
     """
     return expand2(pipe(compact2(f), g))
 
+
 __all__ = [
-    'compose',
-    'identity',
-    'constant',
-    'pipe',
-    'apply_reverse',
-    'curry2',
-    'uncurry2',
-    'curry3',
-    'fst',
-    'snd',
-    'flip',
-    'compact2',
-    'expand2',
-    'pipe2',
+    "compose",
+    "identity",
+    "constant",
+    "pipe",
+    "apply_reverse",
+    "curry2",
+    "uncurry2",
+    "curry3",
+    "fst",
+    "snd",
+    "flip",
+    "compact2",
+    "expand2",
+    "pipe2",
 ]

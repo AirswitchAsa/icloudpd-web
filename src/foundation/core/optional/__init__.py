@@ -1,5 +1,6 @@
 from typing import Callable, Optional, TypeVar
 
+
 _Tin = TypeVar("_Tin")
 _Tin2 = TypeVar("_Tin2")
 _Tin3 = TypeVar("_Tin3")
@@ -100,8 +101,9 @@ def lift3(
 
     return _intern
 
+
 __all__ = [
-    'bind',
-    'lift2',
-    'lift3',
+    "bind",
+    "lift2",
+    "lift3",
 ]
