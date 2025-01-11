@@ -50,7 +50,7 @@ export function UserSettings({ socket, isGuest }: UserSettingsProps) {
     if (!socket) return;
 
     // Get server config
-    socket.emit("getServerConfig");
+    socket.emit("get_server_config");
 
     socket.on("server_config", (config: AccessControlConfig) => {
       setAccessControl(config);

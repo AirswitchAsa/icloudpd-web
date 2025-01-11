@@ -23,7 +23,6 @@ import { Policy } from "@/types/index";
 import { InterruptConfirmationDialog } from "./InterruptConfirmationDialog";
 import { useState, useEffect } from "react";
 import { Socket } from "socket.io-client";
-import streamSaver from "streamsaver";
 
 interface PolicyRowProps {
   policy: Policy;
@@ -64,46 +63,48 @@ export const PolicyRow = ({
     onInterruptClose();
   };
 
-  const handleRun = (e: React.MouseEvent) => {
+  const handleRun = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (socket && policy.authenticated) {
       setIsWaitingRun(true);
 
-      // Create the write stream once
-      const fileStream = streamSaver.createWriteStream(`${policy.name}.zip`);
-      const writer = fileStream.getWriter();
+      // Only import and use streamSaver on the client side
+      if (typeof window !== "undefined" && policy.download_via_browser) {
+        const streamSaver = (await import("streamsaver")).default;
+        const fileStream = streamSaver.createWriteStream(`${policy.name}.zip`);
+        const writer = fileStream.getWriter();
 
-      socket.on("zip_chunk", (data) => {
-        if (data.chunk && policy.download_via_browser) {
-          try {
-            if (!data.chunk) return;
-            // Handle iterable of base64 chunks
-            const binaryStr = atob(data.chunk); // decode base64 -> binary string
-            const bytes = new Uint8Array(binaryStr.length);
-            for (let i = 0; i < binaryStr.length; i++) {
-              bytes[i] = binaryStr.charCodeAt(i);
+        socket.on("zip_chunk", (data) => {
+          if (data.chunk && policy.download_via_browser) {
+            try {
+              if (!data.chunk) return;
+              const binaryStr = atob(data.chunk);
+              const bytes = new Uint8Array(binaryStr.length);
+              for (let i = 0; i < binaryStr.length; i++) {
+                bytes[i] = binaryStr.charCodeAt(i);
+              }
+              console.log("Writing chunk of size:", bytes.length, "bytes");
+              writer.write(bytes);
+            } catch (error) {
+              console.error("Error processing zip chunks:", error);
             }
-            console.log("Writing chunk of size:", bytes.length, "bytes");
-            writer.write(bytes);
-          } catch (error) {
-            console.error("Error processing zip chunks:", error);
           }
-        }
-        if (data.finished) {
+          if (data.finished) {
+            writer.close();
+            setIsWaitingRun(false);
+          }
+        });
+
+        socket.once("download_failed", () => {
+          writer.abort();
+          setIsWaitingRun(false);
+        });
+
+        socket.once("download_interrupted", () => {
           writer.close();
           setIsWaitingRun(false);
-        }
-      });
-
-      socket.once("download_failed", () => {
-        writer.abort();
-        setIsWaitingRun(false);
-      });
-
-      socket.once("download_interrupted", () => {
-        writer.close();
-        setIsWaitingRun(false);
-      });
+        });
+      }
     }
     onRun(policy);
   };
