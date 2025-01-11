@@ -212,7 +212,8 @@ def create_app(  # noqa: C901
                                 cid == client_id for cid in sid_to_client.values()
                             ):
                                 del handler_manager[client_id]
-                                print(f"Removed handler for guest {client_id} after timeout")
+                                await sio.emit("logout_complete", client_id, to=sid)
+                                print(f"Logged out guest {client_id} after timeout")
                         finally:
                             guest_timeout_tasks.pop(client_id, None)  # type: ignore
 
@@ -233,12 +234,14 @@ def create_app(  # noqa: C901
         if client_id in handler_manager:
             del handler_manager[client_id]
             print(f"Removed handler for client {client_id}")
+
+            # Notify the requesting client that logout is complete
+            await sio.emit("logout_complete", to=sid)
+
             # Clean up any sessions associated with this client_id
             sids_to_remove = [s for s, cid in sid_to_client.items() if cid == client_id]
             for s in sids_to_remove:
                 await disconnect(s)
-            # Notify the requesting client that logout is complete
-            await sio.emit("logout_complete", to=sid)
 
     @sio.event
     async def get_server_config(sid: str) -> None:

@@ -7,7 +7,6 @@ import {
   ModalBody,
   ModalCloseButton,
   FormControl,
-  FormLabel,
   Input,
   VStack,
   Select,
@@ -20,23 +19,15 @@ import {
   Box,
   Text,
   HStack,
+  Checkbox,
+  FormLabel,
   IconButton,
   Collapse,
   useDisclosure,
-  Checkbox,
 } from "@chakra-ui/react";
-import { ChevronDownIcon, ChevronUpIcon } from "@chakra-ui/icons";
 import { useSocket, SocketConfig } from "@/hooks/useSocket";
 import { Policy } from "@/types";
-
-interface EditPolicyModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onPolicySaved?: (policies: Policy[]) => void;
-  isEditing?: boolean;
-  policy?: Policy;
-  socketConfig: SocketConfig;
-}
+import { ChevronDownIcon, ChevronUpIcon } from "@chakra-ui/icons";
 
 interface FieldWithInfoProps {
   label: string;
@@ -72,6 +63,20 @@ function FieldWithInfo({ label, info, children }: FieldWithInfoProps) {
       )}
     </Box>
   );
+}
+
+interface AlbumFieldProps {
+  policy: Policy | undefined;
+  value: string;
+  onChange: (value: string) => void;
+}
+interface EditPolicyModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onPolicySaved?: (policies: Policy[]) => void;
+  isEditing?: boolean;
+  policy?: Policy;
+  socketConfig: SocketConfig;
 }
 
 export function EditPolicyModal({
@@ -176,6 +181,26 @@ export function EditPolicyModal({
     "value of formData.download_via_browser",
     formData.download_via_browser,
   );
+  const handleSaveLibrary = (value: "Personal Library" | "Shared Library") => {
+    if (!isEditing || !socket || !policy) return;
+    const newFormData = { ...formData, library: value };
+    setFormData(newFormData);
+
+    socket.once("policies_after_save", (policies: Policy[]) => {
+      toast({
+        title: "Success",
+        description: `Library is set to ${value}. You may now select an album.`,
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+      // set albums to the new values and update the policy
+      const newAlbums = policies.find((p) => p.name === policy?.name)?.albums;
+      policy.albums = newAlbums;
+      setFormData({ ...newFormData, albums: newAlbums });
+    });
+    socket.emit("save_policy", policy?.name, newFormData);
+  };
   return (
     <Modal
       isOpen={isOpen}
@@ -550,16 +575,18 @@ export function EditPolicyModal({
                   >
                     {policy?.authenticated && policy.albums ? (
                       <Select
-                        value={
-                          policy.albums.includes(formData.album)
-                            ? formData.album
-                            : ""
-                        }
+                        value={formData.album}
                         onChange={(e) =>
                           setFormData({ ...formData, album: e.target.value })
                         }
                         maxW="200px"
                         placeholder="Select an album"
+                        borderColor={
+                          policy.albums &&
+                          !policy.albums.includes(formData.album)
+                            ? "red.300"
+                            : undefined
+                        }
                       >
                         {policy.albums.map((album) => (
                           <option key={album} value={album}>
@@ -579,7 +606,6 @@ export function EditPolicyModal({
                     )}
                   </FieldWithInfo>
                 </FormControl>
-
                 <FormControl>
                   <FieldWithInfo
                     label="Library"
@@ -588,12 +614,11 @@ export function EditPolicyModal({
                     <Select
                       value={formData.library}
                       onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          library: e.target.value as
+                        handleSaveLibrary(
+                          e.target.value as
                             | "Personal Library"
                             | "Shared Library",
-                        })
+                        )
                       }
                       maxW="200px"
                     >
