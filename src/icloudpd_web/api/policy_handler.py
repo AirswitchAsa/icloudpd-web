@@ -6,7 +6,6 @@ import shutil
 from collections.abc import AsyncGenerator, Callable
 from enum import Enum
 from functools import partial
-from stat import S_IFREG
 from typing import cast
 
 import aiofiles
@@ -338,9 +337,11 @@ class PolicyHandler:
                     async with aiofiles.open(filepath, "rb") as f:
                         file_content = await f.read()
                         yield (
-                            item.filename,
+                            filepath.replace(
+                                directory_path, "Photos"
+                            ),  # preserve folder structure in zipfile
                             item.created,
-                            S_IFREG,
+                            0o666,
                             ZIP_64,
                             self._content_generator(file_content),
                         )
