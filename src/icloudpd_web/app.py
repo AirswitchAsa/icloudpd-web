@@ -425,7 +425,7 @@ def create_app(  # noqa: C901
                             )
                             return
 
-                        task = asyncio.create_task(policy.start(logger))
+                        task = asyncio.create_task(policy.start_with_zip(logger, sio))
                         last_progress = 0
                         while not task.done():
                             await asyncio.sleep(1)
@@ -439,7 +439,6 @@ def create_app(  # noqa: C901
                                     sid,
                                     {
                                         "policy": policy.dump(),
-                                        "zip_file": policy.zip_recent_files(),
                                         "logs": logs,
                                     },
                                 )
@@ -459,16 +458,6 @@ def create_app(  # noqa: C901
                             )
                             return
 
-                        await maybe_emit(
-                            "download_progress",
-                            client_id,
-                            sid,
-                            {
-                                "policy": policy.dump(),
-                                "zip_file": policy.zip_recent_files(clean_up=True),
-                                "logs": "",
-                            },
-                        )
                         await maybe_emit(
                             "download_finished",
                             client_id,

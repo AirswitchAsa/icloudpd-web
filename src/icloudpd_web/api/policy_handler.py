@@ -1,14 +1,17 @@
 import asyncio
-import io
+import base64
 import logging
 import os
 import shutil
-import zipfile
-from base64 import b64encode
-from collections.abc import Callable
+from collections.abc import AsyncGenerator, Callable
 from enum import Enum
 from functools import partial
+from stat import S_IFREG
 from typing import cast
+
+import aiofiles
+import socketio
+from stream_zip import ZIP_64, AsyncMemberFile, async_stream_zip
 
 from icloudpd.autodelete import autodelete_photos
 from icloudpd.base import delete_photo, download_builder, retrier
@@ -31,7 +34,7 @@ from icloudpd_web.api.icloud_utils import (
 from icloudpd_web.api.logger import build_logger_level, build_photos_exception_handler
 from pyicloud_ipd.base import PyiCloudService
 from pyicloud_ipd.exceptions import PyiCloudFailedLoginException
-from pyicloud_ipd.services.photos import PhotoAlbum
+from pyicloud_ipd.services.photos import PhotoAlbum, PhotoAsset
 
 
 class PolicyStatus(Enum):
@@ -208,7 +211,17 @@ class PolicyHandler:
         assert self._status == PolicyStatus.RUNNING, "Can only interrupt when policy is running"
         self._status = PolicyStatus.STOPPED
 
-    async def start(self: "PolicyHandler", logger: logging.Logger) -> None:
+    async def start_with_zip(
+        self: "PolicyHandler", logger: logging.Logger, sio: socketio.AsyncServer
+    ) -> None:
+        async for chunk in async_stream_zip(self.start(logger)):
+            encoded_chunk = base64.b64encode(chunk).decode("utf-8")
+            await sio.emit("zip_chunk", {"chunk": encoded_chunk})
+        await sio.emit("zip_chunk", {"finished": True})
+
+    async def start(
+        self: "PolicyHandler", logger: logging.Logger
+    ) -> AsyncGenerator[AsyncMemberFile]:
         """
         Start running the policy for download.
         """
@@ -242,7 +255,10 @@ class PolicyHandler:
                 loop = asyncio.get_running_loop()
                 return await loop.run_in_executor(None, download_photo, *args, **kwargs)
 
-            photos_counter = await self.download(icloud, logger, async_download_photo)
+            photos_counter = 0
+            async for file_info in self.download(icloud, logger, async_download_photo):
+                photos_counter += 1
+                yield file_info
         except Exception as e:
             logger.error(f"Error running policy: {self._name}. Exiting.")
             self._status = PolicyStatus.ERRORED
@@ -256,35 +272,12 @@ class PolicyHandler:
         )
         self._status = PolicyStatus.STOPPED
 
-    def zip_recent_files(self: "PolicyHandler", clean_up: bool = False) -> str | None:
-        directory_path = os.path.abspath(os.path.expanduser(cast(str, self._configs.directory)))
-        if not self._configs.download_via_browser:
-            return
-        zip_buffer = io.BytesIO()
-        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
-            # Walk through directory recursively
-            for root, _, files in os.walk(directory_path):
-                for file in files:
-                    if not (file.startswith(".") or file.endswith(".part")):
-                        file_path = os.path.join(root, file)
-                        # Get relative path for zip structure
-                        rel_path = os.path.relpath(file_path, directory_path)
-                        zf.write(file_path, rel_path)
-                        os.remove(file_path)
-        if clean_up:
-            # Remove the directory and all its contents
-            shutil.rmtree(directory_path)
-
-        # Convert to base64 for transmission
-        zip_data = b64encode(zip_buffer.getvalue()).decode("utf-8")
-        return zip_data
-
-    async def download(
+    async def download(  # noqa: C901
         self: "PolicyHandler",
         icloud: PyiCloudService,
         logger: logging.Logger,
         async_download_photo: Callable,
-    ) -> int:
+    ) -> AsyncGenerator[AsyncMemberFile]:
         directory_path = os.path.abspath(os.path.expanduser(cast(str, self._configs.directory)))
         directory = os.path.normpath(directory_path)
         check_folder_structure(
@@ -321,7 +314,7 @@ class PolicyHandler:
                         self._configs.until_found,
                     )
                     break
-                item = next(photos_iterator)  # type: ignore
+                item: PhotoAsset = next(photos_iterator)  # type: ignore
                 download_result = await async_download_photo(consecutive_files_found, item)
                 if download_result and self._configs.delete_after_download:
                     delete_local = partial(
@@ -333,6 +326,27 @@ class PolicyHandler:
                     )
 
                     retrier(delete_local, error_handler)
+
+                def find_file_at_path(item: PhotoAsset) -> str | None:
+                    for root, _, files in os.walk(directory):
+                        for file in files:
+                            if item.filename in file:
+                                return os.path.join(root, file)
+                    return None
+
+                if filepath := find_file_at_path(item):
+                    async with aiofiles.open(filepath, "rb") as f:
+                        file_content = await f.read()
+                        yield (
+                            item.filename,
+                            item.created,
+                            S_IFREG,
+                            ZIP_64,
+                            self._content_generator(file_content),
+                        )
+                    # remove the file after sending
+                    if self._configs.download_via_browser:
+                        os.remove(filepath)
 
                 photos_counter += 1
                 if photos_count is not None:
@@ -352,4 +366,10 @@ class PolicyHandler:
                 directory=directory,
                 _sizes=self._configs.size,  # type: ignore # string enum
             )
-        return photos_counter
+        if self._configs.download_via_browser:
+            shutil.rmtree(directory)
+
+    async def _content_generator(
+        self: "PolicyHandler", content: bytes
+    ) -> AsyncGenerator[bytes, None]:
+        yield content

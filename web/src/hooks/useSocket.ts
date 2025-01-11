@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
-import { io, Socket } from 'socket.io-client';
-import { Policy } from '@/types';
+import { useEffect, useState } from "react";
+import { io, Socket } from "socket.io-client";
+import { Policy } from "@/types";
 
 // Generate a random guest ID
 function generateGuestId() {
-  return 'guest-' + Math.random().toString(36).substring(2, 8);
+  return "guest-" + Math.random().toString(36).substring(2, 8);
 }
 
 // Define types for the different event payloads
@@ -35,6 +35,10 @@ interface DownloadFinishedPayload {
   logs: string;
 }
 
+interface ZipChunkPayload {
+  chunk: string;
+}
+
 export interface SocketConfig {
   clientId: string;
   isGuest: boolean;
@@ -44,39 +48,39 @@ export function useSocket(config: SocketConfig) {
   const [socket, setSocket] = useState<Socket | null>(null);
 
   useEffect(() => {
-    console.log('Attempting to connect to WebSocket server...');
+    console.log("Attempting to connect to WebSocket server...");
     const newSocket = io(process.env.NEXT_PUBLIC_API_URL, {
-      transports: ['websocket'],
+      transports: ["websocket"],
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
       auth: {
-        clientId: config.clientId
-      }
+        clientId: config.clientId,
+      },
     });
 
     // Basic connection events
-    newSocket.on('connect', () => {
-      console.log('Connected to Python server');
+    newSocket.on("connect", () => {
+      console.log("Connected to Python server");
     });
 
-    newSocket.on('connect_error', (error: Error) => {
-      console.error('Socket connection error:', error.message);
+    newSocket.on("connect_error", (error: Error) => {
+      console.error("Socket connection error:", error.message);
     });
 
-    newSocket.on('disconnect', (reason) => {
-      console.log('Socket disconnected:', reason);
+    newSocket.on("disconnect", (reason) => {
+      console.log("Socket disconnected:", reason);
     });
 
     // Policy update events
     const policyUpdateEvents = [
-      'policies',
-      'uploaded_policies',
-      'policies_after_save',
-      'policies_after_delete',
+      "policies",
+      "uploaded_policies",
+      "policies_after_save",
+      "policies_after_delete",
     ];
 
-    policyUpdateEvents.forEach(event => {
+    policyUpdateEvents.forEach((event) => {
       newSocket.on(event, (payload: Policy[]) => {
         console.log(`${event}:`, payload);
       });
@@ -84,47 +88,51 @@ export function useSocket(config: SocketConfig) {
 
     // Error events with policies
     const errorEventsWithPolicies = [
-      'error_saving_policy',
-      'error_deleting_policy',
-      'error_interrupting_download'
+      "error_saving_policy",
+      "error_deleting_policy",
+      "error_interrupting_download",
     ];
 
-    errorEventsWithPolicies.forEach(event => {
+    errorEventsWithPolicies.forEach((event) => {
       newSocket.on(event, (payload: ErrorWithPoliciesPayload) => {
         console.error(`${event}:`, payload);
       });
     });
 
     // Authentication events
-    newSocket.on('authenticated', (msg: string) => {
-      console.log('Authentication successful:', msg);
+    newSocket.on("authenticated", (msg: string) => {
+      console.log("Authentication successful:", msg);
     });
 
-    newSocket.on('authentication_failed', (msg: string) => {
-      console.error('Authentication failed:', msg);
+    newSocket.on("authentication_failed", (msg: string) => {
+      console.error("Authentication failed:", msg);
     });
 
-    newSocket.on('mfa_required', (msg: string) => {
-      console.log('MFA required:', msg);
+    newSocket.on("mfa_required", (msg: string) => {
+      console.log("MFA required:", msg);
     });
 
     // Download events
-    newSocket.on('download_progress', (payload: DownloadProgressPayload) => {
-      console.log('Download progress:', payload);
+    newSocket.on("download_progress", (payload: DownloadProgressPayload) => {
+      console.log("Download progress:", payload);
     });
 
-    newSocket.on('download_finished', (payload: DownloadFinishedPayload) => {
-      console.log('Download finished:', payload);
+    newSocket.on("download_finished", (payload: DownloadFinishedPayload) => {
+      console.log("Download finished:", payload);
     });
 
-    newSocket.on('download_failed', (payload: ErrorPayload) => {
-      console.error('Download failed:', payload);
+    newSocket.on("download_failed", (payload: ErrorPayload) => {
+      console.error("Download failed:", payload);
+    });
+
+    newSocket.on("zip_chunk", (payload: ZipChunkPayload) => {
+      console.log("Zip chunk:", payload);
     });
 
     setSocket(newSocket);
 
     return () => {
-      console.log('Cleaning up socket connection');
+      console.log("Cleaning up socket connection");
       newSocket.close();
     };
   }, [config.clientId]);

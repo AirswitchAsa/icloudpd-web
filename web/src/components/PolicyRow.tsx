@@ -24,6 +24,7 @@ import { InterruptConfirmationDialog } from "./InterruptConfirmationDialog";
 import { useState, useEffect } from "react";
 import { Socket } from "socket.io-client";
 import streamSaver from "streamsaver";
+
 interface PolicyRowProps {
   policy: Policy;
   setPolicies: (policies: Policy[]) => void;
@@ -67,41 +68,41 @@ export const PolicyRow = ({
     e.stopPropagation();
     if (socket && policy.authenticated) {
       setIsWaitingRun(true);
-      // Create a writable stream using StreamSaver.js
-      const fileStream = streamSaver.createWriteStream(
-        `${policy.name}_photos.zip`,
-      );
+
+      // Create the write stream once
+      const fileStream = streamSaver.createWriteStream(`${policy.name}.zip`);
       const writer = fileStream.getWriter();
 
-      socket.on("download_progress", async (data) => {
-        if (data.zip_file && policy.download_via_browser) {
-          const binary = atob(data.zip_file);
-          const bytes = new Uint8Array(binary.length);
-          for (let i = 0; i < binary.length; i++) {
-            bytes[i] = binary.charCodeAt(i);
+      socket.on("zip_chunk", (data) => {
+        if (data.chunk && policy.download_via_browser) {
+          try {
+            if (!data.chunk) return;
+            // Handle iterable of base64 chunks
+            const binaryStr = atob(data.chunk); // decode base64 -> binary string
+            const bytes = new Uint8Array(binaryStr.length);
+            for (let i = 0; i < binaryStr.length; i++) {
+              bytes[i] = binaryStr.charCodeAt(i);
+            }
+            console.log("Writing chunk of size:", bytes.length, "bytes");
+            writer.write(bytes);
+          } catch (error) {
+            console.error("Error processing zip chunks:", error);
           }
-          await writer.write(bytes);
+        }
+        if (data.finished) {
+          writer.close();
+          setIsWaitingRun(false);
         }
       });
 
-      socket.once("icloud_is_busy", () => {
-        setIsWaitingRun(false);
-        writer.abort();
-      });
-
       socket.once("download_failed", () => {
-        setIsWaitingRun(false);
         writer.abort();
+        setIsWaitingRun(false);
       });
 
       socket.once("download_interrupted", () => {
-        setIsWaitingRun(false);
         writer.close();
-      });
-
-      socket.once("download_finished", () => {
         setIsWaitingRun(false);
-        writer.close();
       });
     }
     onRun(policy);
