@@ -1,6 +1,10 @@
 import asyncio
+import io
 import logging
 import os
+import shutil
+import zipfile
+from base64 import b64encode
 from collections.abc import Callable
 from enum import Enum
 from functools import partial
@@ -200,6 +204,10 @@ class PolicyHandler:
         else:
             raise ICloudAccessError("iCloud instance should have been created")
 
+    def interrupt(self: "PolicyHandler") -> None:
+        assert self._status == PolicyStatus.RUNNING, "Can only interrupt when policy is running"
+        self._status = PolicyStatus.STOPPED
+
     async def start(self: "PolicyHandler", logger: logging.Logger) -> None:
         """
         Start running the policy for download.
@@ -247,6 +255,29 @@ class PolicyHandler:
             f"at {self._configs.directory}"
         )
         self._status = PolicyStatus.STOPPED
+
+    def zip_recent_files(self: "PolicyHandler", clean_up: bool = False) -> str | None:
+        directory_path = os.path.abspath(os.path.expanduser(cast(str, self._configs.directory)))
+        if not self._configs.download_via_browser:
+            return
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+            # Walk through directory recursively
+            for root, _, files in os.walk(directory_path):
+                for file in files:
+                    if not (file.startswith(".") or file.endswith(".part")):
+                        file_path = os.path.join(root, file)
+                        # Get relative path for zip structure
+                        rel_path = os.path.relpath(file_path, directory_path)
+                        zf.write(file_path, rel_path)
+                        os.remove(file_path)
+        if clean_up:
+            # Remove the directory and all its contents
+            shutil.rmtree(directory_path)
+
+        # Convert to base64 for transmission
+        zip_data = b64encode(zip_buffer.getvalue()).decode("utf-8")
+        return zip_data
 
     async def download(
         self: "PolicyHandler",
@@ -322,7 +353,3 @@ class PolicyHandler:
                 _sizes=self._configs.size,  # type: ignore # string enum
             )
         return photos_counter
-
-    def interrupt(self: "PolicyHandler") -> None:
-        assert self._status == PolicyStatus.RUNNING, "Can only interrupt when policy is running"
-        self._status = PolicyStatus.STOPPED

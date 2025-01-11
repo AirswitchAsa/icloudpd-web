@@ -439,6 +439,7 @@ def create_app(  # noqa: C901
                                     sid,
                                     {
                                         "policy": policy.dump(),
+                                        "zip_file": policy.zip_recent_files(),
                                         "logs": logs,
                                     },
                                 )
@@ -458,6 +459,16 @@ def create_app(  # noqa: C901
                             )
                             return
 
+                        await maybe_emit(
+                            "download_progress",
+                            client_id,
+                            sid,
+                            {
+                                "policy": policy.dump(),
+                                "zip_file": policy.zip_recent_files(clean_up=True),
+                                "logs": "",
+                            },
+                        )
                         await maybe_emit(
                             "download_finished",
                             client_id,

@@ -21,6 +21,7 @@ class PolicyConfigs(BaseModel):
 
     # Download options
     directory: str = Field(min_length=1)
+    download_via_browser: bool = False
     folder_structure: str = "{:%Y/%m/%d}"
     size: Sequence[Literal["original", "medium", "thumb", "adjusted", "alternative"]] = ["original"]
     live_photo_size: Literal["original", "medium", "thumb"] = "original"
@@ -29,9 +30,9 @@ class PolicyConfigs(BaseModel):
     keep_unicode_in_filenames: bool = False
     set_exif_datetime: bool = False
     live_photo_mov_filename_policy: Literal["original", "suffix"] = "suffix"
-    file_match_policy: Literal["name-size-dedup-with-suffix", "name-id7"] = (
-        "name-size-dedup-with-suffix"
-    )
+    file_match_policy: Literal[
+        "name-size-dedup-with-suffix", "name-id7"
+    ] = "name-size-dedup-with-suffix"
     xmp_sidecar: bool = False
     use_os_locale: bool = False
 

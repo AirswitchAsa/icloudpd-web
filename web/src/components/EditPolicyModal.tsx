@@ -46,7 +46,6 @@ interface FieldWithInfoProps {
 
 function FieldWithInfo({ label, info, children }: FieldWithInfoProps) {
   const { isOpen, onToggle } = useDisclosure();
-
   return (
     <Box>
       <HStack spacing={2} align="center" mb={info && isOpen ? 2 : 0} h="40px">
@@ -91,6 +90,7 @@ export function EditPolicyModal({
     name: policy?.name || "",
     username: policy?.username || "",
     directory: policy?.directory || "",
+    download_via_browser: policy?.download_via_browser || false,
     domain: policy?.domain || "com",
     folder_structure: policy?.folder_structure || "{:%Y/%m/%d}",
     size: policy?.size || ["original"],
@@ -171,6 +171,11 @@ export function EditPolicyModal({
     }
   };
 
+  console.log(formData);
+  console.log(
+    "value of formData.download_via_browser",
+    formData.download_via_browser,
+  );
   return (
     <Modal
       isOpen={isOpen}
@@ -245,6 +250,23 @@ export function EditPolicyModal({
                         setFormData({ ...formData, directory: e.target.value })
                       }
                       maxW="300px"
+                    />
+                  </FieldWithInfo>
+                </FormControl>
+
+                <FormControl>
+                  <FieldWithInfo
+                    label="Download via Browser "
+                    info="Download photos via browser to local directory"
+                  >
+                    <Switch
+                      isChecked={formData.download_via_browser}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          download_via_browser: e.target.checked,
+                        })
+                      }
                     />
                   </FieldWithInfo>
                 </FormControl>
@@ -433,7 +455,7 @@ export function EditPolicyModal({
                     info="Force the use of the selected sizes during download"
                   >
                     <Switch
-                      checked={formData.force_size}
+                      isChecked={formData.force_size}
                       onChange={(e) =>
                         setFormData({
                           ...formData,
@@ -451,7 +473,7 @@ export function EditPolicyModal({
                     info="Preserve Unicode characters in filenames instead of converting them"
                   >
                     <Switch
-                      checked={formData.keep_unicode_in_filenames}
+                      isChecked={formData.keep_unicode_in_filenames}
                       onChange={(e) =>
                         setFormData({
                           ...formData,
@@ -468,7 +490,7 @@ export function EditPolicyModal({
                     info="Set the EXIF datetime in the downloaded photos"
                   >
                     <Switch
-                      checked={formData.set_exif_datetime}
+                      isChecked={formData.set_exif_datetime}
                       onChange={(e) =>
                         setFormData({
                           ...formData,
@@ -485,7 +507,7 @@ export function EditPolicyModal({
                     info="Create XMP sidecar files for the downloaded photos"
                   >
                     <Switch
-                      checked={formData.xmp_sidecar}
+                      isChecked={formData.xmp_sidecar}
                       onChange={(e) =>
                         setFormData({
                           ...formData,
@@ -502,7 +524,7 @@ export function EditPolicyModal({
                     info="Use the operating system's locale settings"
                   >
                     <Switch
-                      checked={formData.use_os_locale}
+                      isChecked={formData.use_os_locale}
                       onChange={(e) =>
                         setFormData({
                           ...formData,
@@ -631,7 +653,7 @@ export function EditPolicyModal({
                     info="Skip downloading video files"
                   >
                     <Switch
-                      checked={formData.skip_videos}
+                      isChecked={formData.skip_videos}
                       onChange={(e) =>
                         setFormData({
                           ...formData,
@@ -648,7 +670,7 @@ export function EditPolicyModal({
                     info="Skip downloading live photos"
                   >
                     <Switch
-                      checked={formData.skip_live_photos}
+                      isChecked={formData.skip_live_photos}
                       onChange={(e) =>
                         setFormData({
                           ...formData,
@@ -673,7 +695,7 @@ export function EditPolicyModal({
                     info="Automatically delete photos that are no longer in iCloud"
                   >
                     <Switch
-                      checked={formData.auto_delete}
+                      isChecked={formData.auto_delete}
                       onChange={(e) =>
                         setFormData({
                           ...formData,
@@ -690,7 +712,7 @@ export function EditPolicyModal({
                     info="Delete photos from iCloud after successful download"
                   >
                     <Switch
-                      checked={formData.delete_after_download}
+                      isChecked={formData.delete_after_download}
                       onChange={(e) =>
                         setFormData({
                           ...formData,

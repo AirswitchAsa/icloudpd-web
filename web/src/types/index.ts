@@ -2,6 +2,7 @@ export interface Policy {
   name: string;
   username: string;
   directory: string;
+  download_via_browser: boolean;
   status?: string;
   progress?: number;
   logs?: string;
