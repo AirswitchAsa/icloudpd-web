@@ -24,3 +24,12 @@ class ICloudAuthenticationError(ICloudPdWebServerError):
 
     def __init__(self: "ICloudAuthenticationError", message: str) -> None:
         super().__init__(message)
+
+
+class AWSS3Error(ICloudPdWebServerError):
+    """
+    Exception raised for AWS S3 errors.
+    """
+
+    def __init__(self: "AWSS3Error", message: str) -> None:
+        super().__init__(message)

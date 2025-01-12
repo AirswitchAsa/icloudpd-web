@@ -14,7 +14,7 @@ import {
 } from "@chakra-ui/react";
 import { Socket } from "socket.io-client";
 import { GeneralSettings } from "./settings/GeneralSettings";
-import { DownloadSettings } from "./settings/DownloadSettings";
+import { IntegrationSettings } from "./settings/IntegrationSettings";
 import { UserSettings } from "./settings/UserSettings";
 
 interface SettingsModalProps {
@@ -24,7 +24,7 @@ interface SettingsModalProps {
   isGuest: boolean;
 }
 
-type TabType = "general" | "download" | "user";
+type TabType = "general" | "integration" | "user";
 
 interface TabConfig {
   id: TabType;
@@ -34,7 +34,7 @@ interface TabConfig {
 
 const TABS: TabConfig[] = [
   { id: "general", label: "General", component: GeneralSettings },
-  { id: "download", label: "Download", component: DownloadSettings },
+  { id: "integration", label: "Integration", component: IntegrationSettings },
   { id: "user", label: "User", component: UserSettings },
 ];
 

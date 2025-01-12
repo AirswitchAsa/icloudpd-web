@@ -47,4 +47,10 @@ export interface Policy {
   dry_run: boolean;
   interval: string | null;
   log_level: "debug" | "info" | "error";
+
+  // integration options
+  aws_access_key_id: string | null;
+  aws_secret_access_key: string | null;
+  aws_session_token: string | null;
+  s3_bucket_name: string | null;
 }

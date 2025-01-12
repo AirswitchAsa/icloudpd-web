@@ -260,6 +260,17 @@ def create_app(  # noqa: C901
                 await maybe_emit("server_config_not_found", client_id, sid, {"error": repr(e)})
 
     @sio.event
+    async def get_aws_config(sid: str) -> None:
+        """
+        Get the AWS config for the client with sid.
+        """
+        pass
+
+    @sio.event
+    async def save_aws_config(sid: str, aws_config: dict) -> None:
+        pass
+
+    @sio.event
     async def upload_policies(sid: str, toml_content: str) -> None:
         """
         Create policies for the user with sid. Existing policies are replaced.

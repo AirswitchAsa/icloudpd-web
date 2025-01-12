@@ -42,6 +42,7 @@ dependencies = [
     "keyring==25.6.0",
     "keyrings-alt==5.0.2",
     "srp==1.0.22",
+    "boto3>=1.35.97",
 ]
 
 [project.urls]

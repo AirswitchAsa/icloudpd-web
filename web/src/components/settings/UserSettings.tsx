@@ -136,6 +136,62 @@ export function UserSettings({ socket, isGuest }: UserSettingsProps) {
       <VStack spacing={8} align="stretch">
         <Box>
           <Text fontWeight="bold" fontSize="lg" mb={4}>
+            Access Control
+          </Text>
+          <VStack spacing={3} align="stretch" maxW="400px">
+            <FormControl
+              display="flex"
+              alignItems="center"
+              justifyContent="space-between"
+            >
+              <FormLabel fontSize="sm" mb={0}>
+                No Password Required
+              </FormLabel>
+              <Switch
+                isChecked={accessControl.no_password}
+                onChange={(e) =>
+                  handleConfigChange("no_password")(e.target.checked)
+                }
+                isDisabled={isGuest}
+              />
+            </FormControl>
+            <FormControl
+              display="flex"
+              alignItems="center"
+              justifyContent="space-between"
+            >
+              <FormLabel fontSize="sm" mb={0}>
+                Always Use Guest Mode
+              </FormLabel>
+              <Switch
+                isChecked={accessControl.always_guest}
+                onChange={(e) =>
+                  handleConfigChange("always_guest")(e.target.checked)
+                }
+                isDisabled={isGuest && !accessControl.always_guest}
+              />
+            </FormControl>
+            <FormControl
+              display="flex"
+              alignItems="center"
+              justifyContent="space-between"
+            >
+              <FormLabel fontSize="sm" mb={0}>
+                Disable Guest Access
+              </FormLabel>
+              <Switch
+                isChecked={accessControl.disable_guest}
+                onChange={(e) =>
+                  handleConfigChange("disable_guest")(e.target.checked)
+                }
+                isDisabled={isGuest}
+              />
+            </FormControl>
+          </VStack>
+        </Box>
+
+        <Box>
+          <Text fontWeight="bold" fontSize="lg" mb={4}>
             Change Password
           </Text>
           <VStack spacing={3} align="stretch" maxW="400px">
@@ -225,62 +281,6 @@ export function UserSettings({ socket, isGuest }: UserSettingsProps) {
                 Update Password
               </Button>
             </Box>
-          </VStack>
-        </Box>
-
-        <Box>
-          <Text fontWeight="bold" fontSize="lg" mb={4}>
-            Access Control
-          </Text>
-          <VStack spacing={3} align="stretch" maxW="400px">
-            <FormControl
-              display="flex"
-              alignItems="center"
-              justifyContent="space-between"
-            >
-              <FormLabel fontSize="sm" mb={0}>
-                No Password Required
-              </FormLabel>
-              <Switch
-                isChecked={accessControl.no_password}
-                onChange={(e) =>
-                  handleConfigChange("no_password")(e.target.checked)
-                }
-                isDisabled={isGuest}
-              />
-            </FormControl>
-            <FormControl
-              display="flex"
-              alignItems="center"
-              justifyContent="space-between"
-            >
-              <FormLabel fontSize="sm" mb={0}>
-                Always Use Guest Mode
-              </FormLabel>
-              <Switch
-                isChecked={accessControl.always_guest}
-                onChange={(e) =>
-                  handleConfigChange("always_guest")(e.target.checked)
-                }
-                isDisabled={isGuest && !accessControl.always_guest}
-              />
-            </FormControl>
-            <FormControl
-              display="flex"
-              alignItems="center"
-              justifyContent="space-between"
-            >
-              <FormLabel fontSize="sm" mb={0}>
-                Disable Guest Access
-              </FormLabel>
-              <Switch
-                isChecked={accessControl.disable_guest}
-                onChange={(e) =>
-                  handleConfigChange("disable_guest")(e.target.checked)
-                }
-                isDisabled={isGuest}
-              />
-            </FormControl>
           </VStack>
         </Box>
       </VStack>
