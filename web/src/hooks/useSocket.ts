@@ -39,6 +39,19 @@ interface ZipChunkPayload {
   chunk: string;
 }
 
+interface AWSConfigPayload {
+  aws_access_key_id: string;
+  aws_secret_access_key: string;
+  aws_session_token: string;
+  aws_bucket_name: string;
+}
+
+interface AWSConfigSavedPayload {
+  success: boolean;
+  error?: string;
+  created_bucket?: boolean;
+}
+
 export interface SocketConfig {
   clientId: string;
   isGuest: boolean;
@@ -127,6 +140,18 @@ export function useSocket(config: SocketConfig) {
 
     newSocket.on("zip_chunk", (payload: ZipChunkPayload) => {
       console.log("Zip chunk:", payload);
+    });
+
+    newSocket.on("aws_config", (payload: AWSConfigPayload) => {
+      console.log("AWS config:", payload);
+    });
+
+    newSocket.on("aws_config_saved", (payload: AWSConfigSavedPayload) => {
+      console.log("AWS config saved:", payload);
+    });
+
+    newSocket.on("error_getting_aws_config", (payload: ErrorPayload) => {
+      console.error("Error getting AWS config:", payload);
     });
 
     setSocket(newSocket);

@@ -264,11 +264,29 @@ def create_app(  # noqa: C901
         """
         Get the AWS config for the client with sid.
         """
-        pass
+        if client_id := sid_to_client.get(sid):
+            try:
+                if handler := handler_manager.get(client_id):
+                    await maybe_emit("aws_config", client_id, sid, handler.get_aws_config())
+            except Exception as e:
+                await maybe_emit("error_getting_aws_config", client_id, sid, {"error": repr(e)})
 
     @sio.event
     async def save_aws_config(sid: str, aws_config: dict) -> None:
-        pass
+        if client_id := sid_to_client.get(sid):
+            try:
+                if handler := handler_manager.get(client_id):
+                    created_bucket = handler.save_aws_config(aws_config)
+                    await maybe_emit(
+                        "aws_config_saved",
+                        client_id,
+                        sid,
+                        {"success": True, "created_bucket": created_bucket},
+                    )
+            except Exception as e:
+                await maybe_emit(
+                    "aws_config_saved", client_id, sid, {"success": False, "error": repr(e)}
+                )
 
     @sio.event
     async def upload_policies(sid: str, toml_content: str) -> None:

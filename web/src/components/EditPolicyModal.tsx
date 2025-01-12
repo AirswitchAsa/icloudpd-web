@@ -28,6 +28,7 @@ import {
   PatternMatchField,
   DateRangeField,
   DownloadSizesField,
+  IntegrationField,
 } from "@/components/EditModalFields";
 
 interface EditPolicyModalProps {
@@ -87,10 +88,7 @@ export function EditPolicyModal({
     created_before: policy?.created_before || null,
     added_after: policy?.added_after || null,
     added_before: policy?.added_before || null,
-    aws_access_key_id: policy?.aws_access_key_id || null,
-    aws_secret_access_key: policy?.aws_secret_access_key || null,
-    s3_bucket_name: policy?.s3_bucket_name || null,
-    aws_session_token: policy?.aws_session_token || null,
+    upload_to_aws_s3: policy?.upload_to_aws_s3 || false,
   });
 
   const handleSave = () => {
@@ -265,6 +263,13 @@ export function EditPolicyModal({
                     />
                   </FieldWithInfo>
                 </FormControl>
+
+                <IntegrationField
+                  value={formData.upload_to_aws_s3}
+                  onChange={(value) =>
+                    setFormData({ ...formData, upload_to_aws_s3: value })
+                  }
+                />
 
                 <FormControl>
                   <FieldWithInfo

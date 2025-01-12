@@ -43,12 +43,12 @@ class PolicyConfigs(BaseModel):
     until_found: Annotated[int, Field(ge=0)] | None = None
     skip_videos: bool = False
     skip_live_photos: bool = False
-    file_suffixes: list[str] = []
-    match_pattern: str = ""
-    created_after: str = ""
-    created_before: str = ""
-    added_after: str = ""
-    added_before: str = ""
+    file_suffixes: list[str] | None = []
+    match_pattern: str | None = None
+    created_after: str | None = None
+    created_before: str | None = None
+    added_after: str | None = None
+    added_before: str | None = None
 
     # Delete options
     auto_delete: bool = False
@@ -58,3 +58,7 @@ class PolicyConfigs(BaseModel):
     dry_run: bool = False
     interval: str | None = None
     log_level: Literal["debug", "info", "error"] = "info"
+
+    # Integration options
+    remove_local_copy: bool = False
+    upload_to_aws_s3: bool = False

@@ -2,6 +2,7 @@ import os
 
 import toml
 
+from icloudpd_web.api.aws_handler import AWSHandler
 from icloudpd_web.api.data_models import NON_POLICY_FIELDS
 from icloudpd_web.api.icloud_utils import ICloudManager
 from icloudpd_web.api.policy_handler import PolicyHandler, PolicyStatus
@@ -19,6 +20,7 @@ class ClientHandler:
     def __init__(self: "ClientHandler", saved_policies_path: str) -> None:
         self._policies: list[PolicyHandler] = []
         self._saved_policies_path: str = saved_policies_path
+        self._aws_handler = AWSHandler()
         self._icloud_manager = ICloudManager()
         self._load_policies()
 
@@ -28,7 +30,13 @@ class ClientHandler:
             assert "username" in policy, "Policy must have a username"
             assert "directory" in policy, "Policy must have a directory"
             assert policy["name"] not in self.policy_names, "Policy name must be unique"
-            self._policies.append(PolicyHandler(icloud_manager=self._icloud_manager, **policy))
+            self._policies.append(
+                PolicyHandler(
+                    icloud_manager=self._icloud_manager,
+                    aws_handler=self._aws_handler,
+                    **policy,
+                )
+            )
 
     def _load_policies(self: "ClientHandler") -> None:
         """
@@ -56,6 +64,18 @@ class ClientHandler:
         return toml.dumps(
             {"policy": [policy.dump(excludes=NON_POLICY_FIELDS) for policy in self._policies]}
         )
+
+    def get_aws_config(self: "ClientHandler") -> dict:
+        """
+        Return the AWS config.
+        """
+        return self._aws_handler.dump()
+
+    def save_aws_config(self: "ClientHandler", aws_config: dict) -> bool:
+        """
+        Save the AWS config.
+        """
+        return self._aws_handler.authenticate(**aws_config)
 
     def get_policy(self: "ClientHandler", name: str) -> PolicyHandler | None:
         """
@@ -93,7 +113,13 @@ class ClientHandler:
         assert policy_name, "Policy name must be provided"
         if policy_name in self.policy_names:
             raise ValueError(f"Policy with name {policy_name} already exists")
-        self._policies.append(PolicyHandler(icloud_manager=self._icloud_manager, **kwargs))
+        self._policies.append(
+            PolicyHandler(
+                icloud_manager=self._icloud_manager,
+                aws_handler=self._aws_handler,
+                **kwargs,
+            )
+        )
         self._save_policies()
 
     def delete_policy(self: "ClientHandler", policy_name: str) -> None:

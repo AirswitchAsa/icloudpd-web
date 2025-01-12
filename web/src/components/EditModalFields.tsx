@@ -16,6 +16,7 @@ import {
   WrapItem,
   Text,
   Spacer,
+  Switch,
 } from "@chakra-ui/react";
 import { ChevronDownIcon, ChevronUpIcon, CloseIcon } from "@chakra-ui/icons";
 
@@ -52,6 +53,27 @@ export function FieldWithInfo({ label, info, children }: FieldWithInfoProps) {
         </Collapse>
       )}
     </Box>
+  );
+}
+
+interface IntegrationFieldProps {
+  value: boolean;
+  onChange: (value: boolean) => void;
+}
+
+export function IntegrationField({ value, onChange }: IntegrationFieldProps) {
+  return (
+    <FormControl>
+      <FieldWithInfo
+        label="Upload to AWS S3"
+        info="Enable to upload a copy to AWS S3 Bucket specified in My App - Settings - Integration."
+      >
+        <Switch
+          isChecked={value}
+          onChange={(e) => onChange(e.target.checked)}
+        />
+      </FieldWithInfo>
+    </FormControl>
   );
 }
 

@@ -99,6 +99,9 @@ def should_skip(logger: logging.Logger, item: PhotoAsset, configs: PolicyConfigs
     if added_before and item.added_date > added_before.replace(tzinfo=item.added_date.tzinfo):
         logger.info(f"Skipping {item.filename} because it was added after {added_before}")
         return True
+    #  do not skip the item if no filters are specified
+    if not configs.file_suffixes and not configs.match_pattern:
+        return False
     # check suffix first to avoid unnecessary glob pattern matching
     if configs.file_suffixes:
         for suffix in configs.file_suffixes:

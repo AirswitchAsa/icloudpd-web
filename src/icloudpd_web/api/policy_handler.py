@@ -15,6 +15,7 @@ from stream_zip import ZIP_64, AsyncMemberFile, async_stream_zip
 from icloudpd.autodelete import autodelete_photos
 from icloudpd.base import delete_photo, download_builder, retrier
 from icloudpd.counter import Counter
+from icloudpd_web.api.aws_handler import AWSHandler
 from icloudpd_web.api.data_models import AuthenticationResult, PolicyConfigs
 from icloudpd_web.api.download_option_utils import (
     DryRunFilter,
@@ -81,6 +82,16 @@ class PolicyHandler:
         )
 
     @property
+    def should_remove_local_copy(self: "PolicyHandler") -> bool:
+        """
+        Local copy should be removed if other options are enabled and
+        the user wants to remove the local copy.
+        """
+        return (
+            self._configs.download_via_browser or self._configs.upload_to_aws_s3
+        ) and self._configs.remove_local_copy
+
+    @property
     def albums(self: "PolicyHandler") -> list[str]:
         """
         Return a list of all albums available to the user.
@@ -120,12 +131,19 @@ class PolicyHandler:
     def username(self: "PolicyHandler") -> str:
         return self._configs.username
 
-    def __init__(self: "PolicyHandler", name: str, icloud_manager: ICloudManager, **kwargs) -> None:
+    def __init__(
+        self: "PolicyHandler",
+        name: str,
+        icloud_manager: ICloudManager,
+        aws_handler: AWSHandler,
+        **kwargs,
+    ) -> None:
         self._name = name
         self._configs = PolicyConfigs(**kwargs)  # validate the configs and fill-in defaults
         self._status = PolicyStatus.STOPPED
         self._progress = 0
         self._icloud_manager = icloud_manager
+        self._aws_handler = aws_handler
 
     def require_icloud(self: "PolicyHandler", msg: str) -> PyiCloudService:
         if self.icloud is None or not self.authenticated:
@@ -214,10 +232,13 @@ class PolicyHandler:
     async def start_with_zip(
         self: "PolicyHandler", logger: logging.Logger, sio: socketio.AsyncServer
     ) -> None:
-        async for chunk in async_stream_zip(self.start(logger)):
-            encoded_chunk = base64.b64encode(chunk).decode("utf-8")
-            await sio.emit("zip_chunk", {"chunk": encoded_chunk})
-        await sio.emit("zip_chunk", {"finished": True})
+        if self._configs.download_via_browser:
+            async for chunk in async_stream_zip(self.start(logger)):
+                encoded_chunk = base64.b64encode(chunk).decode("utf-8")
+                await sio.emit("zip_chunk", {"chunk": encoded_chunk})
+            await sio.emit("zip_chunk", {"finished": True})
+        else:
+            self.start(logger)
 
     async def start(
         self: "PolicyHandler", logger: logging.Logger
@@ -337,19 +358,22 @@ class PolicyHandler:
                     return None
 
                 if filepath := find_file_at_path(item):
+                    object_name = filepath.replace(
+                        directory_path, "Photos"
+                    )  # preserve folder structure in zipfile
+                    if self._configs.upload_to_aws_s3:
+                        await self._aws_handler.upload_file(logger, filepath, object_name)
                     async with aiofiles.open(filepath, "rb") as f:
                         file_content = await f.read()
-                        yield (
-                            filepath.replace(
-                                directory_path, "Photos"
-                            ),  # preserve folder structure in zipfile
-                            item.created,
-                            0o666,
-                            ZIP_64,
-                            self._content_generator(file_content),
-                        )
-                    # remove the file after sending
-                    if self._configs.download_via_browser:
+                    yield (
+                        object_name,
+                        item.created,
+                        0o666,
+                        ZIP_64,
+                        self._content_generator(file_content),
+                    )
+                    # remove the file after sending if specified
+                    if self.should_remove_local_copy:
                         os.remove(filepath)
 
                 photos_counter += 1
@@ -370,7 +394,7 @@ class PolicyHandler:
                 directory=directory,
                 _sizes=self._configs.size,  # type: ignore # string enum
             )
-        if self._configs.download_via_browser:
+        if self.should_remove_local_copy:
             shutil.rmtree(directory)
 
     async def _content_generator(

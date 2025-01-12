@@ -50,7 +50,7 @@ export function IntegrationSettings({ socket }: IntegrationSettingsProps) {
     socket.emit("get_aws_config");
 
     socket.on(
-      "aws_configs",
+      "aws_config",
       (config: {
         aws_access_key_id: string;
         aws_secret_access_key: string;
@@ -58,13 +58,21 @@ export function IntegrationSettings({ socket }: IntegrationSettingsProps) {
         aws_session_token: string;
         aws_client_ready: boolean;
       }) => {
-        setAwsAccessKeyId(config.aws_access_key_id);
-        setAwsSecretAccessKey(config.aws_secret_access_key);
-        setAwsBucketName(config.aws_bucket_name);
-        setAwsSessionToken(config.aws_session_token);
+        setAwsAccessKeyId(config.aws_access_key_id ?? "");
+        setAwsBucketName(config.aws_bucket_name ?? "");
         setIsAwsClientReady(config.aws_client_ready);
       },
     );
+
+    socket.on("error_getting_aws_config", (data: { error: string }) => {
+      toast({
+        title: "Error",
+        description: "Failed to get AWS S3 client: " + data.error,
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    });
 
     return () => {
       socket.off("aws_configs");
@@ -79,16 +87,19 @@ export function IntegrationSettings({ socket }: IntegrationSettingsProps) {
     const awsConfigUpdate = {
       aws_access_key_id: awsAccessKeyId,
       aws_secret_access_key: awsSecretAccessKey,
-      aws_bucket_name: awsBucketName,
       aws_session_token: awsSessionToken,
+      aws_bucket_name: awsBucketName,
     };
 
-    socket.once("aws_configs_saved", (data) => {
+    socket.once("aws_config_saved", (data) => {
       setIsSaving(false);
       if (data.success) {
+        setIsAwsClientReady(true);
+        setAwsSecretAccessKey("");
+        setAwsSessionToken("");
         toast({
           title: "Success",
-          description: "AWS S3 client is created",
+          description: "AWS S3 client is created with bucket " + awsBucketName,
           status: "success",
           duration: 3000,
           isClosable: true,
@@ -96,14 +107,14 @@ export function IntegrationSettings({ socket }: IntegrationSettingsProps) {
       } else {
         toast({
           title: "Error",
-          description: "Failed to create AWS S3 client",
+          description: "Failed to create AWS S3 client: " + data.error,
           status: "error",
           duration: 3000,
           isClosable: true,
         });
       }
     });
-    socket.emit("save_all_policies", awsConfigUpdate);
+    socket.emit("save_aws_config", awsConfigUpdate);
   };
 
   return (
