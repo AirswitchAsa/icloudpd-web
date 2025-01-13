@@ -1,0 +1,27 @@
+version: "3.8"
+
+services:
+  icloudpd-web:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=5000
+      # Uncomment and modify these as needed
+      # - TOML_PATH=/path/to/policies.toml
+      # - ALLOWED_ORIGINS=http://localhost:3000
+      # - SECRET_HASH_PATH=/path/to/secret_hash
+      # - MAX_SESSIONS=5
+      # - GUEST_TIMEOUT_SECONDS=300
+      # - NO_PASSWORD=false
+      # - ALWAYS_GUEST=false
+      # - DISABLE_GUEST=false
+      # - SERVER_ONLY=false
+      # - RELOAD=false
+    volumes:
+      # Mount configuration files if needed
+      # - ./policies.toml:/path/to/policies.toml
+      # - ./secret_hash:/path/to/secret_hash
+      # Mount a directory for downloads
+      - ./downloads:/app/downloads

@@ -214,6 +214,8 @@ def create_app(  # noqa: C901
                                 del handler_manager[client_id]
                                 await sio.emit("logout_complete", client_id, to=sid)
                                 print(f"Logged out guest {client_id} after timeout")
+                        except Exception as e:
+                            print(f"Error logging out guest {client_id} after timeout: {e}")
                         finally:
                             guest_timeout_tasks.pop(client_id, None)  # type: ignore
 

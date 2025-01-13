@@ -1,5 +1,10 @@
 # icloudpd-web
 
+## Release
+
+- [Python Package](https://pypi.org/project/icloudpd-web/)
+- [Docker Image](https://hub.docker.com/r/icloudpdweb/icloudpd-web)
+
 ## Overview
 
 - **Warning**: This is a personal project under active development. You can contribute to the project by submitting a feature request or a bug report via Github issues.
@@ -9,9 +14,9 @@
 - The application bundles a static next.js application in a fastapi server. Therefore, you can spin up the server and use the web UI using the python distribution.
 
 ## Screenshots
+
 <img width="1509" alt="main" src="https://github.com/user-attachments/assets/2faec712-01bd-4eff-bdff-cdbdfd8ee728" />
 <img width="1509" alt="edit" src="https://github.com/user-attachments/assets/d613ddd8-5d5f-4209-8bbe-0586d7fd500f" />
-
 
 ## Installation
 
@@ -23,6 +28,7 @@ The application is available on pypi and requires python 3.12 or later.
 pip install icloudpd-web
 icloudpd-web
 ```
+
 run `icloudpd-web --help` to see the available options.
 
 ## User Flow
@@ -52,8 +58,8 @@ run `icloudpd-web --help` to see the available options.
 - The user can manage the policy states on the web UI.
 - The server stores policy specs in toml files at designated path as well upon changes.
 
-
 ## Term of Use
+
 The copyright of icloudpd-web ("the software") fully belongs to the author(s). There will be a hosted version created by the author(s) for public access. The software is free to use for personal, educational, or non-commercial purposes only. Unauthorized use to generate revenue is not allowed.
 
 ## License
@@ -61,11 +67,13 @@ The copyright of icloudpd-web ("the software") fully belongs to the author(s). T
 This project is licensed under CC BY-NC-4.0. This means:
 
 You can:
+
 - Use this package for personal projects
 - Modify and distribute the code
 - Use it for academic or research purposes
 
 You cannot:
+
 - Use this package for commercial purposes
 - Sell the code or any modifications
 - Include it in commercial products
