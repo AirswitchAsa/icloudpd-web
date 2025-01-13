@@ -12,13 +12,17 @@
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}/",
       "args": [
-        "--host", "0.0.0.0",
-        "--port", "5000",
-        "--allowed-origins", "http://localhost:3000",
-        "--toml-path", "./example_policy/example.toml",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "5001",
+        "--allowed-origins",
+        "http://localhost:3000",
+        "--toml-path",
+        "./example_policy/example.toml",
         "--server-only",
         "--reload"
-      ],
+      ]
     },
     {
       "name": "icloudpd-web Production Server",
@@ -28,12 +32,16 @@
       "module": "icloudpd_web.cli",
       "cwd": "${workspaceFolder}/",
       "args": [
-        "--host", "0.0.0.0",
-        "--port", "5000",
-        "--allowed-origins", "http://localhost:5000",
-        "--toml-path", "./example_policy/example.toml",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "5001",
+        "--allowed-origins",
+        "http://localhost:5001",
+        "--toml-path",
+        "./example_policy/example.toml",
         "--reload"
-      ],
+      ]
     },
     {
       "name": "Next.js Development Server",
@@ -41,11 +49,8 @@
       "request": "launch",
       "cwd": "${workspaceFolder}/web/",
       "runtimeExecutable": "npm",
-      "runtimeArgs": [
-        "run",
-        "dev"
-      ],
-      "console": "integratedTerminal",
+      "runtimeArgs": ["run", "dev"],
+      "console": "integratedTerminal"
     }
   ]
 }
