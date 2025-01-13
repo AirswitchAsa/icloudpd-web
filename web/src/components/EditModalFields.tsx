@@ -332,7 +332,8 @@ export function DownloadSizesField({
         <FormLabel mt={2}>Download Sizes</FormLabel>
         <Spacer />
         <Text fontSize="sm" color="gray.600">
-          Download one or more sizes for photos. Open the dropdown to select.
+          Download one or more sizes for the same photos. Open the dropdown to
+          select.
         </Text>
       </HStack>
 

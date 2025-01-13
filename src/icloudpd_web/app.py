@@ -289,6 +289,28 @@ def create_app(  # noqa: C901
                 )
 
     @sio.event
+    async def save_global_settings(sid: str, settings: dict) -> None:
+        """
+        Update all policies with the given global settings.
+        """
+        if client_id := sid_to_client.get(sid):
+            if handler := handler_manager.get(client_id):
+                try:
+                    # Update each policy with the new settings
+                    for policy in handler.policies:
+                        settings["name"] = policy["name"]
+                        handler.save_policy(policy["name"], **settings)
+
+                    await maybe_emit("saved_global_settings", client_id, sid, {"success": True})
+                except Exception as e:
+                    await maybe_emit(
+                        "saved_global_settings",
+                        client_id,
+                        sid,
+                        {"success": False, "error": repr(e)},
+                    )
+
+    @sio.event
     async def upload_policies(sid: str, toml_content: str) -> None:
         """
         Create policies for the user with sid. Existing policies are replaced.

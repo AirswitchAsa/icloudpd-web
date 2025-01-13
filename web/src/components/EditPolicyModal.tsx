@@ -300,232 +300,6 @@ export function EditPolicyModal({
                 Download Options
               </Text>
               <VStack spacing={4} align="stretch">
-                <FormControl>
-                  <FieldWithInfo
-                    label="Folder Structure"
-                    info="The folder structure pattern using Python's strftime format"
-                  >
-                    <Input
-                      value={formData.folder_structure}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          folder_structure: e.target.value,
-                        })
-                      }
-                      maxW="200px"
-                    />
-                  </FieldWithInfo>
-                </FormControl>
-
-                <FormControl>
-                  <FieldWithInfo
-                    label="File Match Policy"
-                    info="The policy for matching files when downloading"
-                  >
-                    <Select
-                      value={formData.file_match_policy}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          file_match_policy: e.target.value as
-                            | "name-size-dedup-with-suffix"
-                            | "name-id7",
-                        })
-                      }
-                      maxW="150px"
-                    >
-                      <option value="name-size-dedup-with-suffix">
-                        Name-Size-Dedup-With-Suffix
-                      </option>
-                      <option value="name-id7">Name-Id7</option>
-                    </Select>
-                  </FieldWithInfo>
-                </FormControl>
-
-                <FormControl>
-                  <FieldWithInfo
-                    label="Live Photo Size"
-                    info="The size of live photos to download"
-                  >
-                    <Select
-                      value={formData.live_photo_size}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          live_photo_size: e.target.value as
-                            | "original"
-                            | "medium"
-                            | "thumb",
-                        })
-                      }
-                      maxW="150px"
-                    >
-                      <option value="original">Original</option>
-                      <option value="medium">Medium</option>
-                      <option value="thumb">Thumb</option>
-                    </Select>
-                  </FieldWithInfo>
-                </FormControl>
-
-                <FormControl>
-                  <FieldWithInfo
-                    label="Live Photo Video Filename Policy"
-                    info="The policy for naming live photo videos"
-                  >
-                    <Select
-                      value={formData.live_photo_mov_filename_policy}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          live_photo_mov_filename_policy: e.target.value as
-                            | "original"
-                            | "suffix",
-                        })
-                      }
-                      maxW="150px"
-                    >
-                      <option value="original">Original</option>
-                      <option value="suffix">Suffix</option>
-                    </Select>
-                  </FieldWithInfo>
-                </FormControl>
-
-                <FormControl>
-                  <FieldWithInfo
-                    label="Raw File Size"
-                    info="The size of raw files to download"
-                  >
-                    <Select
-                      value={formData.align_raw}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          align_raw: e.target.value as
-                            | "original"
-                            | "alternative"
-                            | "as-is",
-                        })
-                      }
-                      maxW="150px"
-                    >
-                      <option value="original">Original</option>
-                      <option value="alternative">Alternative</option>
-                      <option value="as-is">As-Is</option>
-                    </Select>
-                  </FieldWithInfo>
-                </FormControl>
-
-                <DownloadSizesField
-                  value={formData.size}
-                  onChange={(value: string[]) =>
-                    setFormData({
-                      ...formData,
-                      size: value as (
-                        | "original"
-                        | "medium"
-                        | "thumb"
-                        | "adjusted"
-                        | "alternative"
-                      )[],
-                    })
-                  }
-                />
-
-                <FormControl>
-                  <FieldWithInfo
-                    label="Force Sizes"
-                    info="Force the use of the selected sizes during download"
-                  >
-                    <Switch
-                      isChecked={formData.force_size}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          force_size: e.target.checked,
-                        })
-                      }
-                    />
-                  </FieldWithInfo>
-                </FormControl>
-
-                {/* Add similar pattern for other fields */}
-                <FormControl>
-                  <FieldWithInfo
-                    label="Keep Unicode in Filenames"
-                    info="Preserve Unicode characters in filenames instead of converting them"
-                  >
-                    <Switch
-                      isChecked={formData.keep_unicode_in_filenames}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          keep_unicode_in_filenames: e.target.checked,
-                        })
-                      }
-                    />
-                  </FieldWithInfo>
-                </FormControl>
-
-                <FormControl>
-                  <FieldWithInfo
-                    label="Set EXIF Datetime"
-                    info="Set the EXIF datetime in the downloaded photos"
-                  >
-                    <Switch
-                      isChecked={formData.set_exif_datetime}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          set_exif_datetime: e.target.checked,
-                        })
-                      }
-                    />
-                  </FieldWithInfo>
-                </FormControl>
-
-                <FormControl>
-                  <FieldWithInfo
-                    label="XMP Sidecar"
-                    info="Create XMP sidecar files for the downloaded photos"
-                  >
-                    <Switch
-                      isChecked={formData.xmp_sidecar}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          xmp_sidecar: e.target.checked,
-                        })
-                      }
-                    />
-                  </FieldWithInfo>
-                </FormControl>
-
-                <FormControl>
-                  <FieldWithInfo
-                    label="Use OS Locale"
-                    info="Use the operating system's locale settings"
-                  >
-                    <Switch
-                      isChecked={formData.use_os_locale}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          use_os_locale: e.target.checked,
-                        })
-                      }
-                    />
-                  </FieldWithInfo>
-                </FormControl>
-              </VStack>
-            </Box>
-
-            {/* Filter Options */}
-            <Box>
-              <Text fontSize="lg" fontWeight="semibold" mb={4}>
-                Filter Options
-              </Text>
-              <VStack spacing={4} align="stretch">
                 <AlbumField
                   policy={policy}
                   value={formData.album}
@@ -554,12 +328,48 @@ export function EditPolicyModal({
                     </Select>
                   </FieldWithInfo>
                 </FormControl>
+
+                <FormControl>
+                  <FieldWithInfo
+                    label="Folder Structure"
+                    info="The folder structure pattern using Python's strftime format"
+                  >
+                    <Input
+                      value={formData.folder_structure}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          folder_structure: e.target.value,
+                        })
+                      }
+                      maxW="200px"
+                    />
+                  </FieldWithInfo>
+                </FormControl>
+
+                <DownloadSizesField
+                  value={formData.size}
+                  onChange={(value) =>
+                    setFormData({
+                      ...formData,
+                      size: value as (
+                        | "original"
+                        | "medium"
+                        | "thumb"
+                        | "adjusted"
+                        | "alternative"
+                      )[],
+                    })
+                  }
+                />
+
                 <SuffixField
                   value={formData.file_suffixes}
                   onChange={(value) =>
                     setFormData({ ...formData, file_suffixes: value })
                   }
                 />
+
                 <PatternMatchField
                   value={formData.match_pattern}
                   onChange={(value) =>

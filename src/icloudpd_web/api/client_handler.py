@@ -3,7 +3,7 @@ import os
 import toml
 
 from icloudpd_web.api.aws_handler import AWSHandler
-from icloudpd_web.api.data_models import NON_POLICY_FIELDS
+from icloudpd_web.api.data_models import IGNORED_FIELDS, NON_POLICY_FIELDS
 from icloudpd_web.api.icloud_utils import ICloudManager
 from icloudpd_web.api.policy_handler import PolicyHandler, PolicyStatus
 
@@ -30,6 +30,9 @@ class ClientHandler:
             assert "username" in policy, "Policy must have a username"
             assert "directory" in policy, "Policy must have a directory"
             assert policy["name"] not in self.policy_names, "Policy name must be unique"
+            policy = {
+                k: v for k, v in policy.items() if k not in IGNORED_FIELDS
+            }  # ignore the fields managed by global settings
             self._policies.append(
                 PolicyHandler(
                     icloud_manager=self._icloud_manager,

@@ -6,6 +6,17 @@ from pydantic import BaseModel, Field
 
 
 NON_POLICY_FIELDS = ["status", "progress", "authenticated", "albums"]
+IGNORED_FIELDS = [
+    "live_photo_size",
+    "live_photo_mov_filename_policy",
+    "align_raw",
+    "force_size",
+    "keep_unicode_in_filenames",
+    "set_exif_datetime",
+    "xmp_sidecar",
+    "use_os_locale",
+    "file_match_policy",
+]
 
 
 class AuthenticationResult(Enum):
