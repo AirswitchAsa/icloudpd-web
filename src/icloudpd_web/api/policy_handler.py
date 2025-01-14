@@ -249,14 +249,11 @@ class PolicyHandler:
 
     def interrupt(self: "PolicyHandler") -> None:
         """
-        Interrupt the policy:
-        1. If running - stop the execution
-        2. If scheduled - cancel the scheduled run
+        Interrupt the policy: stop the running download and cancel the scheduled run.
         """
         if self._status == PolicyStatus.RUNNING:
             self._status = PolicyStatus.STOPPED
-            return
-        self._next_run_time = None
+            self._next_run_time = None
 
     def cancel_scheduled_run(self: "PolicyHandler") -> bool:
         if self._next_run_time is None or self._status != PolicyStatus.STOPPED:

@@ -21,7 +21,7 @@ import {
 } from "@chakra-ui/icons";
 import { FaPlay, FaPause } from "react-icons/fa";
 import { Policy } from "@/types/index";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Socket } from "socket.io-client";
 import { PolicyDialogs } from "./PolicyDialogs";
 
@@ -82,10 +82,18 @@ export const PolicyRow = ({
   const [policyRowState, setPolicyRowState] =
     useState<PolicyRowState>("unauthenticated");
 
+  useEffect(() => {
+    // update the row status in case of authentication and cancellation events
+    if (policy.scheduled) {
+      setPolicyRowState("scheduled");
+    } else if (policy.authenticated) {
+      setPolicyRowState("ready");
+    }
+  }, [policy.scheduled, policy.authenticated]);
+
   const handleRun = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!socket) return;
-    console.log("policy.waiting_mfa", policy.waiting_mfa);
     if (policy.waiting_mfa) {
       onMfaOpen(); // provide MFA code directly
     } else if (!policy.authenticated) {

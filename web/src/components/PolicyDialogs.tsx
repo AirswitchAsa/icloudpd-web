@@ -89,6 +89,7 @@ export function PolicyDialogs({
           toast={toast}
           policy_name={policy.name}
           onMfaRequired={dialogs.mfa.onOpen}
+          setPolicies={setPolicies}
         />
       )}
 
@@ -104,6 +105,7 @@ export function PolicyDialogs({
           error={mfaError}
           setMfaError={setMfaError}
           policy_name={policy.name}
+          setPolicies={setPolicies}
         />
       )}
 

@@ -20,7 +20,7 @@ import {
 } from "@chakra-ui/react";
 import { ViewIcon, ViewOffIcon } from "@chakra-ui/icons";
 import { Socket } from "socket.io-client";
-import { SocketAddress } from "net";
+import { Policy } from "@/types";
 
 interface AuthenticationModalProps {
   isOpen: boolean;
@@ -32,6 +32,7 @@ interface AuthenticationModalProps {
   toast: (options: UseToastOptions) => void;
   policy_name: string;
   onMfaRequired: () => void;
+  setPolicies: (policies: Policy[]) => void;
 }
 
 export function AuthenticationModal({
@@ -43,6 +44,7 @@ export function AuthenticationModal({
   setAuthError,
   toast,
   policy_name,
+  setPolicies,
   onMfaRequired,
 }: AuthenticationModalProps) {
   const [password, setPassword] = useState("");
@@ -57,18 +59,22 @@ export function AuthenticationModal({
     socket.off("authentication_failed");
     socket.off("mfa_required");
 
-    socket.once("authenticated", () => {
-      setIsAuthenticating(false);
-      toast({
-        title: "Success",
-        description: `Policy: "${policy_name}" authenticated successfully`,
-        status: "success",
-        duration: 3000,
-        isClosable: true,
-      });
-      setAuthError(undefined);
-      onClose();
-    });
+    socket.once(
+      "authenticated",
+      (data: { msg: string; policies: Policy[] }) => {
+        setIsAuthenticating(false);
+        toast({
+          title: "Success",
+          description: `Policy: "${policy_name}" authenticated successfully`,
+          status: "success",
+          duration: 3000,
+          isClosable: true,
+        });
+        setAuthError(undefined);
+        setPolicies(data.policies);
+        onClose();
+      },
+    );
 
     socket.once(
       "authentication_failed",

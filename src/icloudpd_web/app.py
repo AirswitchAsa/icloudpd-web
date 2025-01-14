@@ -501,7 +501,6 @@ def create_app(  # noqa: C901
                 try:
                     if policy := handler.get_policy(policy_name):
                         result, msg = policy.authenticate(password)
-                        result = AuthenticationResult.MFA_REQUIRED
                         match result:
                             case AuthenticationResult.SUCCESS:
                                 await maybe_emit(

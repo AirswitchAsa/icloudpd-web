@@ -16,6 +16,7 @@ import {
   Flex,
   UseToastOptions,
 } from "@chakra-ui/react";
+import { Policy } from "@/types";
 
 interface MFAModalProps {
   isOpen: boolean;
@@ -25,6 +26,7 @@ interface MFAModalProps {
   toast: (options: UseToastOptions) => void;
   setMfaError: (error?: string) => void;
   policy_name: string;
+  setPolicies: (policies: Policy[]) => void;
 }
 
 export function MFAModal({
@@ -35,6 +37,7 @@ export function MFAModal({
   toast,
   setMfaError,
   policy_name,
+  setPolicies,
 }: MFAModalProps) {
   const [code, setCode] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
@@ -47,18 +50,22 @@ export function MFAModal({
     socket.off("authentication_failed");
     socket.off("mfa_required");
 
-    socket.once("authenticated", () => {
-      setIsVerifying(false);
-      toast({
-        title: "Success",
-        description: `MFA code verified successfully`,
-        status: "success",
-        duration: 3000,
-        isClosable: true,
-      });
-      setMfaError(undefined);
-      onClose();
-    });
+    socket.once(
+      "authenticated",
+      (data: { msg: string; policies: Policy[] }) => {
+        setIsVerifying(false);
+        toast({
+          title: "Success",
+          description: `MFA code verified successfully`,
+          status: "success",
+          duration: 3000,
+          isClosable: true,
+        });
+        setMfaError(undefined);
+        setPolicies(data.policies);
+        onClose();
+      },
+    );
     socket.once(
       "authentication_failed",
       (data: { error: string; policy_name: string }) => {
