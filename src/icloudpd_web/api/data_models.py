@@ -2,7 +2,8 @@ from collections.abc import Sequence
 from enum import Enum
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field
+from croniter import croniter
+from pydantic import BaseModel, Field, field_validator
 
 
 NON_POLICY_FIELDS = ["status", "progress", "authenticated", "albums"]
@@ -73,3 +74,13 @@ class PolicyConfigs(BaseModel):
     # Integration options
     remove_local_copy: bool = False
     upload_to_aws_s3: bool = False
+
+    @field_validator("interval")
+    def validate_cron_expression(cls, v: str | None) -> str | None:  # noqa: N805 ANN101
+        if v is not None:
+            if not croniter.is_valid(v):
+                raise ValueError(
+                    "Invalid cron expression. Must be in format: '* * * * *' "
+                    "(minute hour day_of_month month day_of_week)"
+                )
+        return v

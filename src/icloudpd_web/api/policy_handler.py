@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import datetime
 import logging
 import os
 import shutil
@@ -10,7 +11,9 @@ from typing import cast
 
 import aiofiles
 import socketio
+from croniter import croniter
 from stream_zip import ZIP_64, AsyncMemberFile, async_stream_zip
+from zoneinfo import ZoneInfo
 
 from icloudpd.autodelete import autodelete_photos
 from icloudpd.base import delete_photo, download_builder, retrier
@@ -131,6 +134,18 @@ class PolicyHandler:
     def username(self: "PolicyHandler") -> str:
         return self._configs.username
 
+    @property
+    def next_run_time(self: "PolicyHandler") -> datetime.datetime | None:
+        return self._next_run_time
+
+    @next_run_time.setter
+    def next_run_time(self: "PolicyHandler", value: datetime.datetime) -> None:
+        self._next_run_time = value
+
+    @property
+    def scheduled(self: "PolicyHandler") -> bool:
+        return self._next_run_time is not None and self._configs.interval is not None
+
     def __init__(
         self: "PolicyHandler",
         name: str,
@@ -144,6 +159,7 @@ class PolicyHandler:
         self._progress = 0
         self._icloud_manager = icloud_manager
         self._aws_handler = aws_handler
+        self._next_run_time = None
 
     def require_icloud(self: "PolicyHandler", msg: str) -> PyiCloudService:
         if self.icloud is None or not self.authenticated:
@@ -157,6 +173,7 @@ class PolicyHandler:
             "progress": self._progress,
             "authenticated": self.authenticated,
             "albums": self.albums,
+            "scheduled": self.scheduled,
             **self._configs.model_dump(),
         }
         if excludes is not None:
@@ -226,19 +243,30 @@ class PolicyHandler:
             raise ICloudAccessError("iCloud instance should have been created")
 
     def interrupt(self: "PolicyHandler") -> None:
-        assert self._status == PolicyStatus.RUNNING, "Can only interrupt when policy is running"
-        self._status = PolicyStatus.STOPPED
+        """
+        Interrupt the policy:
+        1. If running - stop the execution
+        2. If scheduled - cancel the scheduled run
+        """
+        if self._status == PolicyStatus.RUNNING:
+            self._status = PolicyStatus.STOPPED
+            return
+        self._next_run_time = None
 
     async def start_with_zip(
         self: "PolicyHandler", logger: logging.Logger, sio: socketio.AsyncServer
     ) -> None:
-        if self._configs.download_via_browser:
-            async for chunk in async_stream_zip(self.start(logger)):
+        async for chunk in async_stream_zip(self.start(logger)):
+            if self._configs.download_via_browser:
                 encoded_chunk = base64.b64encode(chunk).decode("utf-8")
                 await sio.emit("zip_chunk", {"chunk": encoded_chunk})
+        if self._configs.download_via_browser:
             await sio.emit("zip_chunk", {"finished": True})
-        else:
-            self.start(logger)
+
+        if self._configs.interval:
+            cron = croniter(self._configs.interval, datetime.datetime.now(ZoneInfo("UTC")))
+            self._next_run_time = cron.get_next(datetime.datetime)
+            logger.info(f"Scheduled next run (UTC): {self._next_run_time}")
 
     async def start(
         self: "PolicyHandler", logger: logging.Logger

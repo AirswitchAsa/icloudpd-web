@@ -1,6 +1,9 @@
 import os
+from datetime import datetime
+from queue import PriorityQueue  # Priority queue
 
 import toml
+from zoneinfo import ZoneInfo
 
 from icloudpd_web.api.aws_handler import AWSHandler
 from icloudpd_web.api.data_models import IGNORED_FIELDS, NON_POLICY_FIELDS
@@ -23,6 +26,7 @@ class ClientHandler:
         self._aws_handler = AWSHandler()
         self._icloud_manager = ICloudManager()
         self._load_policies()
+        self._scheduled_runs: dict[str, PriorityQueue[tuple[float, str]]] = {}
 
     def _load_policies_from_toml(self: "ClientHandler", saved_policies: list[dict]) -> None:
         for policy in saved_policies:
@@ -151,3 +155,52 @@ class ClientHandler:
             if policy.username == username and policy.status == PolicyStatus.RUNNING:
                 return policy.name
         return None
+
+    def _cron(self: "ClientHandler") -> None:
+        """
+        Check each policy's next run time and push to queue with timestamp as priority.
+        """
+        current_time = datetime.now(ZoneInfo("UTC"))
+
+        # Check each policy
+        for policy in self._policies:
+            # Skip policies that are already running or don't have an interval
+            if policy.status == PolicyStatus.RUNNING or not policy._configs.interval:
+                continue
+
+            # Push to queue if it's time to run or past time to run
+            if (
+                policy.next_run_time
+                and policy.next_run_time.timestamp() <= current_time.timestamp()
+            ):
+                self._push_policy_to_queue(policy.name, policy.next_run_time.timestamp())
+
+    def _push_policy_to_queue(self: "ClientHandler", policy_name: str, priority: float) -> None:
+        """
+        Push the policy to the priority queue.
+        """
+        if policy := self.get_policy(policy_name):
+            if policy_queue := self._scheduled_runs.get(policy.username):
+                policy_queue.put((priority, policy_name))
+            else:
+                self._scheduled_runs[policy.username] = PriorityQueue()
+                self._scheduled_runs[policy.username].put((priority, policy_name))
+
+    def user_starts_policy(self: "ClientHandler", policy_name: str) -> None:
+        """
+        Push the policy to the queue with the highest priority.
+        """
+        if (policy := self.get_policy(policy_name)) and policy.status != PolicyStatus.RUNNING:
+            self._push_policy_to_queue(policy_name, 0)
+
+    def policies_to_run(self: "ClientHandler") -> list[PolicyHandler]:
+        """
+        Check the priority queue and return the policy to run.
+        """
+        self._cron()  # update the queue
+        policies_to_run = []
+        for username, policy_queue in self._scheduled_runs.items():
+            if not policy_queue.empty() and self.icloud_instance_occupied_by(username) is None:
+                _, policy_name = policy_queue.get()
+                policies_to_run.append(self.get_policy(policy_name))
+        return policies_to_run

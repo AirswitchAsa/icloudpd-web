@@ -141,7 +141,7 @@ export default function Home() {
       onAuthOpen();
     } else {
       policy.logs = "";
-      socket.emit("start", policy.name);
+      socket.emit("user_starts_policy", policy.name);
     }
   };
 

@@ -68,6 +68,10 @@ export const PolicyRow = ({
     if (socket && policy.authenticated) {
       setIsWaitingRun(true);
 
+      socket.once("download_finished", () => {
+        setIsWaitingRun(false);
+      });
+
       // Only import and use streamSaver on the client side
       if (typeof window !== "undefined" && policy.download_via_browser) {
         const streamSaver = (await import("streamsaver")).default;
