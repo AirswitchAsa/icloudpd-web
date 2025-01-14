@@ -98,7 +98,6 @@ def create_app(  # noqa: C901
 
     async def run_scheduled_policies(
         handler_manager: dict[str, ClientHandler],
-        sio: socketio.AsyncServer,
     ) -> None:
         """
         Background task that checks and runs scheduled policies.
@@ -127,7 +126,7 @@ def create_app(  # noqa: C901
                         print(f"Error in scheduled policy runner: {str(e)}")
                 await asyncio.sleep(1)
 
-    asyncio.create_task(run_scheduled_policies(handler_manager, sio))
+    asyncio.create_task(run_scheduled_policies(handler_manager))
 
     @sio.event
     async def update_app_config(sid: str, key: str, value: bool | str) -> None:
@@ -502,6 +501,7 @@ def create_app(  # noqa: C901
                 try:
                     if policy := handler.get_policy(policy_name):
                         result, msg = policy.authenticate(password)
+                        result = AuthenticationResult.MFA_REQUIRED
                         match result:
                             case AuthenticationResult.SUCCESS:
                                 await maybe_emit(
@@ -514,14 +514,22 @@ def create_app(  # noqa: C901
                                 await maybe_emit(
                                     "authentication_failed",
                                     client_id,
-                                    msg,
+                                    {"error": msg, "policy_name": policy_name},
                                     preferred_sid=sid,
                                 )
                             case AuthenticationResult.MFA_REQUIRED:
-                                await maybe_emit("mfa_required", client_id, msg, preferred_sid=sid)
+                                await maybe_emit(
+                                    "mfa_required",
+                                    client_id,
+                                    {"error": msg, "policy_name": policy_name},
+                                    preferred_sid=sid,
+                                )
                 except Exception as e:
                     await maybe_emit(
-                        "authentication_failed", client_id, {"error": repr(e)}, preferred_sid=sid
+                        "authentication_failed",
+                        client_id,
+                        {"error": repr(e), "policy_name": policy_name},
+                        preferred_sid=sid,
                     )
 
     @sio.event

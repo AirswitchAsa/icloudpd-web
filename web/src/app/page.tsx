@@ -10,24 +10,17 @@ import {
   useToast,
 } from "@chakra-ui/react";
 import { EditPolicyModal } from "@/components/EditPolicyModal";
-import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
 import { Banner } from "@/components/Banner";
 import { Panel } from "@/components/Panel";
 import { PolicyList } from "@/components/PolicyList";
 import { useSocket, SocketConfig } from "@/hooks/useSocket";
 import { useSocketEvents } from "@/hooks/useSocketEvents";
 import { Policy } from "@/types/index";
-import { AuthenticationModal } from "@/components/AuthenticationModal";
-import { MFAModal } from "@/components/MFAModal";
 import { ServerAuthenticationModal } from "@/components/ServerAuthenticationModal";
 import { SettingsModal } from "@/components/SettingsModal";
 
 export default function Home() {
   const [policies, setPolicies] = useState<Policy[]>([]);
-  const [selectedPolicy, setSelectedPolicy] = useState<Policy | undefined>();
-  const [policyToDelete, setPolicyToDelete] = useState<Policy | undefined>();
-  const [policyToAuth, setPolicyToAuth] = useState<Policy | undefined>();
-  const [mfaError, setMfaError] = useState<string>();
   const [isServerAuthenticated, setIsServerAuthenticated] = useState(false);
   const [socketConfig, setSocketConfig] = useState<SocketConfig>({
     clientId: "default-user",
@@ -38,21 +31,6 @@ export default function Home() {
     isOpen: isEditPolicyOpen,
     onOpen: onEditPolicyOpen,
     onClose: onEditPolicyClose,
-  } = useDisclosure();
-  const {
-    isOpen: isDeleteOpen,
-    onOpen: onDeleteOpen,
-    onClose: onDeleteClose,
-  } = useDisclosure();
-  const {
-    isOpen: isAuthOpen,
-    onOpen: onAuthOpen,
-    onClose: onAuthClose,
-  } = useDisclosure();
-  const {
-    isOpen: isMfaOpen,
-    onOpen: onMfaOpen,
-    onClose: onMfaClose,
   } = useDisclosure();
   const {
     isOpen: isSettingsOpen,
@@ -69,120 +47,20 @@ export default function Home() {
   useEffect(() => {
     if (!socket) return;
 
-    const handleAuthenticated = () => {
-      onAuthClose();
-      onMfaClose();
-    };
-
-    const handleMfaRequired = (msg: string) => {
-      onAuthClose();
-      setMfaError(msg);
-      onMfaOpen();
-    };
-
     const handleServerAuthenticated = () => {
       setIsServerAuthenticated(true);
     };
 
-    socket.on("authenticated", handleAuthenticated);
-    socket.on("mfa_required", handleMfaRequired);
     socket.on("server_authenticated", handleServerAuthenticated);
 
     return () => {
-      socket.off("authenticated", handleAuthenticated);
-      socket.off("mfa_required", handleMfaRequired);
       socket.off("server_authenticated", handleServerAuthenticated);
     };
-  }, [socket, policyToAuth, onAuthClose, onMfaClose, onMfaOpen]);
+  }, [socket]);
 
   const handleServerAuthenticated = (clientId: string, isGuest: boolean) => {
     setSocketConfig({ clientId, isGuest });
     setIsServerAuthenticated(true);
-  };
-
-  const handlePolicySaved = (policies: Policy[]) => {
-    setPolicies(policies);
-    handleModalClose();
-  };
-
-  const handleModalClose = () => {
-    setSelectedPolicy(undefined);
-    onEditPolicyClose();
-  };
-
-  const handlePolicyEdit = (policy: Policy) => {
-    setSelectedPolicy(policy);
-    onEditPolicyOpen();
-  };
-
-  const handleAddNewClick = () => {
-    setSelectedPolicy(undefined);
-    onEditPolicyOpen();
-  };
-
-  const handlePolicyDelete = (policy: Policy) => {
-    setPolicyToDelete(policy);
-    onDeleteOpen();
-  };
-
-  const confirmDelete = () => {
-    if (!policyToDelete) return;
-
-    socket?.emit("delete_policy", policyToDelete.name);
-    onDeleteClose();
-    setPolicyToDelete(undefined);
-  };
-
-  const handlePolicyRun = (policy: Policy) => {
-    if (!socket) return;
-
-    if (!policy.authenticated) {
-      setPolicyToAuth(policy);
-      onAuthOpen();
-    } else {
-      policy.logs = "";
-      socket.emit("user_starts_policy", policy.name);
-    }
-  };
-
-  const handleAuthSubmit = (password: string) => {
-    if (!socket || !policyToAuth) return;
-    socket.emit("authenticate", policyToAuth.name, password);
-  };
-
-  const handleMfaSubmit = (code: string) => {
-    if (!socket || !policyToAuth) return;
-    setMfaError(undefined);
-    socket.emit("provide_mfa", policyToAuth.name, code);
-  };
-
-  const handlePolicyInterrupt = (policy: Policy) => {
-    if (!socket) return;
-    socket.emit("interrupt", policy.name);
-  };
-
-  const handlePolicyCancel = (policy: Policy) => {
-    if (socket) {
-      socket.once("cancelled_scheduled_run", (policy_name) => {
-        toast({
-          title: "Scheduled run cancelled",
-          description: `Scheduled run for ${policy_name} has been cancelled`,
-          status: "success",
-          duration: 3000,
-          isClosable: true,
-        });
-      });
-      socket.once("error_cancelling_scheduled_run", (policy_name, error) => {
-        toast({
-          title: "Error",
-          description: `Failed to cancel scheduled run for ${policy_name}: ${error}`,
-          status: "error",
-          duration: 3000,
-          isClosable: true,
-        });
-      });
-      socket.emit("cancel_scheduled_run", policy.name);
-    }
   };
 
   const handleLogout = () => {
@@ -226,7 +104,7 @@ export default function Home() {
                   fontSize="12px"
                   size="sm"
                   px={4}
-                  onClick={handleAddNewClick}
+                  onClick={onEditPolicyOpen}
                 >
                   Add
                 </Button>
@@ -235,11 +113,6 @@ export default function Home() {
               <PolicyList
                 policies={policies}
                 setPolicies={setPolicies}
-                onEdit={handlePolicyEdit}
-                onDelete={handlePolicyDelete}
-                onRun={handlePolicyRun}
-                onInterrupt={handlePolicyInterrupt}
-                onCancel={handlePolicyCancel}
                 socket={socket}
                 toast={toast}
               />
@@ -249,54 +122,18 @@ export default function Home() {
 
         {isEditPolicyOpen && (
           <EditPolicyModal
-            isOpen={true}
-            onClose={handleModalClose}
-            onPolicySaved={handlePolicySaved}
-            isEditing={!!selectedPolicy}
-            policy={selectedPolicy}
-            socketConfig={socketConfig}
-          />
-        )}
-
-        {isDeleteOpen && (
-          <DeleteConfirmationDialog
-            isOpen={isDeleteOpen}
-            onClose={onDeleteClose}
-            onConfirm={confirmDelete}
-            policyName={policyToDelete?.name || ""}
-          />
-        )}
-
-        {isAuthOpen && (
-          <AuthenticationModal
-            isOpen={true}
-            onClose={() => {
-              onAuthClose();
-              setPolicyToAuth(undefined);
-            }}
-            onSubmit={handleAuthSubmit}
-            username={policyToAuth?.username || ""}
-            socket={socket}
-          />
-        )}
-
-        {isMfaOpen && (
-          <MFAModal
-            isOpen={true}
-            onClose={() => {
-              onMfaClose();
-              setPolicyToAuth(undefined);
-              setMfaError(undefined);
-            }}
-            onSubmit={handleMfaSubmit}
-            error={mfaError}
+            isOpen={isEditPolicyOpen}
+            onClose={onEditPolicyClose}
+            setPolicies={setPolicies}
+            isEditing={false}
+            policy={undefined}
             socket={socket}
           />
         )}
 
         {isSettingsOpen && (
           <SettingsModal
-            isOpen={true}
+            isOpen={isSettingsOpen}
             onClose={onSettingsClose}
             socket={socket}
             isGuest={socketConfig.isGuest}

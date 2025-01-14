@@ -19,8 +19,8 @@ import {
   Box,
   Text,
 } from "@chakra-ui/react";
-import { useSocket, SocketConfig } from "@/hooks/useSocket";
 import { Policy } from "@/types";
+import { Socket } from "socket.io-client";
 import {
   FieldWithInfo,
   AlbumField,
@@ -34,22 +34,21 @@ import {
 interface EditPolicyModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onPolicySaved?: (policies: Policy[]) => void;
+  setPolicies: (policies: Policy[]) => void;
   isEditing?: boolean;
   policy?: Policy;
-  socketConfig: SocketConfig;
+  socket: Socket | null;
 }
 
 export function EditPolicyModal({
   isOpen,
   onClose,
-  onPolicySaved,
+  setPolicies,
   isEditing = false,
   policy,
-  socketConfig,
+  socket,
 }: EditPolicyModalProps) {
   const toast = useToast();
-  const socket = useSocket(socketConfig);
   const [formData, setFormData] = useState<
     Omit<Policy, "status" | "progress" | "logs">
   >({
@@ -89,52 +88,55 @@ export function EditPolicyModal({
     added_after: policy?.added_after || null,
     added_before: policy?.added_before || null,
     upload_to_aws_s3: policy?.upload_to_aws_s3 || false,
+    scheduled: policy?.scheduled || false,
+    authenticated: policy?.authenticated || false,
+    waiting_mfa: policy?.waiting_mfa || false,
   });
 
   const handleSave = () => {
     if (!socket) return;
 
-    // Listen for the response before closing
-    const successEvent = isEditing
-      ? "policies_after_save"
-      : "policies_after_create";
-    const errorEvent = isEditing
-      ? "error_saving_policy"
-      : "error_creating_policy";
-
-    socket.once(successEvent, (policies: Policy[]) => {
+    socket.once("policies_after_save", (policies: Policy[]) => {
       toast({
         title: "Success",
-        description: `Policy "${formData.name}" ${
-          isEditing ? "saved" : "created"
-        } successfully`,
+        description: `Policy: "${formData.name}" saved successfully`,
         status: "success",
         duration: 3000,
         isClosable: true,
       });
-      onClose();
-      if (onPolicySaved) {
-        onPolicySaved(policies);
-      }
+      setPolicies(policies);
     });
 
-    socket.once(
-      errorEvent,
-      ({ policy_name, error }: { policy_name: string; error: string }) => {
-        const errorMessage = `Failed to ${
-          isEditing ? "save" : "create"
-        } policy "${policy_name}": ${error}`;
-        toast({
-          title: "Error",
-          description: errorMessage,
-          status: "error",
-          duration: 5000,
-          isClosable: true,
-        });
-        // If error occurs, remove the success listener
-        socket.off(successEvent);
-      },
-    );
+    socket.once("policies_after_create", (policies: Policy[]) => {
+      toast({
+        title: "Success",
+        description: `Policy: "${formData.name}" created successfully`,
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+      setPolicies(policies);
+    });
+
+    socket.once("error_saving_policy", (data: any) => {
+      toast({
+        title: "Error",
+        description: `Policy: "${formData.name}" failed to save. Error: ${data.error}`,
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    });
+
+    socket.once("error_creating_policy", (data: any) => {
+      toast({
+        title: "Error",
+        description: `Policy: "${formData.name}" failed to create. Error: ${data.error}`,
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    });
 
     // Send the request
     if (isEditing) {
@@ -142,13 +144,9 @@ export function EditPolicyModal({
     } else {
       socket.emit("create_policy", formData);
     }
+    onClose();
   };
 
-  console.log(formData);
-  console.log(
-    "value of formData.download_via_browser",
-    formData.download_via_browser,
-  );
   const handleSaveLibrary = (value: "Personal Library" | "Shared Library") => {
     if (!isEditing || !socket || !policy) return;
     const newFormData = { ...formData, library: value };

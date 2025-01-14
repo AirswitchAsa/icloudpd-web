@@ -21,19 +21,13 @@ import {
 } from "@chakra-ui/icons";
 import { FaPlay, FaPause } from "react-icons/fa";
 import { Policy } from "@/types/index";
-import { InterruptConfirmationDialog } from "./InterruptConfirmationDialog";
-import { CancelConfirmationDialog } from "./CancelConfirmationDialog";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Socket } from "socket.io-client";
+import { PolicyDialogs } from "./PolicyDialogs";
 
 interface PolicyRowProps {
   policy: Policy;
   setPolicies: (policies: Policy[]) => void;
-  onEdit: (policy: Policy) => void;
-  onDelete: (policy: Policy) => void;
-  onRun: (policy: Policy) => void;
-  onInterrupt: (policy: Policy) => void;
-  onCancel: (policy: Policy) => void;
   socket: Socket | null;
   toast: (options: UseToastOptions) => void;
 }
@@ -50,11 +44,6 @@ type PolicyRowState =
 export const PolicyRow = ({
   policy,
   setPolicies,
-  onEdit,
-  onDelete,
-  onRun,
-  onInterrupt,
-  onCancel,
   socket,
   toast,
 }: PolicyRowProps) => {
@@ -69,59 +58,43 @@ export const PolicyRow = ({
     onOpen: onCancelOpen,
     onClose: onCancelClose,
   } = useDisclosure();
+  const {
+    isOpen: isDeleteOpen,
+    onOpen: onDeleteOpen,
+    onClose: onDeleteClose,
+  } = useDisclosure();
+  const {
+    isOpen: isAuthOpen,
+    onOpen: onAuthOpen,
+    onClose: onAuthClose,
+  } = useDisclosure();
+  const {
+    isOpen: isMfaOpen,
+    onOpen: onMfaOpen,
+    onClose: onMfaClose,
+  } = useDisclosure();
+  const {
+    isOpen: isEditOpen,
+    onOpen: onEditOpen,
+    onClose: onEditClose,
+  } = useDisclosure();
+
   const [policyRowState, setPolicyRowState] =
     useState<PolicyRowState>("unauthenticated");
 
-  useEffect(() => {
-    // only relying on this for changes caused by updating policy
-    if (policy.authenticated) {
-      if (policy.status === "running") {
-        setPolicyRowState("running");
-      } else if (policy.status === "errored") {
-        setPolicyRowState("errored");
-      } else if (policy.scheduled) {
-        setPolicyRowState("scheduled");
-      } else {
-        setPolicyRowState("ready");
-      }
-    } else {
-      setPolicyRowState("unauthenticated");
-    }
-  }, [policy]);
-
-  const handleInterrupt = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onInterruptOpen();
-  };
-
-  const handleCancelSchedule = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onCancelOpen();
-  };
-
-  const confirmInterrupt = () => {
-    onInterrupt(policy);
-    onInterruptClose();
-  };
-
-  const confirmCancel = () => {
-    if (socket) {
-      socket.once("cancelled_scheduled_run", () => {
-        setPolicyRowState("ready");
-      });
-    }
-    onCancel(policy);
-    onCancelClose();
-  };
-
   const handleRun = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (socket && policy.authenticated) {
+    if (!socket) return;
+
+    if (policy.waiting_mfa) {
+      onMfaOpen(); // provide MFA code directly
+    } else if (!policy.authenticated) {
+      onAuthOpen(); // provide password
+    } else {
+      // actually run the policy if authenticated
       setPolicyRowState("waiting");
 
       socket.once("download_finished", () => {
-        console.log("download_finished");
-        console.log(policy);
         if (policy.scheduled) {
           setPolicyRowState("scheduled");
         } else {
@@ -157,7 +130,6 @@ export const PolicyRow = ({
               for (let i = 0; i < binaryStr.length; i++) {
                 bytes[i] = binaryStr.charCodeAt(i);
               }
-              console.log("Writing chunk of size:", bytes.length, "bytes");
               writer.write(bytes);
             } catch (error) {
               console.error("Error processing zip chunks:", error);
@@ -179,11 +151,64 @@ export const PolicyRow = ({
           setPolicyRowState("ready");
         });
       }
+
+      policy.logs = "";
+      socket.emit("user_starts_policy", policy.name);
     }
-    onRun(policy);
   };
 
-  // Update renderActionButton to handle all states
+  const handleDuplicate = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!socket) return;
+
+    const duplicatedPolicy = {
+      ...policy,
+      name: `${policy.name} COPY`,
+      authenticated: false,
+    };
+
+    socket.once("policies_after_create", (policies: Policy[]) => {
+      setPolicies(policies);
+      toast({
+        title: "Success",
+        description: `Policy: "${duplicatedPolicy.name}" duplicated successfully`,
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+    });
+
+    socket.once(
+      "error_creating_policy",
+      ({ policy_name, error }: { policy_name: string; error: string }) => {
+        toast({
+          title: "Error",
+          description: `Failed to create policy "${policy_name}": ${error}`,
+          status: "error",
+          duration: 5000,
+          isClosable: true,
+        });
+      },
+    );
+
+    socket.emit("create_policy", duplicatedPolicy);
+  };
+
+  const handleExportLogs = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!policy.logs) return;
+
+    const blob = new Blob([policy.logs], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${policy.name}-logs.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const renderActionButton = (policyRowState: PolicyRowState) => {
     switch (policyRowState) {
       case "waiting":
@@ -204,7 +229,10 @@ export const PolicyRow = ({
             colorScheme="blue"
             variant="ghost"
             size="sm"
-            onClick={handleInterrupt}
+            onClick={(e: React.MouseEvent) => {
+              e.stopPropagation();
+              onInterruptOpen();
+            }}
           />
         );
       case "scheduled":
@@ -215,7 +243,10 @@ export const PolicyRow = ({
             colorScheme="red"
             variant="ghost"
             size="sm"
-            onClick={handleCancelSchedule}
+            onClick={(e: React.MouseEvent) => {
+              e.stopPropagation();
+              onCancelOpen();
+            }}
           />
         );
       case "done":
@@ -252,51 +283,6 @@ export const PolicyRow = ({
           />
         );
     }
-  };
-
-  const handleDuplicate = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!socket) return;
-
-    const duplicatedPolicy = {
-      ...policy,
-      name: `${policy.name} COPY`,
-      authenticated: false, // Reset authentication state for the new policy
-    };
-
-    socket.once("policies_after_create", (policies: Policy[]) => {
-      setPolicies(policies);
-    });
-
-    socket.once(
-      "error_creating_policy",
-      ({ policy_name, error }: { policy_name: string; error: string }) => {
-        toast({
-          title: "Error",
-          description: `Failed to create policy "${policy_name}": ${error}`,
-          status: "error",
-          duration: 5000,
-          isClosable: true,
-        });
-      },
-    );
-
-    socket.emit("create_policy", duplicatedPolicy);
-  };
-
-  const handleExportLogs = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!policy.logs) return;
-
-    const blob = new Blob([policy.logs], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${policy.name}-logs.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
   };
 
   const getStateText = (policyRowState: PolicyRowState) => {
@@ -413,9 +399,9 @@ export const PolicyRow = ({
             colorScheme="blue"
             variant="ghost"
             size="sm"
-            onClick={(e) => {
+            onClick={(e: React.MouseEvent) => {
               e.stopPropagation();
-              onEdit(policy);
+              onEditOpen();
             }}
             isDisabled={policyRowState === "running"}
           />
@@ -434,27 +420,35 @@ export const PolicyRow = ({
             colorScheme="red"
             variant="ghost"
             size="sm"
-            onClick={(e) => {
+            onClick={(e: React.MouseEvent) => {
               e.stopPropagation();
-              onDelete(policy);
+              onDeleteOpen();
             }}
             isDisabled={policyRowState === "running"}
           />
         </Flex>
       </Flex>
 
-      <CancelConfirmationDialog
-        isOpen={isCancelOpen}
-        onClose={onCancelClose}
-        onConfirm={confirmCancel}
-        policyName={policy.name}
-      />
-
-      <InterruptConfirmationDialog
-        isOpen={isInterruptOpen}
-        onClose={onInterruptClose}
-        onConfirm={confirmInterrupt}
-        policyName={policy.name}
+      <PolicyDialogs
+        policy={policy}
+        setPolicies={setPolicies}
+        socket={socket}
+        toast={toast}
+        dialogs={{
+          delete: { isOpen: isDeleteOpen, onClose: onDeleteClose },
+          cancel: { isOpen: isCancelOpen, onClose: onCancelClose },
+          interrupt: { isOpen: isInterruptOpen, onClose: onInterruptClose },
+          auth: {
+            isOpen: isAuthOpen,
+            onClose: onAuthClose,
+          },
+          mfa: {
+            isOpen: isMfaOpen,
+            onClose: onMfaClose,
+            onOpen: onMfaOpen,
+          },
+          edit: { isOpen: isEditOpen, onClose: onEditClose },
+        }}
       />
 
       <Collapse in={isOpen}>

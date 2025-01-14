@@ -118,15 +118,18 @@ export function useSocketEvents({
     );
 
     // MFA required
-    socket.on("mfa_required", (msg: string) => {
-      toast({
-        title: "MFA Required",
-        description: msg,
-        status: "info",
-        duration: 3000,
-        isClosable: true,
-      });
-    });
+    socket.on(
+      "mfa_required",
+      (data: { error: string; policy_name: string }) => {
+        toast({
+          title: "MFA Required",
+          description: `MFA required to authenticate policy "${data.policy_name}": ${data.error}`,
+          status: "info",
+          duration: 3000,
+          isClosable: true,
+        });
+      },
+    );
 
     // iCloud busy notification
     socket.on("icloud_is_busy", (msg: string) => {

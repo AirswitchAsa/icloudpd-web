@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Socket } from 'socket.io-client';
+import { useState } from "react";
+import { Socket } from "socket.io-client";
 import {
   Modal,
   ModalOverlay,
@@ -14,40 +14,77 @@ import {
   Text,
   VStack,
   Flex,
-} from '@chakra-ui/react';
+  UseToastOptions,
+} from "@chakra-ui/react";
 
 interface MFAModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (code: string) => void;
   error?: string;
   socket: Socket | null;
+  toast: (options: UseToastOptions) => void;
+  setMfaError: (error?: string) => void;
+  policy_name: string;
 }
 
-export function MFAModal({ isOpen, onClose, onSubmit, error, socket }: MFAModalProps) {
-  const [code, setCode] = useState('');
+export function MFAModal({
+  isOpen,
+  onClose,
+  error,
+  socket,
+  toast,
+  setMfaError,
+  policy_name,
+}: MFAModalProps) {
+  const [code, setCode] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
 
   const handleSubmit = () => {
     if (!socket) return;
-    
     setIsVerifying(true);
-
-    socket.once('authenticated', () => {
+    socket.once("authenticated", () => {
       setIsVerifying(false);
+      toast({
+        title: "Success",
+        description: `MFA code verified successfully`,
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+      setMfaError(undefined);
       onClose();
     });
+    socket.once(
+      "authentication_failed",
+      (data: { error: string; policy_name: string }) => {
+        toast({
+          title: "Error",
+          description: `Failed to authenticate policy "${data.policy_name}": ${data.error}`,
+          status: "error",
+          duration: 3000,
+          isClosable: true,
+        });
+        setMfaError(data.error);
+        setIsVerifying(false);
+      },
+    );
+    socket.once(
+      "mfa_required",
+      (data: { error: string; policy_name: string }) => {
+        toast({
+          title: "MFA Required",
+          description: `MFA verification failed: ${data.error}`,
+          status: "info",
+          duration: 3000,
+          isClosable: true,
+        });
+        setMfaError(data.error);
+        setIsVerifying(false);
+      },
+    );
 
-    socket.once('authentication_failed', () => {
-      setIsVerifying(false);
-    });
-
-    socket.once('mfa_required', () => {
-      setIsVerifying(false);
-    });
-
-    onSubmit(code);
-    setCode('');
+    socket.emit("provide_mfa", policy_name, code);
+    setCode("");
   };
 
   return (
@@ -72,7 +109,7 @@ export function MFAModal({ isOpen, onClose, onSubmit, error, socket }: MFAModalP
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && code) {
+                  if (e.key === "Enter" && code) {
                     handleSubmit();
                   }
                 }}
@@ -88,7 +125,12 @@ export function MFAModal({ isOpen, onClose, onSubmit, error, socket }: MFAModalP
           </VStack>
         </ModalBody>
         <ModalFooter>
-          <Button variant="ghost" mr={3} onClick={onClose} isDisabled={isVerifying}>
+          <Button
+            variant="ghost"
+            mr={3}
+            onClick={onClose}
+            isDisabled={isVerifying}
+          >
             Cancel
           </Button>
           <Button
@@ -103,4 +145,4 @@ export function MFAModal({ isOpen, onClose, onSubmit, error, socket }: MFAModalP
       </ModalContent>
     </Modal>
   );
-} 
+}

@@ -6,7 +6,7 @@ from croniter import croniter
 from pydantic import BaseModel, Field, field_validator
 
 
-NON_POLICY_FIELDS = ["status", "progress", "authenticated", "albums"]
+NON_POLICY_FIELDS = ["status", "progress", "authenticated", "albums", "waiting_mfa", "scheduled"]
 IGNORED_FIELDS = [
     "live_photo_size",
     "live_photo_mov_filename_policy",

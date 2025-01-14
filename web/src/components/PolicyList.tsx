@@ -19,11 +19,6 @@ import { Socket } from "socket.io-client";
 interface PolicyListProps {
   policies: Policy[];
   setPolicies: (policies: Policy[]) => void;
-  onEdit: (policy: Policy) => void;
-  onDelete: (policy: Policy) => void;
-  onRun: (policy: Policy) => void;
-  onInterrupt: (policy: Policy) => void;
-  onCancel: (policy: Policy) => void;
   socket: Socket | null;
   toast: (options: UseToastOptions) => void;
 }
@@ -31,11 +26,6 @@ interface PolicyListProps {
 export const PolicyList = ({
   policies,
   setPolicies,
-  onEdit,
-  onDelete,
-  onRun,
-  onInterrupt,
-  onCancel,
   socket,
   toast,
 }: PolicyListProps) => {
@@ -234,11 +224,6 @@ export const PolicyList = ({
             key={policy.name}
             policy={policy}
             setPolicies={setPolicies}
-            onEdit={onEdit}
-            onDelete={onDelete}
-            onRun={onRun}
-            onInterrupt={onInterrupt}
-            onCancel={onCancel}
             socket={socket}
             toast={toast}
           />

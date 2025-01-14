@@ -117,12 +117,12 @@ export function useSocket(config: SocketConfig) {
       console.log("Authentication successful:", msg);
     });
 
-    newSocket.on("authentication_failed", (msg: string) => {
-      console.error("Authentication failed:", msg);
+    newSocket.on("authentication_failed", (payload: ErrorPayload) => {
+      console.error("Authentication failed:", payload.error);
     });
 
-    newSocket.on("mfa_required", (msg: string) => {
-      console.log("MFA required:", msg);
+    newSocket.on("mfa_required", (payload: ErrorPayload) => {
+      console.log("MFA required:", payload.policy_name);
     });
 
     // Download events

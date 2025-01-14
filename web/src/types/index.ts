@@ -47,6 +47,7 @@ export interface Policy {
   dry_run: boolean;
   interval: string | null;
   scheduled: boolean;
+  waiting_mfa: boolean;
   log_level: "debug" | "info" | "error";
 
   // integration options
