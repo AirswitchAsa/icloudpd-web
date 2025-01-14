@@ -3,7 +3,7 @@
 ## Release
 
 - [Python Package](https://pypi.org/project/icloudpd-web/)
-- [Docker Image](https://hub.docker.com/r/icloudpdweb/icloudpd-web)
+- [Docker Image](https://hub.docker.com/r/spicadust/icloudpd-web)
 
 ## Overview
 
