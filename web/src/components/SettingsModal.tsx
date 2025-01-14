@@ -86,7 +86,11 @@ export function SettingsModal({
 
             {/* Right content area */}
             <Box flex={1} p={8} overflowY="auto">
-              <ActiveComponent socket={socket} isGuest={isGuest} />
+              {activeTab === "user" ? (
+                <UserSettings socket={socket} isGuest={isGuest} />
+              ) : (
+                <ActiveComponent socket={socket} />
+              )}
             </Box>
           </Flex>
         </ModalBody>
