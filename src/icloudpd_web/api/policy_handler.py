@@ -253,6 +253,12 @@ class PolicyHandler:
             return
         self._next_run_time = None
 
+    def cancel_scheduled_run(self: "PolicyHandler") -> bool:
+        if self._next_run_time is None or self._status != PolicyStatus.STOPPED:
+            return False
+        self._next_run_time = None
+        return True
+
     async def start_with_zip(
         self: "PolicyHandler", logger: logging.Logger, sio: socketio.AsyncServer
     ) -> None:

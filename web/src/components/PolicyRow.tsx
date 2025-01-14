@@ -17,10 +17,12 @@ import {
   DeleteIcon,
   CopyIcon,
   DownloadIcon,
+  MinusIcon,
 } from "@chakra-ui/icons";
 import { FaPlay, FaPause } from "react-icons/fa";
 import { Policy } from "@/types/index";
 import { InterruptConfirmationDialog } from "./InterruptConfirmationDialog";
+import { CancelConfirmationDialog } from "./CancelConfirmationDialog";
 import { useState, useEffect } from "react";
 import { Socket } from "socket.io-client";
 
@@ -31,9 +33,19 @@ interface PolicyRowProps {
   onDelete: (policy: Policy) => void;
   onRun: (policy: Policy) => void;
   onInterrupt: (policy: Policy) => void;
+  onCancel: (policy: Policy) => void;
   socket: Socket | null;
   toast: (options: UseToastOptions) => void;
 }
+
+type PolicyRowState =
+  | "ready"
+  | "waiting"
+  | "running"
+  | "errored"
+  | "scheduled"
+  | "done"
+  | "unauthenticated";
 
 export const PolicyRow = ({
   policy,
@@ -42,6 +54,7 @@ export const PolicyRow = ({
   onDelete,
   onRun,
   onInterrupt,
+  onCancel,
   socket,
   toast,
 }: PolicyRowProps) => {
@@ -51,11 +64,39 @@ export const PolicyRow = ({
     onOpen: onInterruptOpen,
     onClose: onInterruptClose,
   } = useDisclosure();
-  const [isWaitingRun, setIsWaitingRun] = useState(false);
+  const {
+    isOpen: isCancelOpen,
+    onOpen: onCancelOpen,
+    onClose: onCancelClose,
+  } = useDisclosure();
+  const [policyRowState, setPolicyRowState] =
+    useState<PolicyRowState>("unauthenticated");
+
+  useEffect(() => {
+    // only relying on this for changes caused by updating policy
+    if (policy.authenticated) {
+      if (policy.status === "running") {
+        setPolicyRowState("running");
+      } else if (policy.status === "errored") {
+        setPolicyRowState("errored");
+      } else if (policy.scheduled) {
+        setPolicyRowState("scheduled");
+      } else {
+        setPolicyRowState("ready");
+      }
+    } else {
+      setPolicyRowState("unauthenticated");
+    }
+  }, [policy]);
 
   const handleInterrupt = (e: React.MouseEvent) => {
     e.stopPropagation();
     onInterruptOpen();
+  };
+
+  const handleCancelSchedule = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onCancelOpen();
   };
 
   const confirmInterrupt = () => {
@@ -63,13 +104,41 @@ export const PolicyRow = ({
     onInterruptClose();
   };
 
+  const confirmCancel = () => {
+    if (socket) {
+      socket.once("cancelled_scheduled_run", () => {
+        setPolicyRowState("ready");
+      });
+    }
+    onCancel(policy);
+    onCancelClose();
+  };
+
   const handleRun = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (socket && policy.authenticated) {
-      setIsWaitingRun(true);
+      setPolicyRowState("waiting");
 
       socket.once("download_finished", () => {
-        setIsWaitingRun(false);
+        console.log("download_finished");
+        console.log(policy);
+        if (policy.scheduled) {
+          setPolicyRowState("scheduled");
+        } else {
+          setPolicyRowState("ready");
+        }
+      });
+
+      socket.once("download_failed", () => {
+        setPolicyRowState("errored");
+      });
+
+      socket.once("download_interrupted", () => {
+        setPolicyRowState("ready");
+      });
+
+      socket.once("download_progress", () => {
+        setPolicyRowState("running");
       });
 
       // Only import and use streamSaver on the client side
@@ -79,6 +148,7 @@ export const PolicyRow = ({
         const writer = fileStream.getWriter();
 
         socket.on("zip_chunk", (data) => {
+          setPolicyRowState("running");
           if (data.chunk && policy.download_via_browser) {
             try {
               if (!data.chunk) return;
@@ -95,100 +165,93 @@ export const PolicyRow = ({
           }
           if (data.finished) {
             writer.close();
-            setIsWaitingRun(false);
+            setPolicyRowState("ready");
           }
         });
 
         socket.once("download_failed", () => {
           writer.abort();
-          setIsWaitingRun(false);
+          setPolicyRowState("errored");
         });
 
         socket.once("download_interrupted", () => {
           writer.close();
-          setIsWaitingRun(false);
+          setPolicyRowState("ready");
         });
       }
     }
     onRun(policy);
   };
 
-  // Reset waiting state when we get progress or policy changes
-  useEffect(() => {
-    if (policy.status === "running") {
-      setIsWaitingRun(false);
+  // Update renderActionButton to handle all states
+  const renderActionButton = (policyRowState: PolicyRowState) => {
+    switch (policyRowState) {
+      case "waiting":
+        return (
+          <IconButton
+            aria-label="Loading"
+            icon={<Spinner size="sm" />}
+            colorScheme="blue"
+            variant="ghost"
+            size="sm"
+          />
+        );
+      case "running":
+        return (
+          <IconButton
+            aria-label="Interrupt download"
+            icon={<FaPause />}
+            colorScheme="blue"
+            variant="ghost"
+            size="sm"
+            onClick={handleInterrupt}
+          />
+        );
+      case "scheduled":
+        return (
+          <IconButton
+            aria-label="Cancel scheduled run"
+            icon={<MinusIcon />}
+            colorScheme="red"
+            variant="ghost"
+            size="sm"
+            onClick={handleCancelSchedule}
+          />
+        );
+      case "done":
+        return (
+          <IconButton
+            aria-label="Run policy again"
+            icon={<FaPlay />}
+            colorScheme="green"
+            variant="ghost"
+            size="sm"
+            onClick={handleRun}
+          />
+        );
+      case "unauthenticated":
+        return (
+          <IconButton
+            aria-label="Handle authentication"
+            icon={<FaPlay />}
+            colorScheme="green"
+            variant="ghost"
+            size="sm"
+            onClick={handleRun}
+          />
+        );
+      default: // ready or error
+        return (
+          <IconButton
+            aria-label="Run policy"
+            icon={<FaPlay />}
+            colorScheme="green"
+            variant="ghost"
+            size="sm"
+            onClick={handleRun}
+          />
+        );
     }
-  }, [policy.status]);
-
-  const getStatusDisplay = (policy: Policy) => {
-    if (policy.status === "running") {
-      return {
-        text: "running",
-        color: "blue.500",
-      };
-    }
-    if (policy.status === "errored") {
-      return {
-        text: "errored",
-        color: "red.500",
-      };
-    }
-    if (policy.authenticated) {
-      if (policy.progress === 100) {
-        return {
-          text: "done",
-          color: "green.500",
-        };
-      }
-      return {
-        text: "ready",
-        color: "green.500",
-      };
-    }
-    return {
-      text: "unauthenticated",
-      color: "gray.500",
-    };
-  };
-
-  const status = getStatusDisplay(policy);
-
-  const renderActionButton = () => {
-    if (isWaitingRun) {
-      return (
-        <IconButton
-          aria-label="Loading"
-          icon={<Spinner size="sm" />}
-          colorScheme="blue"
-          variant="ghost"
-          size="sm"
-        />
-      );
-    }
-
-    if (policy.status === "running") {
-      return (
-        <IconButton
-          aria-label="Pause download"
-          icon={<FaPause />}
-          colorScheme="blue"
-          variant="ghost"
-          size="sm"
-          onClick={handleInterrupt}
-        />
-      );
-    }
-
-    return (
-      <IconButton
-        aria-label="Run policy"
-        icon={<FaPlay />}
-        colorScheme="green"
-        variant="ghost"
-        size="sm"
-        onClick={handleRun}
-      />
-    );
   };
 
   const handleDuplicate = (e: React.MouseEvent) => {
@@ -236,6 +299,66 @@ export const PolicyRow = ({
     URL.revokeObjectURL(url);
   };
 
+  const getStateText = (policyRowState: PolicyRowState) => {
+    switch (policyRowState) {
+      case "scheduled":
+        return (
+          <Text color="purple.500" fontWeight="medium">
+            scheduled
+          </Text>
+        );
+      case "running":
+        return (
+          <Text color="blue.500" fontWeight="medium">
+            running
+          </Text>
+        );
+      case "errored":
+        return (
+          <Text color="red.500" fontWeight="medium">
+            error
+          </Text>
+        );
+      case "waiting":
+        return (
+          <Text color="green.500" fontWeight="medium">
+            starting
+          </Text>
+        );
+      case "done":
+        return (
+          <Text color="green.500" fontWeight="medium">
+            done
+          </Text>
+        );
+      case "unauthenticated":
+        return (
+          <Text color="gray.500" fontWeight="medium">
+            unauthenticated
+          </Text>
+        );
+      default: // ready
+        return (
+          <Text color="green.500" fontWeight="medium">
+            ready
+          </Text>
+        );
+    }
+  };
+
+  const getProgressColor = (policyRowState: PolicyRowState) => {
+    switch (policyRowState) {
+      case "running":
+        return "blue";
+      case "errored":
+        return "red";
+      case "scheduled":
+        return "gray";
+      default:
+        return "green";
+    }
+  };
+
   return (
     <Box width="100%" borderWidth="1px" borderRadius="lg" overflow="hidden">
       <Flex
@@ -259,9 +382,7 @@ export const PolicyRow = ({
               {policy.name}
             </Text>
             <Flex gap={2} color="gray.500" fontSize="14px">
-              <Text color={status.color} fontWeight="medium">
-                {status.text}
-              </Text>
+              {getStateText(policyRowState)}
               <Text>•</Text>
               <Text>{policy.username}</Text>
               <Text>•</Text>
@@ -271,27 +392,21 @@ export const PolicyRow = ({
           <Box width="150px" display="flex">
             <Box flex="1" mt={1}>
               <Text fontSize="12px" color="gray.600" fontWeight="medium">
-                {policy.status === "running"
+                {policyRowState === "running"
                   ? `${policy.progress || 0}%`
                   : "IDLE"}
               </Text>
               <Progress
                 value={policy.progress || 0}
                 size="sm"
-                colorScheme={
-                  policy.status === "running"
-                    ? "blue"
-                    : policy.status === "errored"
-                      ? "red"
-                      : "green"
-                }
+                colorScheme={getProgressColor(policyRowState)}
                 borderRadius="full"
               />
             </Box>
           </Box>
         </Flex>
         <Flex gap={2} ml={4}>
-          {renderActionButton()}
+          {renderActionButton(policyRowState)}
           <IconButton
             aria-label="Edit policy"
             icon={<EditIcon />}
@@ -302,7 +417,7 @@ export const PolicyRow = ({
               e.stopPropagation();
               onEdit(policy);
             }}
-            isDisabled={policy.status === "running"}
+            isDisabled={policyRowState === "running"}
           />
           <IconButton
             aria-label="Duplicate policy"
@@ -311,7 +426,7 @@ export const PolicyRow = ({
             variant="ghost"
             size="sm"
             onClick={handleDuplicate}
-            isDisabled={policy.status === "running"}
+            isDisabled={policyRowState === "running"}
           />
           <IconButton
             aria-label="Delete policy"
@@ -323,10 +438,17 @@ export const PolicyRow = ({
               e.stopPropagation();
               onDelete(policy);
             }}
-            isDisabled={policy.status === "running"}
+            isDisabled={policyRowState === "running"}
           />
         </Flex>
       </Flex>
+
+      <CancelConfirmationDialog
+        isOpen={isCancelOpen}
+        onClose={onCancelClose}
+        onConfirm={confirmCancel}
+        policyName={policy.name}
+      />
 
       <InterruptConfirmationDialog
         isOpen={isInterruptOpen}
@@ -367,7 +489,7 @@ export const PolicyRow = ({
               {policy.logs || "No logs available"}
             </Text>
           </Box>
-          {policy.logs && policy.status !== "running" && (
+          {policy.logs && policyRowState !== "running" && (
             <Flex justify="flex-start" mt={4} ml={12}>
               <Button
                 leftIcon={<DownloadIcon />}

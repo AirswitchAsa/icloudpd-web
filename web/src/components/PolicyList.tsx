@@ -23,6 +23,7 @@ interface PolicyListProps {
   onDelete: (policy: Policy) => void;
   onRun: (policy: Policy) => void;
   onInterrupt: (policy: Policy) => void;
+  onCancel: (policy: Policy) => void;
   socket: Socket | null;
   toast: (options: UseToastOptions) => void;
 }
@@ -34,6 +35,7 @@ export const PolicyList = ({
   onDelete,
   onRun,
   onInterrupt,
+  onCancel,
   socket,
   toast,
 }: PolicyListProps) => {
@@ -236,6 +238,7 @@ export const PolicyList = ({
             onDelete={onDelete}
             onRun={onRun}
             onInterrupt={onInterrupt}
+            onCancel={onCancel}
             socket={socket}
             toast={toast}
           />

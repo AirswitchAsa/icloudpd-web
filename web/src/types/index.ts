@@ -3,10 +3,10 @@ export interface Policy {
   username: string;
   directory: string;
   download_via_browser: boolean;
-  status?: string;
-  progress?: number;
+  status: "running" | "stopped" | "errored";
+  progress: number;
   logs?: string;
-  authenticated?: boolean;
+  authenticated: boolean;
   albums?: string[];
 
   // Connection options
@@ -46,6 +46,7 @@ export interface Policy {
   // icloudpd-ui options
   dry_run: boolean;
   interval: string | null;
+  scheduled: boolean;
   log_level: "debug" | "info" | "error";
 
   // integration options

@@ -154,6 +154,17 @@ export function useSocket(config: SocketConfig) {
       console.error("Error getting AWS config:", payload);
     });
 
+    newSocket.on("cancelled_scheduled_run", (policy_name: string) => {
+      console.log("Scheduled run cancelled:", policy_name);
+    });
+
+    newSocket.on(
+      "error_cancelling_scheduled_run",
+      (policy_name: string, error: string) => {
+        console.error("Error cancelling scheduled run:", policy_name, error);
+      },
+    );
+
     setSocket(newSocket);
 
     return () => {

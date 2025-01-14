@@ -161,6 +161,30 @@ export default function Home() {
     socket.emit("interrupt", policy.name);
   };
 
+  const handlePolicyCancel = (policy: Policy) => {
+    if (socket) {
+      socket.once("cancelled_scheduled_run", (policy_name) => {
+        toast({
+          title: "Scheduled run cancelled",
+          description: `Scheduled run for ${policy_name} has been cancelled`,
+          status: "success",
+          duration: 3000,
+          isClosable: true,
+        });
+      });
+      socket.once("error_cancelling_scheduled_run", (policy_name, error) => {
+        toast({
+          title: "Error",
+          description: `Failed to cancel scheduled run for ${policy_name}: ${error}`,
+          status: "error",
+          duration: 3000,
+          isClosable: true,
+        });
+      });
+      socket.emit("cancel_scheduled_run", policy.name);
+    }
+  };
+
   const handleLogout = () => {
     if (!socket) return;
     socket.emit("log_out", socketConfig.clientId);
@@ -215,6 +239,7 @@ export default function Home() {
                 onDelete={handlePolicyDelete}
                 onRun={handlePolicyRun}
                 onInterrupt={handlePolicyInterrupt}
+                onCancel={handlePolicyCancel}
                 socket={socket}
                 toast={toast}
               />

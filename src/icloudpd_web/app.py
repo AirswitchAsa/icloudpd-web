@@ -574,6 +574,24 @@ def create_app(  # noqa: C901
                         preferred_sid=sid,
                     )
 
+    @sio.event
+    async def cancel_scheduled_run(sid: str, policy_name: str) -> None:
+        if client_id := sid_to_client.get(sid):
+            if handler := handler_manager.get(client_id):
+                try:
+                    if policy := handler.get_policy(policy_name):
+                        policy.cancel_scheduled_run()
+                    await maybe_emit(
+                        "cancelled_scheduled_run", client_id, policy_name, preferred_sid=sid
+                    )
+                except Exception as e:
+                    await maybe_emit(
+                        "error_cancelling_scheduled_run",
+                        client_id,
+                        {"policy_name": policy_name, "error": repr(e)},
+                        preferred_sid=sid,
+                    )
+
     async def start(
         client_id: str,
         policy: PolicyHandler,
