@@ -47,7 +47,7 @@ import uvicorn
 @click.option(
     "--guest-timeout-seconds",
     type=int,
-    help="Timeout for guest users in seconds. Default: 300 (5 minutes)",
+    help="Timeout for guest users in seconds. Default: 3600 (1 hour)",
 )
 # dev options
 @click.option(

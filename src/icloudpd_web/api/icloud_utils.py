@@ -7,21 +7,22 @@ from foundation.core import compose, identity
 from icloudpd.base import download_builder, lp_filename_concatinator, lp_filename_original
 from icloudpd.paths import clean_filename, remove_unicode_chars
 from icloudpd_web.api.data_models import PolicyConfigs
+from icloudpd_web.api.logger import server_logger
 from pyicloud_ipd.base import PyiCloudService
 from pyicloud_ipd.file_match import FileMatchPolicy
 
 
 class ICloudManager:
-    def __init__(self):
+    def __init__(self: "ICloudManager") -> None:
         self._icloud_instances: dict[str, PyiCloudService] = {}
 
-    def get_instance(self, username: str) -> PyiCloudService | None:
+    def get_instance(self: "ICloudManager", username: str) -> PyiCloudService | None:
         """
         Get the instance for the given username.
         """
         return self._icloud_instances.get(username)
 
-    def set_instance(self, username: str, instance: PyiCloudService):
+    def set_instance(self: "ICloudManager", username: str, instance: PyiCloudService) -> None:
         """
         Set the instance for the given username.
         """
@@ -30,7 +31,7 @@ class ICloudManager:
         ), "Trying to set an icloud instance that already exists"
         self._icloud_instances[username] = instance
 
-    def update_instance(self, username: str, attributes: dict):
+    def update_instance(self: "ICloudManager", username: str, attributes: dict) -> None:
         """
         Update the attributes of the instance with the given username.
         """
@@ -41,13 +42,13 @@ class ICloudManager:
         for key, value in attributes.items():
             setattr(instance, key, value)
 
-    def remove_instance(self, username: str):
+    def remove_instance(self: "ICloudManager", username: str) -> None:
         """
         Remove the instance for the given username.
         """
         self._icloud_instances.pop(username, None)
 
-    def remove_instances(self, active_usernames: list[str]):
+    def remove_instances(self: "ICloudManager", active_usernames: list[str]) -> None:
         """
         Remove all instances that are not in the list of active usernames.
         """
@@ -66,7 +67,7 @@ def request_2sa(icloud: PyiCloudService) -> None:
         raise ValueError("No devices available for 2SA")
     # Request 2SA from the first trusteddevice
     phone_number = devices[0]["phoneNumber"]
-    print(f"Requesting 2SA code via SMS to {phone_number}")
+    server_logger.info(f"Requesting 2SA code via SMS to {phone_number}")
     icloud.send_verification_code(devices[0])
 
 

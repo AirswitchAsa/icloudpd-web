@@ -313,9 +313,10 @@ class PolicyHandler:
                 loop = asyncio.get_running_loop()
                 return await loop.run_in_executor(None, download_photo, *args, **kwargs)
 
-            photos_counter = 0
-            async for file_info in self.download(icloud, logger, async_download_photo):
-                photos_counter += 1
+            download_counter = Counter(0)
+            async for file_info in self.download(
+                icloud, logger, async_download_photo, download_counter
+            ):
                 yield file_info
         except Exception as e:
             logger.error(f"Error running policy: {self._name}. Exiting.")
@@ -324,7 +325,7 @@ class PolicyHandler:
             raise e
 
         logger.info(
-            f"Total of {photos_counter} items in {self._configs.library} "
+            f"Total of {download_counter.value()} items in {self._configs.library} "
             f"from album {self._configs.album} have been downloaded "
             f"at {self._configs.directory}"
         )
@@ -335,6 +336,7 @@ class PolicyHandler:
         icloud: PyiCloudService,
         logger: logging.Logger,
         async_download_photo: Callable,
+        download_counter: Counter,
     ) -> AsyncGenerator[AsyncMemberFile]:
         directory_path = os.path.abspath(os.path.expanduser(cast(str, self._configs.directory)))
         directory = os.path.normpath(directory_path)
@@ -360,7 +362,6 @@ class PolicyHandler:
             logger, photos_count, self._configs.size, self._configs.skip_videos, directory
         )
         consecutive_files_found = Counter(0)
-        photos_counter = 0
         while True:
             try:
                 if self._status == PolicyStatus.STOPPED:  # policy is interrupted
@@ -413,9 +414,11 @@ class PolicyHandler:
                     if self.should_remove_local_copy:
                         os.remove(filepath)
 
-                photos_counter += 1
+                download_counter.increment()  # Increment counter
                 if photos_count is not None:
-                    if (progress := int(photos_counter / photos_count * 100)) != self._progress:
+                    if (
+                        progress := int(download_counter.value() / photos_count * 100)
+                    ) != self._progress:
                         self._progress = progress
                 else:
                     self._progress = 0  # set progress to 0 when using until_found

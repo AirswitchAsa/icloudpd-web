@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from icloudpd_web.api.authentication_local import authenticate_secret, save_secret_hash
 from icloudpd_web.api.client_handler import ClientHandler
 from icloudpd_web.api.data_models import AuthenticationResult
-from icloudpd_web.api.logger import build_logger
+from icloudpd_web.api.logger import build_logger, server_logger
 from icloudpd_web.api.policy_handler import PolicyHandler, PolicyStatus
 
 
@@ -35,8 +35,8 @@ class AppConfig:
     toml_path: str = os.environ.get("TOML_PATH", "./policies.toml")
     secret_hash_path: str = secret_hash_path
     guest_timeout_seconds: int = int(
-        os.environ.get("GUEST_TIMEOUT_SECONDS", 300)
-    )  # 5 minutes default
+        os.environ.get("GUEST_TIMEOUT_SECONDS", 3600)
+    )  # 1 hour default
 
 
 app_config = AppConfig(client_ids=set({"default-user"}), allowed_origins=allowed_origins)
@@ -53,7 +53,7 @@ def create_app(  # noqa: C901
         cors_allowed_origins=app_config.allowed_origins,
     )
 
-    print(f"Allowed origins: {app_config.allowed_origins}")
+    server_logger.info(f"Allowed origins: {app_config.allowed_origins}")
 
     # FastAPI app
     app = FastAPI(
@@ -94,7 +94,9 @@ def create_app(  # noqa: C901
         elif sid := find_active_client_id(client_id):
             await sio.emit(event, *args, to=sid)
         else:
-            print(f"No active session found for client {client_id} when emitting {event}")
+            server_logger.info(
+                f"No active session found for client {client_id} when emitting {event}"
+            )
 
     async def run_scheduled_policies(
         handler_manager: dict[str, ClientHandler],
@@ -123,7 +125,7 @@ def create_app(  # noqa: C901
                         await asyncio.gather(*active_tasks.values(), return_exceptions=True)
                         active_tasks.clear()
                     case _:
-                        print(f"Error in scheduled policy runner: {str(e)}")
+                        server_logger.error(f"Error in scheduled policy runner: {str(e)}")
                 await asyncio.sleep(1)
 
     asyncio.create_task(run_scheduled_policies(handler_manager))
@@ -142,19 +144,19 @@ def create_app(  # noqa: C901
                     raise ValueError("Guest user is not allowed to update this setting")
                 # Check for invalid combinations
                 if key == "no_password" and value and app_config.always_guest:
-                    raise ValueError("Cannot enable no_password when always_guest is enabled")
+                    raise ValueError("Cannot enable no-password with always-guest")
                 if key == "always_guest" and value and app_config.no_password:
-                    raise ValueError("Cannot enable always_guest when no_password is enabled")
+                    raise ValueError("Cannot enable always-guest with no-password")
                 if key == "always_guest" and value and app_config.disable_guest:
-                    raise ValueError("Cannot enable always_guest when disable_guest is enabled")
+                    raise ValueError("Cannot enable always-guest with disable-guest")
                 if key == "disable_guest" and value and app_config.always_guest:
-                    raise ValueError("Cannot enable disable_guest when always_guest is enabled")
+                    raise ValueError("Cannot enable disable-guest with always-guest")
 
                 setattr(app_config, key, value)
                 await maybe_emit("app_config_updated", client_id, preferred_sid=sid)
             except Exception as e:
                 await maybe_emit(
-                    "error_updating_app_config", client_id, {"error": repr(e)}, preferred_sid=sid
+                    "error_updating_app_config", client_id, {"error": str(e)}, preferred_sid=sid
                 )
 
     @sio.event
@@ -174,7 +176,7 @@ def create_app(  # noqa: C901
                 await maybe_emit(
                     "server_authentication_failed",
                     client_id,
-                    {"error": repr(e)},
+                    {"error": str(e)},
                     preferred_sid=sid,
                 )
 
@@ -197,7 +199,7 @@ def create_app(  # noqa: C901
                 await maybe_emit(
                     "failed_saving_server_secret",
                     client_id,
-                    {"error": repr(e)},
+                    {"error": str(e)},
                     preferred_sid=sid,
                 )
 
@@ -205,7 +207,7 @@ def create_app(  # noqa: C901
     async def reset_secret(sid: str) -> None:
         if client_id := sid_to_client.get(sid):
             try:
-                print("Resetting server secret, removing all sessions")
+                server_logger.info("Resetting server secret, removing all sessions")
                 handler_manager.clear()
                 with suppress(FileNotFoundError):
                     os.remove(app_config.secret_hash_path)
@@ -214,7 +216,7 @@ def create_app(  # noqa: C901
                 await maybe_emit(
                     "failed_resetting_server_secret",
                     client_id,
-                    {"error": repr(e)},
+                    {"error": str(e)},
                     preferred_sid=sid,
                 )
 
@@ -236,17 +238,17 @@ def create_app(  # noqa: C901
 
         if len(sid_to_client) <= app_config.max_sessions:
             if client_id in handler_manager:
-                print(f"New session {sid} created for client {client_id}")
+                server_logger.info(f"New session {sid} created for client {client_id}")
             else:
-                print(f"New client {client_id} connected with session {sid}")
+                server_logger.info(f"New client {client_id} connected with session {sid}")
                 handler_manager[client_id] = ClientHandler(saved_policies_path=app_config.toml_path)
         else:
-            print(f"Disconnecting client {client_id} due to reaching max sessions")
+            server_logger.info(f"Disconnecting client {client_id} due to reaching max sessions")
             for sid in sid_to_client:
                 if sid_to_client[sid] == client_id:
                     await disconnect(sid)
 
-        print(f"Current clients: {list(handler_manager.keys())}")
+        server_logger.info(f"Current clients: {list(handler_manager.keys())}")
 
     @sio.event
     async def disconnect(sid: str) -> None:
@@ -254,7 +256,7 @@ def create_app(  # noqa: C901
         Disconnect and handle cleanup with timeout for guest users.
         """
         if client_id := sid_to_client.pop(sid, None):
-            print(f"Client session disconnected: {client_id} (sid: {sid})")
+            server_logger.info(f"Client session disconnected: {client_id} (sid: {sid})")
 
             # Handle timeout for guest users
             if client_id not in app_config.client_ids:
@@ -272,17 +274,19 @@ def create_app(  # noqa: C901
                                 cid == client_id for cid in sid_to_client.values()
                             ):
                                 del handler_manager[client_id]
-                                print(f"Logged out guest {client_id} after timeout")
+                                server_logger.info(f"Logged out guest {client_id} after timeout")
                         except Exception as e:
-                            print(f"Error logging out guest {client_id} after timeout: {e}")
+                            server_logger.error(
+                                f"Error logging out guest {client_id} after timeout: {str(e)}"
+                            )
                         finally:
                             guest_timeout_tasks.pop(client_id, None)  # type: ignore
 
                     guest_timeout_tasks[client_id] = asyncio.create_task(remove_guest_handler())
 
-        # print clients and relevant handlers
+        # log clients and relevant handlers
         for client_id, _ in handler_manager.items():
-            print(
+            server_logger.info(
                 f"Client {client_id} owns sessions "
                 f"{[sid for sid in sid_to_client if sid_to_client[sid] == client_id]}"
             )
@@ -294,7 +298,7 @@ def create_app(  # noqa: C901
         """
         if client_id in handler_manager:
             del handler_manager[client_id]
-            print(f"Removed handler for client {client_id}")
+            server_logger.info(f"Removed handler for client {client_id}")
 
             # Find all sessions associated with this client_id
             sids_to_remove = [s for s, cid in sid_to_client.items() if cid == client_id]
@@ -322,7 +326,7 @@ def create_app(  # noqa: C901
                 await maybe_emit("server_config", client_id, viewable_configs, preferred_sid=sid)
             except Exception as e:
                 await maybe_emit(
-                    "server_config_not_found", client_id, {"error": repr(e)}, preferred_sid=sid
+                    "server_config_not_found", client_id, {"error": str(e)}, preferred_sid=sid
                 )
 
     @sio.event
@@ -338,7 +342,7 @@ def create_app(  # noqa: C901
                     )
             except Exception as e:
                 await maybe_emit(
-                    "error_getting_aws_config", client_id, {"error": repr(e)}, preferred_sid=sid
+                    "error_getting_aws_config", client_id, {"error": str(e)}, preferred_sid=sid
                 )
 
     @sio.event
@@ -357,7 +361,7 @@ def create_app(  # noqa: C901
                 await maybe_emit(
                     "aws_config_saved",
                     client_id,
-                    {"success": False, "error": repr(e)},
+                    {"success": False, "error": str(e)},
                     preferred_sid=sid,
                 )
 
@@ -381,7 +385,7 @@ def create_app(  # noqa: C901
                     await maybe_emit(
                         "saved_global_settings",
                         client_id,
-                        {"success": False, "error": repr(e)},
+                        {"success": False, "error": str(e)},
                         preferred_sid=sid,
                     )
 
@@ -401,7 +405,7 @@ def create_app(  # noqa: C901
                     await maybe_emit(
                         "error_uploading_policies",
                         client_id,
-                        {"error": repr(e)},
+                        {"error": str(e)},
                         preferred_sid=sid,
                     )
 
@@ -423,7 +427,7 @@ def create_app(  # noqa: C901
                     await maybe_emit(
                         "error_downloading_policies",
                         client_id,
-                        {"error": repr(e)},
+                        {"error": str(e)},
                         preferred_sid=sid,
                     )
 
@@ -438,7 +442,7 @@ def create_app(  # noqa: C901
                     await maybe_emit("policies", client_id, handler.policies, preferred_sid=sid)
                 except Exception as e:
                     await maybe_emit(
-                        "internal_error", client_id, {"error": repr(e)}, preferred_sid=sid
+                        "internal_error", client_id, {"error": str(e)}, preferred_sid=sid
                     )
 
     @sio.event
@@ -458,7 +462,7 @@ def create_app(  # noqa: C901
                     await maybe_emit(
                         "error_saving_policy",
                         client_id,
-                        {"policy_name": policy_name, "error": repr(e)},
+                        {"policy_name": policy_name, "error": str(e)},
                         preferred_sid=sid,
                     )
 
@@ -478,7 +482,7 @@ def create_app(  # noqa: C901
                     await maybe_emit(
                         "error_creating_policy",
                         client_id,
-                        {"policy_name": policy.get("name", ""), "error": repr(e)},
+                        {"policy_name": policy.get("name", ""), "error": str(e)},
                         preferred_sid=sid,
                     )
 
@@ -498,7 +502,7 @@ def create_app(  # noqa: C901
                     await maybe_emit(
                         "error_deleting_policy",
                         client_id,
-                        {"policy_name": policy_name, "error": repr(e)},
+                        {"policy_name": policy_name, "error": str(e)},
                         preferred_sid=sid,
                     )
 
@@ -538,7 +542,7 @@ def create_app(  # noqa: C901
                     await maybe_emit(
                         "authentication_failed",
                         client_id,
-                        {"error": repr(e), "policy_name": policy_name},
+                        {"error": str(e), "policy_name": policy_name},
                         preferred_sid=sid,
                     )
 
@@ -565,7 +569,7 @@ def create_app(  # noqa: C901
                                 await maybe_emit("mfa_required", client_id, msg, preferred_sid=sid)
                 except Exception as e:
                     await maybe_emit(
-                        "authentication_failed", client_id, {"error": repr(e)}, preferred_sid=sid
+                        "authentication_failed", client_id, {"error": str(e)}, preferred_sid=sid
                     )
 
     @sio.event
@@ -588,7 +592,7 @@ def create_app(  # noqa: C901
                     await maybe_emit(
                         "error_interrupting_download",
                         client_id,
-                        {"policy_name": policy_name, "error": repr(e)},
+                        {"policy_name": policy_name, "error": str(e)},
                         preferred_sid=sid,
                     )
 
@@ -606,7 +610,7 @@ def create_app(  # noqa: C901
                     await maybe_emit(
                         "error_cancelling_scheduled_run",
                         client_id,
-                        {"policy_name": policy_name, "error": repr(e)},
+                        {"policy_name": policy_name, "error": str(e)},
                         preferred_sid=sid,
                     )
 
@@ -627,7 +631,8 @@ def create_app(  # noqa: C901
             while not task.done():
                 await asyncio.sleep(1)
                 if policy.status == PolicyStatus.RUNNING and (
-                    logs := log_capture_stream.read_new_lines() or policy.progress != last_progress
+                    (logs := log_capture_stream.read_new_lines())
+                    or policy.progress != last_progress
                 ):
                     await maybe_emit(
                         "download_progress",
@@ -640,13 +645,13 @@ def create_app(  # noqa: C901
                     last_progress = policy.progress
             if exception := task.exception():
                 policy.status = PolicyStatus.ERRORED
-                logger.error(f"Download failed: {repr(exception)}")
+                logger.error(f"Download failed: {str(exception)}")
                 await maybe_emit(
                     "download_failed",
                     client_id,
                     {
                         "policy": policy.dump(),
-                        "error": repr(exception),
+                        "error": str(exception),
                         "logs": log_capture_stream.read_new_lines(),
                     },
                 )
@@ -669,8 +674,8 @@ def create_app(  # noqa: C901
                 client_id,
                 {
                     "policy": policy.dump(),
-                    "error": repr(e),
-                    "logs": f"Internal error: {repr(e)}\n",
+                    "error": str(e),
+                    "logs": f"Internal error: {str(e)}\n",
                 },
             )
 
