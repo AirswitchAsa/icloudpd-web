@@ -33,6 +33,8 @@ export function DeleteConfirmationDialog({
 
   const handleConfirmDelete = () => {
     if (!socket) return;
+    socket.off("policies_after_delete");
+    socket.off("error_deleting_policy");
 
     socket.once("policies_after_delete", (policies: Policy[]) => {
       setPolicies(policies);

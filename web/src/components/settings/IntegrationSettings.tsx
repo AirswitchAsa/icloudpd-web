@@ -81,7 +81,7 @@ export function IntegrationSettings({ socket }: IntegrationSettingsProps) {
 
   const handleSave = () => {
     if (!socket) return;
-
+    socket.off("aws_config_saved");
     setIsSaving(true);
 
     const awsConfigUpdate = {

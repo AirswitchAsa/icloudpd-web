@@ -106,6 +106,8 @@ export const PolicyList = ({
   ) => {
     const file = event.target.files?.[0];
     if (!file || !socket) return;
+    socket.off("uploaded_policies");
+    socket.off("error_uploading_policies");
 
     const content = await file.text();
     socket.emit("upload_policies", content);
@@ -139,6 +141,9 @@ export const PolicyList = ({
 
   const handleExport = () => {
     if (!socket) return;
+
+    socket.off("error_downloading_policies");
+    socket.off("downloaded_policies");
 
     socket.emit("download_policies");
     socket.once(

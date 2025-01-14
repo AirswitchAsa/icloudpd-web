@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Box,
   Container,
@@ -63,15 +63,19 @@ export default function Home() {
     setIsServerAuthenticated(true);
   };
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     if (!socket) return;
-    socket.emit("log_out", socketConfig.clientId);
-    setIsServerAuthenticated(false);
-    setSocketConfig({
-      clientId: "default-user",
-      isGuest: false,
+    socket.on("logout_complete", () => {
+      setIsServerAuthenticated(false);
+      setSocketConfig({
+        clientId: "default-user",
+        isGuest: false,
+      });
+      // Force reload the page after logout
+      window.location.reload();
     });
-  };
+    socket.emit("log_out", socketConfig.clientId);
+  }, [socket, socketConfig, setSocketConfig, setIsServerAuthenticated]);
 
   if (!isServerAuthenticated) {
     return (

@@ -158,6 +158,9 @@ export const PolicyRow = ({
     e.stopPropagation();
     if (!socket) return;
 
+    socket.off("policies_after_create");
+    socket.off("error_creating_policy");
+
     const duplicatedPolicy = {
       ...policy,
       name: `${policy.name} COPY`,

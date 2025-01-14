@@ -63,6 +63,8 @@ export function UserSettings({ socket, isGuest }: UserSettingsProps) {
 
   const handleSave = () => {
     if (!socket || !passwordsMatch) return;
+    socket.off("server_secret_saved");
+    socket.off("failed_saving_server_secret");
     setIsSaving(true);
 
     // Set up listeners before emitting
@@ -97,6 +99,8 @@ export function UserSettings({ socket, isGuest }: UserSettingsProps) {
   const handleConfigChange =
     (key: keyof AccessControlConfig) => (value: boolean) => {
       if (!socket) return;
+      socket.off("app_config_updated");
+      socket.off("error_updating_app_config");
 
       // Set up listeners before emitting
       socket.once("app_config_updated", () => {

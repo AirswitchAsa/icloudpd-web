@@ -140,6 +140,15 @@ def create_app(  # noqa: C901
                 }, "Invalid setting to update"
                 if (key != "always_guest" or value) and client_id not in app_config.client_ids:
                     raise ValueError("Guest user is not allowed to update this setting")
+                # Check for invalid combinations
+                if key == "no_password" and value and app_config.always_guest:
+                    raise ValueError("Cannot enable no_password when always_guest is enabled")
+                if key == "always_guest" and value and app_config.no_password:
+                    raise ValueError("Cannot enable always_guest when no_password is enabled")
+                if key == "always_guest" and value and app_config.disable_guest:
+                    raise ValueError("Cannot enable always_guest when disable_guest is enabled")
+                if key == "disable_guest" and value and app_config.always_guest:
+                    raise ValueError("Cannot enable disable_guest when always_guest is enabled")
 
                 setattr(app_config, key, value)
                 await maybe_emit("app_config_updated", client_id, preferred_sid=sid)
@@ -247,7 +256,7 @@ def create_app(  # noqa: C901
         if client_id := sid_to_client.pop(sid, None):
             print(f"Client session disconnected: {client_id} (sid: {sid})")
 
-            # Only handle timeout for guest users
+            # Handle timeout for guest users
             if client_id not in app_config.client_ids:
                 # Cancel any existing timeout task for this client
                 if client_id in guest_timeout_tasks:
@@ -263,7 +272,6 @@ def create_app(  # noqa: C901
                                 cid == client_id for cid in sid_to_client.values()
                             ):
                                 del handler_manager[client_id]
-                                await sio.emit("logout_complete", client_id, to=sid)
                                 print(f"Logged out guest {client_id} after timeout")
                         except Exception as e:
                             print(f"Error logging out guest {client_id} after timeout: {e}")
@@ -288,13 +296,16 @@ def create_app(  # noqa: C901
             del handler_manager[client_id]
             print(f"Removed handler for client {client_id}")
 
-            # Notify the requesting client that logout is complete
+            # Find all sessions associated with this client_id
+            sids_to_remove = [s for s, cid in sid_to_client.items() if cid == client_id]
+
+            # Send logout complete before disconnecting
             await sio.emit("logout_complete", to=sid)
 
-            # Clean up any sessions associated with this client_id
-            sids_to_remove = [s for s, cid in sid_to_client.items() if cid == client_id]
+            # Now disconnect all sessions for this client
             for s in sids_to_remove:
-                await disconnect(s)
+                sid_to_client.pop(s, None)
+                await sio.disconnect(sid=s)
 
     @sio.event
     async def get_server_config(sid: str) -> None:

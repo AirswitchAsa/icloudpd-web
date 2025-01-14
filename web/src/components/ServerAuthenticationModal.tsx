@@ -60,6 +60,7 @@ export function ServerAuthenticationModal({
     onOpen: onNewPasswordOpen,
     onClose: onNewPasswordClose,
   } = useDisclosure();
+  const [isConfigLoaded, setIsConfigLoaded] = useState(false);
 
   const passwordsMatch = newPassword === confirmPassword;
   const showMismatchError = confirmPassword !== "" && !passwordsMatch;
@@ -67,17 +68,17 @@ export function ServerAuthenticationModal({
   useEffect(() => {
     if (!socket) return;
 
-    // Get server config
     socket.emit("get_server_config");
 
     socket.on("server_config", (config: ServerConfig) => {
       setServerConfig(config);
+      setIsConfigLoaded(true);
     });
 
     return () => {
       socket.off("server_config");
     };
-  }, [socket, onAuthenticated]);
+  }, [socket]);
 
   useEffect(() => {
     if (serverConfig.no_password) {
@@ -97,6 +98,7 @@ export function ServerAuthenticationModal({
 
   const handleGuestLogin = () => {
     if (!socket) return;
+    socket.off("logout_complete");
     // Listen for logout completion until login the guest
     socket.once("logout_complete", () => {
       const guestId = generateGuestId();
@@ -107,6 +109,8 @@ export function ServerAuthenticationModal({
 
   const handleSetNewPassword = () => {
     if (!socket || !passwordsMatch) return;
+    socket.off("server_secret_reset");
+    socket.off("failed_resetting_server_secret");
     setIsSettingNewPassword(true);
     setError(undefined);
 
@@ -155,7 +159,12 @@ export function ServerAuthenticationModal({
   return (
     <>
       <Modal
-        isOpen={isOpen}
+        isOpen={
+          isOpen &&
+          isConfigLoaded &&
+          !serverConfig.no_password &&
+          !serverConfig.always_guest
+        }
         onClose={() => {}}
         isCentered
         closeOnOverlayClick={false}
