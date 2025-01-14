@@ -6,23 +6,56 @@ import {
   AlertDialogContent,
   AlertDialogOverlay,
   Button,
+  UseToastOptions,
 } from "@chakra-ui/react";
 import { useRef } from "react";
-
+import { Socket } from "socket.io-client";
+import { Policy } from "@/types";
 interface CancelConfirmationDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: () => void;
   policyName: string;
+  socket: Socket | null;
+  toast: (options: UseToastOptions) => void;
+  setPolicies: (policies: Policy[]) => void;
 }
 
 export const CancelConfirmationDialog = ({
   isOpen,
   onClose,
-  onConfirm,
   policyName,
+  socket,
+  toast,
+  setPolicies,
 }: CancelConfirmationDialogProps) => {
   const cancelRef = useRef<HTMLButtonElement>(null);
+
+  const handleConfirmCancel = () => {
+    if (!socket) return;
+    socket.off("policies_after_cancel");
+    socket.off("error_cancelling_scheduled_run");
+    socket.once("policies_after_cancel", (policies) => {
+      toast({
+        title: "Scheduled run cancelled",
+        description: `Scheduled run for ${policyName} has been cancelled`,
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+      setPolicies(policies);
+      onClose();
+    });
+    socket.once("error_cancelling_scheduled_run", (policy_name, error) => {
+      toast({
+        title: "Error",
+        description: `Failed to cancel scheduled run for ${policy_name}: ${error}`,
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    });
+    socket.emit("cancel_scheduled_run", policyName);
+  };
 
   return (
     <AlertDialog
@@ -45,7 +78,7 @@ export const CancelConfirmationDialog = ({
             <Button ref={cancelRef} onClick={onClose}>
               Cancel
             </Button>
-            <Button colorScheme="red" onClick={onConfirm} ml={3}>
+            <Button colorScheme="red" onClick={handleConfirmCancel} ml={3}>
               Confirm
             </Button>
           </AlertDialogFooter>

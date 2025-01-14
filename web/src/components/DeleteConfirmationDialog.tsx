@@ -6,23 +6,61 @@ import {
   AlertDialogContent,
   AlertDialogOverlay,
   Button,
+  UseToastOptions,
 } from "@chakra-ui/react";
 import { useRef } from "react";
+import { Socket } from "socket.io-client";
+import { Policy } from "@/types";
 
 interface DeleteConfirmationDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: () => void;
   policyName: string;
+  socket: Socket | null;
+  toast: (options: UseToastOptions) => void;
+  setPolicies: (policies: Policy[]) => void;
 }
 
 export function DeleteConfirmationDialog({
   isOpen,
   onClose,
-  onConfirm,
   policyName,
+  socket,
+  toast,
+  setPolicies,
 }: DeleteConfirmationDialogProps) {
   const cancelRef = useRef<HTMLButtonElement>(null);
+
+  const handleConfirmDelete = () => {
+    if (!socket) return;
+
+    socket.once("policies_after_delete", (policies: Policy[]) => {
+      setPolicies(policies);
+      toast({
+        title: "Success",
+        description: `Policy: "${policyName}" deleted successfully`,
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+      onClose();
+    });
+
+    socket.once(
+      "error_deleting_policy",
+      (policy_name: string, error: string) => {
+        toast({
+          title: "Error",
+          description: `Failed to delete policy "${policy_name}": ${error}`,
+          status: "error",
+          duration: 3000,
+          isClosable: true,
+        });
+      },
+    );
+
+    socket.emit("delete_policy", policyName);
+  };
 
   return (
     <AlertDialog
@@ -48,10 +86,7 @@ export function DeleteConfirmationDialog({
             </Button>
             <Button
               colorScheme="red"
-              onClick={() => {
-                onConfirm();
-                onClose();
-              }}
+              onClick={handleConfirmDelete}
               ml={3}
               borderRadius="xl"
             >

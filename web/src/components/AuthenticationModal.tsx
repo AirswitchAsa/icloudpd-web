@@ -20,6 +20,7 @@ import {
 } from "@chakra-ui/react";
 import { ViewIcon, ViewOffIcon } from "@chakra-ui/icons";
 import { Socket } from "socket.io-client";
+import { SocketAddress } from "net";
 
 interface AuthenticationModalProps {
   isOpen: boolean;
@@ -51,6 +52,10 @@ export function AuthenticationModal({
   const handleSubmit = () => {
     if (!socket) return;
     setIsAuthenticating(true);
+    // Remove existing listeners
+    socket.off("authenticated");
+    socket.off("authentication_failed");
+    socket.off("mfa_required");
 
     socket.once("authenticated", () => {
       setIsAuthenticating(false);

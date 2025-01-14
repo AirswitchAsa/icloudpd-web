@@ -41,76 +41,16 @@ export function PolicyDialogs({
   const [authError, setAuthError] = useState<string | undefined>(undefined);
   const [mfaError, setMfaError] = useState<string | undefined>(undefined);
 
-  const handleConfirmDelete = () => {
-    if (!socket) return;
-
-    socket.once("policies_after_delete", (policies: Policy[]) => {
-      setPolicies(policies);
-      toast({
-        title: "Success",
-        description: `Policy: "${policy.name}" deleted successfully`,
-        status: "success",
-        duration: 3000,
-        isClosable: true,
-      });
-      dialogs.delete.onClose();
-    });
-
-    socket.once(
-      "error_deleting_policy",
-      (policy_name: string, error: string) => {
-        toast({
-          title: "Error",
-          description: `Failed to delete policy "${policy_name}": ${error}`,
-          status: "error",
-          duration: 3000,
-          isClosable: true,
-        });
-      },
-    );
-
-    socket.emit("delete_policy", policy.name);
-    dialogs.delete.onClose();
-  };
-
-  const handleConfirmInterrupt = () => {
-    if (!socket) return;
-    socket.emit("interrupt", policy.name);
-    dialogs.interrupt.onClose();
-  };
-
-  const handleConfirmCancel = () => {
-    if (!socket) return;
-    socket.once("cancelled_scheduled_run", () => {
-      toast({
-        title: "Scheduled run cancelled",
-        description: `Scheduled run for ${policy.name} has been cancelled`,
-        status: "success",
-        duration: 3000,
-        isClosable: true,
-      });
-    });
-    socket.once("error_cancelling_scheduled_run", (policy_name, error) => {
-      toast({
-        title: "Error",
-        description: `Failed to cancel scheduled run for ${policy_name}: ${error}`,
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
-    });
-    socket.emit("cancel_scheduled_run", policy.name);
-    dialogs.cancel.onClose();
-  };
-
   return (
     <>
       {dialogs.delete.isOpen && (
         <DeleteConfirmationDialog
           isOpen={dialogs.delete.isOpen}
           onClose={dialogs.delete.onClose}
-          onConfirm={handleConfirmDelete}
           policyName={policy.name}
+          socket={socket}
+          toast={toast}
+          setPolicies={setPolicies}
         />
       )}
 
@@ -118,8 +58,10 @@ export function PolicyDialogs({
         <CancelConfirmationDialog
           isOpen={dialogs.cancel.isOpen}
           onClose={dialogs.cancel.onClose}
-          onConfirm={handleConfirmCancel}
           policyName={policy.name}
+          socket={socket}
+          toast={toast}
+          setPolicies={setPolicies}
         />
       )}
 
@@ -127,8 +69,9 @@ export function PolicyDialogs({
         <InterruptConfirmationDialog
           isOpen={dialogs.interrupt.isOpen}
           onClose={dialogs.interrupt.onClose}
-          onConfirm={handleConfirmInterrupt}
           policyName={policy.name}
+          socket={socket}
+          toast={toast}
         />
       )}
 

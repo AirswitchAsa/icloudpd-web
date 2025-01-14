@@ -590,7 +590,7 @@ def create_app(  # noqa: C901
                     if policy := handler.get_policy(policy_name):
                         policy.cancel_scheduled_run()
                     await maybe_emit(
-                        "cancelled_scheduled_run", client_id, policy_name, preferred_sid=sid
+                        "policies_after_cancel", client_id, handler.policies, preferred_sid=sid
                     )
                 except Exception as e:
                     await maybe_emit(

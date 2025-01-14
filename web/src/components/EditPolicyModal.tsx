@@ -96,6 +96,13 @@ export function EditPolicyModal({
   const handleSave = () => {
     if (!socket) return;
 
+    // Remove any existing listeners first
+    socket.off("policies_after_save");
+    socket.off("policies_after_create");
+    socket.off("error_saving_policy");
+    socket.off("error_creating_policy");
+
+    // Add new listeners
     socket.once("policies_after_save", (policies: Policy[]) => {
       toast({
         title: "Success",
@@ -105,6 +112,7 @@ export function EditPolicyModal({
         isClosable: true,
       });
       setPolicies(policies);
+      onClose();
     });
 
     socket.once("policies_after_create", (policies: Policy[]) => {
@@ -116,6 +124,7 @@ export function EditPolicyModal({
         isClosable: true,
       });
       setPolicies(policies);
+      onClose();
     });
 
     socket.once("error_saving_policy", (data: any) => {
@@ -144,13 +153,15 @@ export function EditPolicyModal({
     } else {
       socket.emit("create_policy", formData);
     }
-    onClose();
   };
 
   const handleSaveLibrary = (value: "Personal Library" | "Shared Library") => {
     if (!isEditing || !socket || !policy) return;
     const newFormData = { ...formData, library: value };
     setFormData(newFormData);
+
+    // Remove existing listener first
+    socket.off("policies_after_save");
 
     socket.once("policies_after_save", (policies: Policy[]) => {
       toast({

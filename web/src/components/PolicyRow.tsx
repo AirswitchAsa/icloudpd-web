@@ -85,7 +85,7 @@ export const PolicyRow = ({
   const handleRun = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!socket) return;
-
+    console.log("policy.waiting_mfa", policy.waiting_mfa);
     if (policy.waiting_mfa) {
       onMfaOpen(); // provide MFA code directly
     } else if (!policy.authenticated) {

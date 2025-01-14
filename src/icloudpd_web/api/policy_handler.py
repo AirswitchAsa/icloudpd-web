@@ -86,7 +86,7 @@ class PolicyHandler:
 
     @property
     def waiting_mfa(self: "PolicyHandler") -> bool:
-        return self.icloud is not None and self.icloud.requires_2sa and not self.icloud.requires_2fa
+        return self.icloud is not None and not self.authenticated
 
     @property
     def should_remove_local_copy(self: "PolicyHandler") -> bool:

@@ -24,54 +24,26 @@ export function useSocketEvents({
     // Policy list update events (only successful operations)
     const policyUpdateEvents = [
       "policies", // Initial load
-      "policies_after_save", // After successful save
-      "policies_after_delete", // After successful delete
     ];
 
-    policyUpdateEvents.forEach((event) => {
-      socket.on(event, (policies: Policy[]) => {
-        setPolicies(policies);
-        // Show success notification for specific events
-        if (event !== "policies") {
-          // Don't show for initial load
-          const messages = {
-            policies_after_save: "Policy saved successfully",
-            policies_after_delete: "Policy deleted successfully",
-          };
-          toast({
-            title: "Success",
-            description: messages[event as keyof typeof messages],
-            status: "success",
-            duration: 3000,
-            isClosable: true,
-          });
-        }
-      });
+    socket.on("policies", (policies: Policy[]) => {
+      setPolicies(policies);
     });
 
     // Error events
     const errorEvents = {
       connect_error: "Failed to connect to server",
-      error_saving_policy: "Failed to save policy",
-      error_deleting_policy: "Failed to delete policy",
-      error_interrupting_download: "Failed to interrupt download",
-      authentication_failed: "Authentication failed",
     };
 
-    Object.entries(errorEvents).forEach(([event, defaultMessage]) => {
-      socket.on(event, (data: any) => {
-        const errorMessage = data?.error || data?.message || "";
-        const policyName = data?.policy_name ? ` "${data.policy_name}"` : "";
-
-        toast({
-          title: "Error",
-          description: `${defaultMessage}${policyName}${
-            errorMessage ? ": " + errorMessage : ""
-          }`,
-          status: "error",
-          duration: 5000,
-          isClosable: true,
-        });
+    socket.on("connect_error", (data: any) => {
+      toast({
+        title: "Error",
+        description: `Failed to connect to server: ${
+          data?.error || data?.message || ""
+        }`,
+        status: "error",
+        duration: 5000,
+        isClosable: true,
       });
     });
 
@@ -101,46 +73,6 @@ export function useSocketEvents({
         });
       },
     );
-
-    // Authentication success
-    socket.on(
-      "authenticated",
-      ({ msg, policies }: { msg: string; policies: Policy[] }) => {
-        toast({
-          title: "Authentication Successful",
-          description: msg,
-          status: "success",
-          duration: 3000,
-          isClosable: true,
-        });
-        setPolicies(policies);
-      },
-    );
-
-    // MFA required
-    socket.on(
-      "mfa_required",
-      (data: { error: string; policy_name: string }) => {
-        toast({
-          title: "MFA Required",
-          description: `MFA required to authenticate policy "${data.policy_name}": ${data.error}`,
-          status: "info",
-          duration: 3000,
-          isClosable: true,
-        });
-      },
-    );
-
-    // iCloud busy notification
-    socket.on("icloud_is_busy", (msg: string) => {
-      toast({
-        title: "iCloud Account Busy",
-        description: msg,
-        status: "info",
-        duration: 5000,
-        isClosable: true,
-      });
-    });
 
     // Helper function to update a single policy
     const updatePolicy = (policyUpdate: Partial<Policy> & { name: string }) => {
@@ -205,12 +137,9 @@ export function useSocketEvents({
     return () => {
       policyUpdateEvents.forEach((event) => socket.off(event));
       Object.keys(errorEvents).forEach((event) => socket.off(event));
-      socket.off("authenticated");
-      socket.off("mfa_required");
       socket.off("download_progress");
       socket.off("download_finished");
       socket.off("download_failed");
-      socket.off("icloud_is_busy");
     };
   }, [socket, toast, setPolicies]);
 }

@@ -42,6 +42,11 @@ export function MFAModal({
   const handleSubmit = () => {
     if (!socket) return;
     setIsVerifying(true);
+    // Remove existing listeners
+    socket.off("authenticated");
+    socket.off("authentication_failed");
+    socket.off("mfa_required");
+
     socket.once("authenticated", () => {
       setIsVerifying(false);
       toast({
