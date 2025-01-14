@@ -21,7 +21,7 @@ import {
 } from "@chakra-ui/icons";
 import { FaPlay, FaPause } from "react-icons/fa";
 import { Policy } from "@/types/index";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Socket } from "socket.io-client";
 import { PolicyDialogs } from "./PolicyDialogs";
 
@@ -83,13 +83,26 @@ export const PolicyRow = ({
     useState<PolicyRowState>("unauthenticated");
 
   useEffect(() => {
-    // update the row status in case of authentication and cancellation events
-    if (policy.scheduled) {
-      setPolicyRowState("scheduled");
-    } else if (policy.authenticated) {
-      setPolicyRowState("ready");
+    switch (policy.status) {
+      case "stopped":
+        if (!policy.authenticated) {
+          setPolicyRowState("unauthenticated");
+        } else if (policy.scheduled) {
+          setPolicyRowState("scheduled");
+        } else if (policy.progress != 0) {
+          setPolicyRowState("done");
+        } else {
+          setPolicyRowState("ready");
+        }
+        break;
+      case "errored":
+        setPolicyRowState("errored");
+        break;
+      case "running":
+        setPolicyRowState("running");
+        break;
     }
-  }, [policy.scheduled, policy.authenticated]);
+  }, [policy]);
 
   const handleRun = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -102,26 +115,6 @@ export const PolicyRow = ({
       // actually run the policy if authenticated
       setPolicyRowState("waiting");
 
-      socket.once("download_finished", () => {
-        if (policy.scheduled) {
-          setPolicyRowState("scheduled");
-        } else {
-          setPolicyRowState("ready");
-        }
-      });
-
-      socket.once("download_failed", () => {
-        setPolicyRowState("errored");
-      });
-
-      socket.once("download_interrupted", () => {
-        setPolicyRowState("ready");
-      });
-
-      socket.once("download_progress", () => {
-        setPolicyRowState("running");
-      });
-
       // Only import and use streamSaver on the client side
       if (typeof window !== "undefined" && policy.download_via_browser) {
         const streamSaver = (await import("streamsaver")).default;
@@ -129,7 +122,6 @@ export const PolicyRow = ({
         const writer = fileStream.getWriter();
 
         socket.on("zip_chunk", (data) => {
-          setPolicyRowState("running");
           if (data.chunk && policy.download_via_browser) {
             try {
               if (!data.chunk) return;
@@ -145,18 +137,15 @@ export const PolicyRow = ({
           }
           if (data.finished) {
             writer.close();
-            setPolicyRowState("ready");
           }
         });
 
         socket.once("download_failed", () => {
           writer.abort();
-          setPolicyRowState("errored");
         });
 
         socket.once("download_interrupted", () => {
           writer.close();
-          setPolicyRowState("ready");
         });
       }
 
@@ -257,29 +246,7 @@ export const PolicyRow = ({
             }}
           />
         );
-      case "done":
-        return (
-          <IconButton
-            aria-label="Run policy again"
-            icon={<FaPlay />}
-            colorScheme="green"
-            variant="ghost"
-            size="sm"
-            onClick={handleRun}
-          />
-        );
-      case "unauthenticated":
-        return (
-          <IconButton
-            aria-label="Handle authentication"
-            icon={<FaPlay />}
-            colorScheme="green"
-            variant="ghost"
-            size="sm"
-            onClick={handleRun}
-          />
-        );
-      default: // ready or error
+      default: // unauthenticated,done, ready, error
         return (
           <IconButton
             aria-label="Run policy"

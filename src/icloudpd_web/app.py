@@ -609,6 +609,8 @@ def create_app(  # noqa: C901
         # Set up logging
         logger, log_capture_stream = build_logger(policy.name)
         try:
+            # Schedule next run if interval is set
+            policy.maybe_schedule_next_run(logger)
             task = asyncio.create_task(policy.start_with_zip(logger, sio))
             last_progress = 0
             while not task.done():
@@ -645,6 +647,7 @@ def create_app(  # noqa: C901
                 {
                     "policy_name": policy.name,
                     "progress": policy.progress,
+                    "scheduled": policy.scheduled,
                     "logs": log_capture_stream.read_new_lines(),
                 },
             )

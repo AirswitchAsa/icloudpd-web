@@ -261,6 +261,12 @@ class PolicyHandler:
         self._next_run_time = None
         return True
 
+    def maybe_schedule_next_run(self: "PolicyHandler", logger: logging.Logger) -> None:
+        if self._configs.interval:
+            cron = croniter(self._configs.interval, datetime.datetime.now(ZoneInfo("UTC")))
+            self._next_run_time = cron.get_next(datetime.datetime)
+            logger.info(f"Scheduled next run (UTC): {self._next_run_time}")
+
     async def start_with_zip(
         self: "PolicyHandler", logger: logging.Logger, sio: socketio.AsyncServer
     ) -> None:
@@ -270,11 +276,6 @@ class PolicyHandler:
                 await sio.emit("zip_chunk", {"chunk": encoded_chunk})
         if self._configs.download_via_browser:
             await sio.emit("zip_chunk", {"finished": True})
-
-        if self._configs.interval:
-            cron = croniter(self._configs.interval, datetime.datetime.now(ZoneInfo("UTC")))
-            self._next_run_time = cron.get_next(datetime.datetime)
-            logger.info(f"Scheduled next run (UTC): {self._next_run_time}")
 
     async def start(
         self: "PolicyHandler", logger: logging.Logger

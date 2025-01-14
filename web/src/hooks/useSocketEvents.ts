@@ -109,15 +109,18 @@ export function useSocketEvents({
         policy_name,
         progress,
         logs,
+        scheduled,
       }: {
         policy_name: string;
         progress: number;
         logs: string;
+        scheduled: boolean;
       }) => {
         updatePolicy({
           name: policy_name,
           progress: progress,
           status: "stopped",
+          scheduled: scheduled,
         });
         if (logs) {
           updateLogs(policy_name, logs);
