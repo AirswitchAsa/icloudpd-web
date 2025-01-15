@@ -3,7 +3,7 @@
 ## Quick Start
 
 ```bash
-docker run -d --name icloudpd-web -p 5000:5000 -v /path/to/icloudpd-web:/app icloudpd-web
+docker run -d --name icloudpd-web -p 5000:5000 -v /path/to/icloudpd-web:/app spicadust/icloudpd-web:latest
 ```
 
 ## Environment Variables
