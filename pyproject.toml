@@ -47,6 +47,10 @@ dependencies = [
     "croniter>=6.0.0",
 ]
 
+[dependency-groups]
+dev = ["pre-commit", "ruff"]
+
+
 [project.urls]
 Homepage = "https://github.com/AirswitchAsa/icloudpd-web"
 

@@ -8,12 +8,12 @@ from collections.abc import AsyncGenerator, Callable
 from enum import Enum
 from functools import partial
 from typing import cast
+from zoneinfo import ZoneInfo
 
 import aiofiles
 import socketio
 from croniter import croniter
 from stream_zip import ZIP_64, AsyncMemberFile, async_stream_zip
-from zoneinfo import ZoneInfo
 
 from icloudpd.autodelete import autodelete_photos
 from icloudpd.base import delete_photo, download_builder, retrier

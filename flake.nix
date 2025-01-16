@@ -27,18 +27,12 @@
             # Required for node-pty
             gnumake
             gcc
-            # Pre-commit and formatting tools
-            pre-commit
-            ruff
           ];
 
           shellHook = ''
             echo "icloudpd-ui development environment"
             echo "Node.js $(node --version)"
             echo "npm $(npm --version)"
-
-            # Initialize pre-commit hooks
-            pre-commit install
           '';
         };
       }

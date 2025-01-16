@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build && rm -rf ../src/icloudpd_web/webapp/* && cp -r ./out/* ../src/icloudpd_web/webapp/",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@chakra-ui/icons": "^2.2.4",

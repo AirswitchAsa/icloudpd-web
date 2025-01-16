@@ -5,3 +5,4 @@ __pycache__
 out
 web/.env.local
 src/icloudpd_web/webapp
+tsconfig.tsbuildinfo
