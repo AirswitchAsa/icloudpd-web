@@ -23,6 +23,7 @@ dependencies = [
     "bcrypt>=4.0.0",
     "stream-zip>=0.0.83",
     "aiofiles>=24.1.0",
+    "apprise>=1.9.2",
     # from icloud_photos_downloader
     "requests==2.32.3",
     "schema==0.7.7",

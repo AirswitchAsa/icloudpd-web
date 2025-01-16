@@ -35,6 +35,7 @@ class AppConfig:
     disable_guest: bool = os.environ.get("DISABLE_GUEST", "false").lower() == "true"
     toml_path: str = os.environ.get("TOML_PATH", "./policies.toml")
     cookie_directory: str | None = os.environ.get("COOKIE_DIRECTORY", None)
+    apprise_config_path: str | None = os.environ.get("APPRISE_CONFIG_PATH", None)
     secret_hash_path: str = secret_hash_path
     guest_timeout_seconds: int = int(
         os.environ.get("GUEST_TIMEOUT_SECONDS", 3600)
@@ -113,7 +114,7 @@ def create_app(  # noqa: C901
                 for client_id, handler in handler_manager.items():
                     # Get policies that are ready to run
                     for policy in handler.policies_to_run():
-                        task = asyncio.create_task(start(client_id, policy))
+                        task = asyncio.create_task(start(client_id, handler, policy))
                         active_tasks[client_id] = task
                 # Wait before next check
                 await asyncio.sleep(1)
@@ -252,6 +253,7 @@ def create_app(  # noqa: C901
                 handler_manager[client_id] = ClientHandler(
                     saved_policies_path=app_config.toml_path,
                     cookie_directory=app_config.cookie_directory,
+                    apprise_config_path=app_config.apprise_config_path,
                 )
         else:
             server_logger.info(f"Disconnecting client {client_id} due to reaching max sessions")
@@ -380,6 +382,59 @@ def create_app(  # noqa: C901
                     "aws_config_saved",
                     client_id,
                     {"success": False, "error": handle_error(server_logger, e)},
+                    preferred_sid=sid,
+                )
+
+    @sio.event
+    async def add_apprise_config(sid: str, apprise_config: str) -> None:
+        if client_id := sid_to_client.get(sid):
+            try:
+                if handler := handler_manager.get(client_id):
+                    handler.save_apprise_config(apprise_config)
+                    await maybe_emit(
+                        "apprise_config_added",
+                        client_id,
+                        {"success": True, "services": handler.apprise_services},
+                        preferred_sid=sid,
+                    )
+            except Exception as e:
+                await maybe_emit(
+                    "error_adding_apprise_config",
+                    client_id,
+                    {"error": handle_error(server_logger, e)},
+                    preferred_sid=sid,
+                )
+
+    @sio.event
+    async def reset_apprise_config(sid: str) -> None:
+        if client_id := sid_to_client.get(sid):
+            try:
+                if handler := handler_manager.get(client_id):
+                    handler.reset_apprise_config()
+                    await maybe_emit(
+                        "apprise_config_reset", client_id, {"success": True}, preferred_sid=sid
+                    )
+            except Exception as e:
+                await maybe_emit(
+                    "error_resetting_apprise_config",
+                    client_id,
+                    {"error": handle_error(server_logger, e)},
+                    preferred_sid=sid,
+                )
+
+    @sio.event
+    async def get_apprise_config(sid: str) -> None:
+        if client_id := sid_to_client.get(sid):
+            try:
+                if handler := handler_manager.get(client_id):
+                    await maybe_emit(
+                        "apprise_config", client_id, handler.apprise_services, preferred_sid=sid
+                    )
+            except Exception as e:
+                await maybe_emit(
+                    "error_getting_apprise_config",
+                    client_id,
+                    {"error": handle_error(server_logger, e)},
                     preferred_sid=sid,
                 )
 
@@ -643,6 +698,7 @@ def create_app(  # noqa: C901
 
     async def start(
         client_id: str,
+        client_handler: ClientHandler,
         policy: PolicyHandler,
     ) -> None:  # noqa: C901 # TODO: simplify
         """
@@ -683,7 +739,11 @@ def create_app(  # noqa: C901
                     },
                 )
                 return
-
+            client_handler.send_notification(
+                title="Download finished",
+                message=f"Download finished for {policy.name}",
+                level="info",
+            )
             await maybe_emit(
                 "download_finished",
                 client_id,
@@ -696,6 +756,11 @@ def create_app(  # noqa: C901
             )
         except Exception as e:
             policy.status = PolicyStatus.ERRORED
+            client_handler.send_notification(
+                title="Download failed",
+                message=handle_error(server_logger, e),
+                level="failure",
+            )
             await maybe_emit(
                 "download_failed",
                 client_id,

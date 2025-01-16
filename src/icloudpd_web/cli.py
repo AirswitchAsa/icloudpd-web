@@ -29,6 +29,11 @@ import uvicorn
     "The cookies will be saved to system temp directory by default.",
 )
 @click.option(
+    "--apprise-config-path",
+    help="Path to the apprise config file. "
+    "The config will be saved to ~/.icloudpd_web/apprise.yml by default.",
+)
+@click.option(
     "--max-sessions",
     type=int,
     help="Maximum number of sessions to allow. Default: 5",
@@ -65,7 +70,7 @@ import uvicorn
     is_flag=True,
     help="Enable auto-reload. This is intended to be used during development.",
 )
-def main(  # noqa: C901 # TODO: simplify
+def main(  # noqa: C901
     host: str,
     port: int,
     reload: bool,
@@ -79,6 +84,7 @@ def main(  # noqa: C901 # TODO: simplify
     disable_guest: bool,
     guest_timeout_seconds: int,
     cookie_directory: str,
+    apprise_config_path: str,
 ) -> None:
     """Launch the iCloud Photos Downloader server with the Web interface"""
 
@@ -99,6 +105,9 @@ def main(  # noqa: C901 # TODO: simplify
 
     if cookie_directory:
         os.environ["COOKIE_DIRECTORY"] = cookie_directory
+
+    if apprise_config_path:
+        os.environ["APPRISE_CONFIG_PATH"] = apprise_config_path
 
     if no_password and always_guest:
         raise click.BadParameter("Cannot enable --no-password and --always-guest together")

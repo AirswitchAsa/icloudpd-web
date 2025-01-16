@@ -14,6 +14,9 @@ import {
   InputRightElement,
   useToast,
   Link,
+  Wrap,
+  WrapItem,
+  Badge,
 } from "@chakra-ui/react";
 import { useEffect, useState } from "react";
 import { Socket } from "socket.io-client";
@@ -29,10 +32,21 @@ interface IntegrationSettingsProps {
 }
 
 export function IntegrationSettings({ socket }: IntegrationSettingsProps) {
-  const { isOpen, onToggle, onOpen } = useDisclosure();
+  const {
+    isOpen: isAwsOpen,
+    onToggle: onAwsToggle,
+    onOpen: onAwsOpen,
+  } = useDisclosure();
+  const {
+    isOpen: isAppriseOpen,
+    onToggle: onAppriseToggle,
+    onOpen: onAppriseOpen,
+  } = useDisclosure();
   useEffect(() => {
-    onOpen();
-  }, [onOpen]);
+    onAwsOpen();
+    onAppriseOpen();
+  }, [onAwsOpen, onAppriseOpen]);
+
   const [awsAccessKeyId, setAwsAccessKeyId] = useState("");
   const [awsSecretAccessKey, setAwsSecretAccessKey] = useState("");
   const [awsSessionToken, setAwsSessionToken] = useState("");
@@ -41,6 +55,10 @@ export function IntegrationSettings({ socket }: IntegrationSettingsProps) {
   const [showAwsSessionToken, setShowAwsSessionToken] = useState(false);
   const [isAwsClientReady, setIsAwsClientReady] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [appriseServices, setAppriseServices] = useState<string[]>([]);
+  const [newAppriseConfig, setNewAppriseConfig] = useState("");
+  const [isAddingApprise, setIsAddingApprise] = useState(false);
+  const [isResettingApprise, setIsResettingApprise] = useState(false);
   const toast = useToast();
 
   useEffect(() => {
@@ -48,6 +66,7 @@ export function IntegrationSettings({ socket }: IntegrationSettingsProps) {
 
     // Fetch current AWS config
     socket.emit("get_aws_config");
+    socket.emit("get_apprise_config");
 
     socket.on(
       "aws_config",
@@ -74,12 +93,29 @@ export function IntegrationSettings({ socket }: IntegrationSettingsProps) {
       });
     });
 
+    socket.on("apprise_config", (services: string[]) => {
+      setAppriseServices(services);
+    });
+
+    socket.on("error_getting_apprise_config", (data: { error: string }) => {
+      toast({
+        title: "Error",
+        description: "Failed to get Apprise services: " + data.error,
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    });
+
     return () => {
       socket.off("aws_configs");
+      socket.off("apprise_config");
+      socket.off("apprise_config_added");
+      socket.off("apprise_config_reset");
     };
   }, [socket]);
 
-  const handleSave = () => {
+  const handleSaveAws = () => {
     if (!socket) return;
     socket.off("aws_config_saved");
     setIsSaving(true);
@@ -117,18 +153,131 @@ export function IntegrationSettings({ socket }: IntegrationSettingsProps) {
     socket.emit("save_aws_config", awsConfigUpdate);
   };
 
+  const handleAddApprise = () => {
+    if (!socket || !newAppriseConfig.trim()) return;
+    setIsAddingApprise(true);
+    socket.once("apprise_config_added", (data) => {
+      setIsAddingApprise(false);
+      if (data.success) {
+        setAppriseServices(data.services);
+        setNewAppriseConfig("");
+      }
+    });
+    socket.once("error_adding_apprise_config", (data) => {
+      setIsAddingApprise(false);
+      toast({
+        title: "Error",
+        description: data.error,
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    });
+    socket.emit("add_apprise_config", newAppriseConfig.trim());
+  };
+
+  const handleResetApprise = () => {
+    if (!socket) return;
+    setIsResettingApprise(true);
+    socket.once("apprise_config_reset", (data) => {
+      setIsResettingApprise(false);
+      if (data.success) {
+        setAppriseServices([]);
+        toast({
+          title: "Success",
+          description: "Apprise configuration reset",
+          status: "success",
+          duration: 3000,
+          isClosable: true,
+        });
+      }
+    });
+    socket.once("error_resetting_apprise_config", (data) => {
+      setIsResettingApprise(false);
+      toast({
+        title: "Error",
+        description: data.error,
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    });
+    socket.emit("reset_apprise_config");
+  };
+
   return (
     <Box>
       <VStack spacing={6} align="stretch">
+        {/* Apprise Section */}
+        <Box>
+          <HStack>
+            <IconButton
+              aria-label="Toggle info"
+              icon={isAppriseOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
+              size="sm"
+              variant="ghost"
+              onClick={onAppriseToggle}
+            />
+            <Text fontSize="lg" fontWeight="semibold">
+              Apprise Notifications
+            </Text>
+          </HStack>
+          <Collapse in={isAppriseOpen}>
+            <VStack spacing={3} align="stretch" maxW="400px" mt={4} ml={2}>
+              <HStack justify="space-between">
+                <Text fontSize="sm" fontWeight="semibold">
+                  Added Services
+                </Text>
+                <Button
+                  size="sm"
+                  colorScheme="red"
+                  variant="outline"
+                  onClick={handleResetApprise}
+                  isDisabled={appriseServices.length === 0}
+                  isLoading={isResettingApprise}
+                >
+                  Reset
+                </Button>
+              </HStack>
+              <Wrap spacing={2}>
+                {appriseServices.map((service, index) => (
+                  <WrapItem key={index}>
+                    <Badge colorScheme="gray" p={1}>
+                      {service}
+                    </Badge>
+                  </WrapItem>
+                ))}
+              </Wrap>
+              <HStack>
+                <Input
+                  size="sm"
+                  placeholder="Enter Apprise config string"
+                  value={newAppriseConfig}
+                  onChange={(e) => setNewAppriseConfig(e.target.value)}
+                />
+                <Button
+                  size="sm"
+                  colorScheme="teal"
+                  onClick={handleAddApprise}
+                  isLoading={isAddingApprise}
+                  isDisabled={!newAppriseConfig.trim()}
+                >
+                  Add
+                </Button>
+              </HStack>
+            </VStack>
+          </Collapse>
+        </Box>
+
         {/* AWS S3 Section */}
         <Box>
           <HStack>
             <IconButton
               aria-label="Toggle info"
-              icon={isOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
+              icon={isAwsOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
               size="sm"
               variant="ghost"
-              onClick={onToggle}
+              onClick={onAwsToggle}
             />
             <Text fontSize="lg" fontWeight="semibold">
               AWS S3
@@ -142,7 +291,7 @@ export function IntegrationSettings({ socket }: IntegrationSettingsProps) {
               {isAwsClientReady ? "Connected" : "Not connected"}
             </Text>
           </HStack>
-          <Collapse in={isOpen}>
+          <Collapse in={isAwsOpen}>
             <VStack spacing={3} align="stretch" maxW="400px" mt={4} ml={2}>
               <Text fontSize="sm" fontWeight="semibold" color="gray.500">
                 Connect to your AWS S3 bucket using Access Key ID and Secret.
@@ -227,7 +376,7 @@ export function IntegrationSettings({ socket }: IntegrationSettingsProps) {
             <Button
               mt={4}
               colorScheme="teal"
-              onClick={handleSave}
+              onClick={handleSaveAws}
               size="sm"
               ml={2}
               isDisabled={

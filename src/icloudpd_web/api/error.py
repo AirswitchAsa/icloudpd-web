@@ -66,6 +66,15 @@ class AWSS3Error(ICloudPdWebServerError):
         super().__init__(message)
 
 
+class AppriseError(ICloudPdWebServerError):
+    """
+    Exception raised for Apprise errors.
+    """
+
+    def __init__(self: "AppriseError", message: str) -> None:
+        super().__init__(message)
+
+
 def handle_error(server_logger: logging.Logger, error: Exception) -> str:
     """
     Handle different types of errors and return appropriate user messages

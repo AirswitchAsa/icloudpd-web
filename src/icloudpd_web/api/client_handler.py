@@ -5,6 +5,7 @@ from queue import PriorityQueue  # Priority queue
 import toml
 from zoneinfo import ZoneInfo
 
+from icloudpd_web.api.apprise_handler import AppriseHandler
 from icloudpd_web.api.aws_handler import AWSHandler
 from icloudpd_web.api.data_models import IGNORED_FIELDS, NON_POLICY_FIELDS
 from icloudpd_web.api.error import PolicyError
@@ -21,14 +22,22 @@ class ClientHandler:
     def policy_names(self: "ClientHandler") -> list[str]:
         return [policy.name for policy in self._policies]
 
+    @property
+    def apprise_services(self: "ClientHandler") -> list[str]:
+        return self._apprise_handler.servers
+
     def __init__(
-        self: "ClientHandler", saved_policies_path: str, cookie_directory: str | None
+        self: "ClientHandler",
+        saved_policies_path: str,
+        cookie_directory: str | None,
+        apprise_config_path: str | None,
     ) -> None:
         self._policies: list[PolicyHandler] = []
         self._saved_policies_path: str = saved_policies_path
         self._cookie_directory: str | None = cookie_directory
         self._aws_handler = AWSHandler()
         self._icloud_manager = ICloudManager(cookie_directory)
+        self._apprise_handler = AppriseHandler(apprise_config_path)
         self._load_policies()
         self._scheduled_runs: dict[str, PriorityQueue[tuple[float, str]]] = {}
 
@@ -76,6 +85,30 @@ class ClientHandler:
         return toml.dumps(
             {"policy": [policy.dump(excludes=NON_POLICY_FIELDS) for policy in self._policies]}
         )
+
+    def save_apprise_config(self: "ClientHandler", apprise_config: str) -> None:
+        """
+        Save the apprise config.
+        """
+        self._apprise_handler.add_config(apprise_config)
+
+    def reset_apprise_config(self: "ClientHandler") -> None:
+        """
+        Reset the apprise config.
+        """
+        self._apprise_handler.reset_config()
+
+    def send_notification(self: "ClientHandler", title: str, message: str, level: str) -> None:
+        """
+        Send a notification with the given title, message, and level.
+        """
+        match level:
+            case "info":
+                self._apprise_handler.info(title, message)
+            case "warning":
+                self._apprise_handler.warning(title, message)
+            case "failure":
+                self._apprise_handler.failure(title, message)
 
     def get_aws_config(self: "ClientHandler") -> dict:
         """
