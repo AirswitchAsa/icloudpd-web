@@ -7,6 +7,7 @@ from zoneinfo import ZoneInfo
 
 from icloudpd_web.api.aws_handler import AWSHandler
 from icloudpd_web.api.data_models import IGNORED_FIELDS, NON_POLICY_FIELDS
+from icloudpd_web.api.error import PolicyError
 from icloudpd_web.api.icloud_utils import ICloudManager
 from icloudpd_web.api.policy_handler import PolicyHandler, PolicyStatus
 
@@ -33,10 +34,11 @@ class ClientHandler:
 
     def _load_policies_from_toml(self: "ClientHandler", saved_policies: list[dict]) -> None:
         for policy in saved_policies:
-            assert "name" in policy, "Policy must have a name"
-            assert "username" in policy, "Policy must have a username"
-            assert "directory" in policy, "Policy must have a directory"
-            assert policy["name"] not in self.policy_names, "Policy name must be unique"
+            if not ("name" in policy and "username" in policy and "directory" in policy):
+                raise PolicyError("Policy must have a name, username, and directory")
+
+            if policy["name"] in self.policy_names:
+                raise PolicyError("Policy name must be unique")
             policy = {
                 k: v for k, v in policy.items() if k not in IGNORED_FIELDS
             }  # ignore the fields managed by global settings
@@ -120,9 +122,10 @@ class ClientHandler:
         Create a new policy with the given parameters.
         """
         policy_name = kwargs.get("name")
-        assert policy_name, "Policy name must be provided"
+        if not policy_name:
+            raise PolicyError("Policy name must be provided")
         if policy_name in self.policy_names:
-            raise ValueError(f"Policy with name {policy_name} already exists")
+            raise PolicyError(f"Policy with name {policy_name} already exists")
         self._policies.append(
             PolicyHandler(
                 icloud_manager=self._icloud_manager,
@@ -136,7 +139,8 @@ class ClientHandler:
         """
         Delete the policy with the given name.
         """
-        assert policy_name in self.policy_names, f"Policy {policy_name} does not exist"
+        if policy_name not in self.policy_names:
+            raise PolicyError(f"Policy {policy_name} does not exist")
         self._policies = [policy for policy in self._policies if policy.name != policy_name]
         self._save_policies()
 

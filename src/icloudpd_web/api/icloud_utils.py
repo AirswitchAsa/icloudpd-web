@@ -7,6 +7,7 @@ from foundation.core import compose, identity
 from icloudpd.base import download_builder, lp_filename_concatinator, lp_filename_original
 from icloudpd.paths import clean_filename, remove_unicode_chars
 from icloudpd_web.api.data_models import PolicyConfigs
+from icloudpd_web.api.error import ICloudPdWebServerError
 from icloudpd_web.api.logger import server_logger
 from pyicloud_ipd.base import PyiCloudService
 from pyicloud_ipd.file_match import FileMatchPolicy
@@ -31,19 +32,21 @@ class ICloudManager:
         """
         Set the instance for the given username.
         """
-        assert (
-            self._icloud_instances.get(username) is None
-        ), "Trying to set an icloud instance that already exists"
-        self._icloud_instances[username] = instance
+        if self._icloud_instances.get(username):
+            self._icloud_instances[username] = instance
+        else:
+            raise ICloudPdWebServerError("Trying to set an icloud instance that already exists")
 
     def update_instance(self: "ICloudManager", username: str, attributes: dict) -> None:
         """
         Update the attributes of the instance with the given username.
         """
         instance = self._icloud_instances.get(username)
-        assert instance is not None, "Trying to update non-existing instance"
+        if instance is None:
+            raise ICloudPdWebServerError("Trying to update non-existing instance")
         for key in attributes:
-            assert hasattr(instance, key), f"Instance does not have attribute '{key}'"
+            if not hasattr(instance, key):
+                raise ICloudPdWebServerError(f"Instance does not have attribute '{key}'")
         for key, value in attributes.items():
             setattr(instance, key, value)
 

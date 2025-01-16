@@ -13,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from icloudpd_web.api.authentication_local import authenticate_secret, save_secret_hash
 from icloudpd_web.api.client_handler import ClientHandler
 from icloudpd_web.api.data_models import AuthenticationResult
+from icloudpd_web.api.error import ServerConfigError, handle_error
 from icloudpd_web.api.logger import build_logger, server_logger
 from icloudpd_web.api.policy_handler import PolicyHandler, PolicyStatus
 
@@ -126,7 +127,8 @@ def create_app(  # noqa: C901
                         await asyncio.gather(*active_tasks.values(), return_exceptions=True)
                         active_tasks.clear()
                     case _:
-                        server_logger.error(f"Error in scheduled policy runner: {str(e)}")
+                        server_logger.error("Error when scheduling policies")
+                        handle_error(server_logger, e)
                 await asyncio.sleep(1)
 
     asyncio.create_task(run_scheduled_policies(handler_manager))
@@ -135,29 +137,34 @@ def create_app(  # noqa: C901
     async def update_app_config(sid: str, key: str, value: bool | str) -> None:
         if client_id := sid_to_client.get(sid):
             try:
-                assert client_id, "Client ID not found"
-                assert key in {
+                if not client_id:
+                    raise ServerConfigError("Client ID not found")
+                if key not in {
                     "always_guest",
                     "disable_guest",
                     "no_password",
-                }, "Invalid setting to update"
+                }:
+                    raise ServerConfigError("Invalid setting to update")
                 if (key != "always_guest" or value) and client_id not in app_config.client_ids:
-                    raise ValueError("Guest user is not allowed to update this setting")
+                    raise ServerConfigError("Guest user is not allowed to update this setting")
                 # Check for invalid combinations
                 if key == "no_password" and value and app_config.always_guest:
-                    raise ValueError("Cannot enable no-password with always-guest")
+                    raise ServerConfigError("Cannot enable no-password with always-guest")
                 if key == "always_guest" and value and app_config.no_password:
-                    raise ValueError("Cannot enable always-guest with no-password")
+                    raise ServerConfigError("Cannot enable always-guest with no-password")
                 if key == "always_guest" and value and app_config.disable_guest:
-                    raise ValueError("Cannot enable always-guest with disable-guest")
+                    raise ServerConfigError("Cannot enable always-guest with disable-guest")
                 if key == "disable_guest" and value and app_config.always_guest:
-                    raise ValueError("Cannot enable disable-guest with always-guest")
+                    raise ServerConfigError("Cannot enable disable-guest with always-guest")
 
                 setattr(app_config, key, value)
                 await maybe_emit("app_config_updated", client_id, preferred_sid=sid)
             except Exception as e:
                 await maybe_emit(
-                    "error_updating_app_config", client_id, {"error": str(e)}, preferred_sid=sid
+                    "error_updating_app_config",
+                    client_id,
+                    {"error": handle_error(server_logger, e)},
+                    preferred_sid=sid,
                 )
 
     @sio.event
@@ -177,7 +184,7 @@ def create_app(  # noqa: C901
                 await maybe_emit(
                     "server_authentication_failed",
                     client_id,
-                    {"error": str(e)},
+                    {"error": handle_error(server_logger, e)},
                     preferred_sid=sid,
                 )
 
@@ -200,7 +207,7 @@ def create_app(  # noqa: C901
                 await maybe_emit(
                     "failed_saving_server_secret",
                     client_id,
-                    {"error": str(e)},
+                    {"error": handle_error(server_logger, e)},
                     preferred_sid=sid,
                 )
 
@@ -217,7 +224,7 @@ def create_app(  # noqa: C901
                 await maybe_emit(
                     "failed_resetting_server_secret",
                     client_id,
-                    {"error": str(e)},
+                    {"error": handle_error(server_logger, e)},
                     preferred_sid=sid,
                 )
 
@@ -281,8 +288,9 @@ def create_app(  # noqa: C901
                                 server_logger.info(f"Logged out guest {client_id} after timeout")
                         except Exception as e:
                             server_logger.error(
-                                f"Error logging out guest {client_id} after timeout: {str(e)}"
+                                f"Error logging out guest {client_id} after timeout"
                             )
+                            handle_error(server_logger, e)
                         finally:
                             guest_timeout_tasks.pop(client_id, None)  # type: ignore
 
@@ -330,7 +338,10 @@ def create_app(  # noqa: C901
                 await maybe_emit("server_config", client_id, viewable_configs, preferred_sid=sid)
             except Exception as e:
                 await maybe_emit(
-                    "server_config_not_found", client_id, {"error": str(e)}, preferred_sid=sid
+                    "server_config_not_found",
+                    client_id,
+                    {"error": handle_error(server_logger, e)},
+                    preferred_sid=sid,
                 )
 
     @sio.event
@@ -346,7 +357,10 @@ def create_app(  # noqa: C901
                     )
             except Exception as e:
                 await maybe_emit(
-                    "error_getting_aws_config", client_id, {"error": str(e)}, preferred_sid=sid
+                    "error_getting_aws_config",
+                    client_id,
+                    {"error": handle_error(server_logger, e)},
+                    preferred_sid=sid,
                 )
 
     @sio.event
@@ -365,7 +379,7 @@ def create_app(  # noqa: C901
                 await maybe_emit(
                     "aws_config_saved",
                     client_id,
-                    {"success": False, "error": str(e)},
+                    {"success": False, "error": handle_error(server_logger, e)},
                     preferred_sid=sid,
                 )
 
@@ -389,7 +403,7 @@ def create_app(  # noqa: C901
                     await maybe_emit(
                         "saved_global_settings",
                         client_id,
-                        {"success": False, "error": str(e)},
+                        {"success": False, "error": handle_error(server_logger, e)},
                         preferred_sid=sid,
                     )
 
@@ -409,7 +423,7 @@ def create_app(  # noqa: C901
                     await maybe_emit(
                         "error_uploading_policies",
                         client_id,
-                        {"error": str(e)},
+                        {"error": handle_error(server_logger, e)},
                         preferred_sid=sid,
                     )
 
@@ -431,7 +445,7 @@ def create_app(  # noqa: C901
                     await maybe_emit(
                         "error_downloading_policies",
                         client_id,
-                        {"error": str(e)},
+                        {"error": handle_error(server_logger, e)},
                         preferred_sid=sid,
                     )
 
@@ -446,7 +460,10 @@ def create_app(  # noqa: C901
                     await maybe_emit("policies", client_id, handler.policies, preferred_sid=sid)
                 except Exception as e:
                     await maybe_emit(
-                        "internal_error", client_id, {"error": str(e)}, preferred_sid=sid
+                        "internal_error",
+                        client_id,
+                        {"error": handle_error(server_logger, e)},
+                        preferred_sid=sid,
                     )
 
     @sio.event
@@ -466,7 +483,7 @@ def create_app(  # noqa: C901
                     await maybe_emit(
                         "error_saving_policy",
                         client_id,
-                        {"policy_name": policy_name, "error": str(e)},
+                        {"policy_name": policy_name, "error": handle_error(server_logger, e)},
                         preferred_sid=sid,
                     )
 
@@ -486,7 +503,10 @@ def create_app(  # noqa: C901
                     await maybe_emit(
                         "error_creating_policy",
                         client_id,
-                        {"policy_name": policy.get("name", ""), "error": str(e)},
+                        {
+                            "policy_name": policy.get("name", ""),
+                            "error": handle_error(server_logger, e),
+                        },
                         preferred_sid=sid,
                     )
 
@@ -506,7 +526,7 @@ def create_app(  # noqa: C901
                     await maybe_emit(
                         "error_deleting_policy",
                         client_id,
-                        {"policy_name": policy_name, "error": str(e)},
+                        {"policy_name": policy_name, "error": handle_error(server_logger, e)},
                         preferred_sid=sid,
                     )
 
@@ -546,7 +566,7 @@ def create_app(  # noqa: C901
                     await maybe_emit(
                         "authentication_failed",
                         client_id,
-                        {"error": str(e), "policy_name": policy_name},
+                        {"error": handle_error(server_logger, e), "policy_name": policy_name},
                         preferred_sid=sid,
                     )
 
@@ -573,7 +593,10 @@ def create_app(  # noqa: C901
                                 await maybe_emit("mfa_required", client_id, msg, preferred_sid=sid)
                 except Exception as e:
                     await maybe_emit(
-                        "authentication_failed", client_id, {"error": str(e)}, preferred_sid=sid
+                        "authentication_failed",
+                        client_id,
+                        {"error": handle_error(server_logger, e)},
+                        preferred_sid=sid,
                     )
 
     @sio.event
@@ -596,7 +619,7 @@ def create_app(  # noqa: C901
                     await maybe_emit(
                         "error_interrupting_download",
                         client_id,
-                        {"policy_name": policy_name, "error": str(e)},
+                        {"policy_name": policy_name, "error": handle_error(server_logger, e)},
                         preferred_sid=sid,
                     )
 
@@ -614,7 +637,7 @@ def create_app(  # noqa: C901
                     await maybe_emit(
                         "error_cancelling_scheduled_run",
                         client_id,
-                        {"policy_name": policy_name, "error": str(e)},
+                        {"policy_name": policy_name, "error": handle_error(server_logger, e)},
                         preferred_sid=sid,
                     )
 
@@ -649,13 +672,13 @@ def create_app(  # noqa: C901
                     last_progress = policy.progress
             if exception := task.exception():
                 policy.status = PolicyStatus.ERRORED
-                logger.error(f"Download failed: {str(exception)}")
+                logger.error(f"Download failed: {handle_error(server_logger, exception)}")  # type: ignore
                 await maybe_emit(
                     "download_failed",
                     client_id,
                     {
                         "policy": policy.dump(),
-                        "error": str(exception),
+                        "error": handle_error(server_logger, exception),  # type: ignore
                         "logs": log_capture_stream.read_new_lines(),
                     },
                 )
@@ -678,8 +701,8 @@ def create_app(  # noqa: C901
                 client_id,
                 {
                     "policy": policy.dump(),
-                    "error": str(e),
-                    "logs": f"Internal error: {str(e)}\n",
+                    "error": handle_error(server_logger, e),
+                    "logs": f"Internal error: {handle_error(server_logger, e)}\n",
                 },
             )
 

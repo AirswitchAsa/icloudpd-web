@@ -28,7 +28,12 @@ from icloudpd_web.api.download_option_utils import (
     should_break,
     should_skip,
 )
-from icloudpd_web.api.error import ICloudAccessError, ICloudAuthenticationError
+from icloudpd_web.api.error import (
+    ICloudAccessError,
+    ICloudAPIError,
+    ICloudAuthenticationError,
+    ICloudPdWebServerError,
+)
 from icloudpd_web.api.icloud_utils import (
     ICloudManager,
     build_downloader_builder_args,
@@ -54,7 +59,6 @@ class PolicyHandler:
 
     @name.setter
     def name(self: "PolicyHandler", value: str) -> None:
-        assert isinstance(value, str), "Policy name must be a string"
         self._name = value
 
     @property
@@ -63,7 +67,6 @@ class PolicyHandler:
 
     @status.setter
     def status(self: "PolicyHandler", value: PolicyStatus) -> None:
-        assert isinstance(value, PolicyStatus), "Status must be a PolicyStatus"
         self._status = value
 
     @property
@@ -72,8 +75,8 @@ class PolicyHandler:
 
     @progress.setter
     def progress(self: "PolicyHandler", value: int) -> None:
-        assert isinstance(value, int), "Progress must be an integer"
-        assert 0 <= value <= 100, "Progress must be between 0 and 100"
+        if not 0 <= value <= 100:
+            raise ICloudPdWebServerError("Progress must be between 0 and 100")
         self._progress = value
 
     @property
@@ -190,9 +193,8 @@ class PolicyHandler:
         """
         Update the policy configs. Should only be called when status is STOPPED.
         """
-        assert (
-            self._status == PolicyStatus.STOPPED or self._status == PolicyStatus.ERRORED
-        ), "Can only update policy when policy is stopped or errored"
+        if self._status != PolicyStatus.STOPPED and self._status != PolicyStatus.ERRORED:
+            raise ICloudPdWebServerError("Can only update policy when policy is stopped or errored")
         new_config_args = self._configs.model_dump()
         new_config_args.update(config_updates)
         self._configs = PolicyConfigs(**new_config_args)
@@ -348,9 +350,8 @@ class PolicyHandler:
         if (library_name := self.library_name) is None:
             raise ValueError(f"Unavailable library: {self._configs.library}")
         library = icloud.photos.libraries[library_name]
-        assert (
-            self._configs.album in library.albums
-        ), f"Album {self._configs.album} not found in library {library_name}"
+        if self._configs.album not in library.albums:
+            raise ICloudAPIError(f"Album {self._configs.album} not found in library {library_name}")
         photos: PhotoAlbum = library.albums[self._configs.album]
         error_handler = build_photos_exception_handler(logger, icloud)
         photos.exception_handler = error_handler
