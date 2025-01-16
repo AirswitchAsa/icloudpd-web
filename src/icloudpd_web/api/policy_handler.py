@@ -219,6 +219,7 @@ class PolicyHandler:
                 domain=self._configs.domain,
                 apple_id=self.username,
                 password=password,
+                cookie_directory=self._icloud_manager.cookie_directory,
             )
         except PyiCloudFailedLoginException as e:
             self._icloud_manager.remove_instance(self.username)

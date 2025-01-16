@@ -33,6 +33,7 @@ class AppConfig:
     always_guest: bool = os.environ.get("ALWAYS_GUEST", "false").lower() == "true"
     disable_guest: bool = os.environ.get("DISABLE_GUEST", "false").lower() == "true"
     toml_path: str = os.environ.get("TOML_PATH", "./policies.toml")
+    cookie_directory: str | None = os.environ.get("COOKIE_DIRECTORY", None)
     secret_hash_path: str = secret_hash_path
     guest_timeout_seconds: int = int(
         os.environ.get("GUEST_TIMEOUT_SECONDS", 3600)
@@ -241,7 +242,10 @@ def create_app(  # noqa: C901
                 server_logger.info(f"New session {sid} created for client {client_id}")
             else:
                 server_logger.info(f"New client {client_id} connected with session {sid}")
-                handler_manager[client_id] = ClientHandler(saved_policies_path=app_config.toml_path)
+                handler_manager[client_id] = ClientHandler(
+                    saved_policies_path=app_config.toml_path,
+                    cookie_directory=app_config.cookie_directory,
+                )
         else:
             server_logger.info(f"Disconnecting client {client_id} due to reaching max sessions")
             for sid in sid_to_client:

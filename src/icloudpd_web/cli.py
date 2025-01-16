@@ -24,6 +24,11 @@ import uvicorn
     "~/.icloudpd_web/secret_hash by default.",
 )
 @click.option(
+    "--cookie-directory",
+    help="Path to the icloud session cookie directory. "
+    "The cookies will be saved to system temp directory by default.",
+)
+@click.option(
     "--max-sessions",
     type=int,
     help="Maximum number of sessions to allow. Default: 5",
@@ -73,6 +78,7 @@ def main(  # noqa: C901 # TODO: simplify
     always_guest: bool,
     disable_guest: bool,
     guest_timeout_seconds: int,
+    cookie_directory: str,
 ) -> None:
     """Launch the iCloud Photos Downloader server with the Web interface"""
 
@@ -90,6 +96,9 @@ def main(  # noqa: C901 # TODO: simplify
 
     if guest_timeout_seconds:
         os.environ["GUEST_TIMEOUT_SECONDS"] = str(guest_timeout_seconds)
+
+    if cookie_directory:
+        os.environ["COOKIE_DIRECTORY"] = cookie_directory
 
     if no_password and always_guest:
         raise click.BadParameter("Cannot enable --no-password and --always-guest together")

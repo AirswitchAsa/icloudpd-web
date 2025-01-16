@@ -11,7 +11,7 @@ CMD="icloudpd-web"
 [[ ! -z "$SECRET_HASH_PATH" ]] && CMD="$CMD --secret-hash-path $SECRET_HASH_PATH"
 [[ ! -z "$MAX_SESSIONS" ]] && CMD="$CMD --max-sessions $MAX_SESSIONS"
 [[ ! -z "$GUEST_TIMEOUT_SECONDS" ]] && CMD="$CMD --guest-timeout-seconds $GUEST_TIMEOUT_SECONDS"
-
+[[ ! -z "$COOKIE_DIRECTORY" ]] && CMD="$CMD --cookie-directory $COOKIE_DIRECTORY"
 # Handle boolean flags
 [[ "$NO_PASSWORD" == "true" ]] && CMD="$CMD --no-password"
 [[ "$ALWAYS_GUEST" == "true" ]] && CMD="$CMD --always-guest"

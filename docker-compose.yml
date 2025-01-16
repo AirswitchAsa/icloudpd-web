@@ -12,6 +12,7 @@ services:
       # - TOML_PATH=/path/to/policies.toml
       # - ALLOWED_ORIGINS=http://localhost:3000
       # - SECRET_HASH_PATH=/path/to/secret_hash
+      # - COOKIE_DIRECTORY=/path/to/cookie_directory
       # - MAX_SESSIONS=5
       # - GUEST_TIMEOUT_SECONDS=300
       # - NO_PASSWORD=false

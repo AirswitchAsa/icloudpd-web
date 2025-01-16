@@ -20,11 +20,14 @@ class ClientHandler:
     def policy_names(self: "ClientHandler") -> list[str]:
         return [policy.name for policy in self._policies]
 
-    def __init__(self: "ClientHandler", saved_policies_path: str) -> None:
+    def __init__(
+        self: "ClientHandler", saved_policies_path: str, cookie_directory: str | None
+    ) -> None:
         self._policies: list[PolicyHandler] = []
         self._saved_policies_path: str = saved_policies_path
+        self._cookie_directory: str | None = cookie_directory
         self._aws_handler = AWSHandler()
-        self._icloud_manager = ICloudManager()
+        self._icloud_manager = ICloudManager(cookie_directory)
         self._load_policies()
         self._scheduled_runs: dict[str, PriorityQueue[tuple[float, str]]] = {}
 
@@ -142,7 +145,7 @@ class ClientHandler:
         Replace the current policies with the policies defined in the list of dictionaries.
         """
         self._policies = []
-        self._icloud_manager = ICloudManager()
+        self._icloud_manager = ICloudManager(cookie_directory=self._cookie_directory)
         read_policies = toml.loads(toml_content).get("policy", [])
         self._load_policies_from_toml(read_policies)
         self._save_policies()

@@ -13,8 +13,13 @@ from pyicloud_ipd.file_match import FileMatchPolicy
 
 
 class ICloudManager:
-    def __init__(self: "ICloudManager") -> None:
+    @property
+    def cookie_directory(self: "ICloudManager") -> str | None:
+        return self._cookie_directory
+
+    def __init__(self: "ICloudManager", cookie_directory: str | None) -> None:
         self._icloud_instances: dict[str, PyiCloudService] = {}
+        self._cookie_directory: str | None = cookie_directory
 
     def get_instance(self: "ICloudManager", username: str) -> PyiCloudService | None:
         """
