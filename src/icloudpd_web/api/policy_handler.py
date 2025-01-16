@@ -379,7 +379,7 @@ class PolicyHandler:
                 if should_skip(logger, item, self._configs):
                     continue
                 download_result = await async_download_photo(consecutive_files_found, item)
-                if download_result and self._configs.delete_after_download:
+                if download_result and self._configs.keep_icloud_recent_days:
                     delete_local = partial(
                         delete_photo,
                         logger,

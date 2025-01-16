@@ -41,7 +41,7 @@ export interface Policy {
 
   // Delete options
   auto_delete: boolean;
-  delete_after_download: boolean;
+  keep_icloud_recent_days: number | null;
 
   // icloudpd-ui options
   dry_run: boolean;

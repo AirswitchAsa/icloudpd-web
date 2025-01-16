@@ -64,7 +64,7 @@ class PolicyConfigs(BaseModel):
 
     # Delete options
     auto_delete: bool = False
-    delete_after_download: bool = False
+    keep_icloud_recent_days: Annotated[int, Field(ge=0)] | None = None
 
     # icloudpd-ui options
     dry_run: bool = False
