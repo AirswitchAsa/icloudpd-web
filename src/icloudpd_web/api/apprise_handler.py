@@ -8,8 +8,7 @@ from icloudpd_web.api.error import AppriseError, ICloudPdWebServerError
 class AppriseHandler:
     @property
     def servers(self: "AppriseHandler") -> list[str]:
-        return ["114514", "discord", "email"]
-        return self._apprise_client.servers  # type: ignore
+        return [server.service_name for server in self._apprise_client.servers]  # type: ignore
 
     def __init__(self: "AppriseHandler", apprise_config_path: str | None) -> None:
         try:

@@ -1,6 +1,7 @@
 import io
 import logging
 import logging.config
+import sys
 from typing import Callable
 
 from click import style
@@ -25,44 +26,44 @@ class ClickFormatter(logging.Formatter):
             "ERROR": "red",
             "CRITICAL": "bright_red",
         }
-        # Get the original message
-        record.levelname = style(record.levelname, fg=level_styles.get(record.levelname, "red"))
-        return super().format(record)
+        # Store the original levelname
+        original_levelname = record.levelname
+        # Apply styling only for terminal output (StreamHandler to sys.stdout/stderr)
+        if any(
+            isinstance(h, logging.StreamHandler) and h.stream in (sys.stdout, sys.stderr)
+            for h in logging.getLogger().handlers
+        ):
+            record.levelname = style(record.levelname, fg=level_styles.get(record.levelname, "red"))
+        result = super().format(record)
+        # Restore the original levelname
+        record.levelname = original_levelname
+        return result
 
 
-logging.config.dictConfig(
-    {
-        "version": 1,
-        "disable_existing_loggers": False,
-        "formatters": {
-            "standard": {
-                "()": ClickFormatter,
-                "format": "%(asctime)s %(levelname)-8s %(message)s",
-                "datefmt": "%Y-%m-%d %H:%M:%S",
-            },
-        },
-        "handlers": {
-            "default": {
-                "formatter": "standard",
-                "class": "logging.StreamHandler",
-                "stream": "ext://sys.stdout",
-            },
-        },
-        "loggers": {
-            "": {  # Root logger
-                "handlers": ["default"],
-                "level": "INFO",
-            },
-            "uvicorn": {"handlers": ["default"], "level": "INFO", "propagate": False},
-            "uvicorn.error": {"level": "INFO"},
-            "uvicorn.access": {"handlers": ["default"], "level": "INFO", "propagate": False},
-        },
-    }
+# Configure server logger
+server_logger = logging.getLogger("server_logger")
+server_logger.handlers.clear()  # Clear any existing handlers
+
+# Create and configure the handler
+handler = logging.StreamHandler(sys.stdout)
+handler.setFormatter(
+    ClickFormatter(
+        fmt="%(asctime)s %(levelname)-8s %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
 )
+server_logger.addHandler(handler)
 
-# Get the server logger but don't add additional handlers
-server_logger = logging.getLogger("server")
-server_logger.setLevel(logging.INFO)
+# Configure uvicorn loggers
+uvicorn_logger = logging.getLogger("uvicorn")
+uvicorn_logger.handlers = [handler]
+uvicorn_logger.propagate = False
+uvicorn_logger.setLevel(logging.INFO)
+
+uvicorn_access_logger = logging.getLogger("uvicorn.access")
+uvicorn_access_logger.handlers = [handler]
+uvicorn_access_logger.propagate = False
+uvicorn_access_logger.setLevel(logging.INFO)
 
 
 def build_logger_level(level: str) -> int:

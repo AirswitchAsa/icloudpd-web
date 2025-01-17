@@ -3,7 +3,6 @@ from inspect import signature
 from typing import Callable
 
 from foundation.core import compose, identity
-
 from icloudpd.base import download_builder, lp_filename_concatinator, lp_filename_original
 from icloudpd.paths import clean_filename, remove_unicode_chars
 from icloudpd_web.api.data_models import PolicyConfigs
@@ -33,9 +32,9 @@ class ICloudManager:
         Set the instance for the given username.
         """
         if self._icloud_instances.get(username):
-            self._icloud_instances[username] = instance
-        else:
             raise ICloudPdWebServerError("Trying to set an icloud instance that already exists")
+        else:
+            self._icloud_instances[username] = instance
 
     def update_instance(self: "ICloudManager", username: str, attributes: dict) -> None:
         """

@@ -42,9 +42,9 @@ class PolicyConfigs(BaseModel):
     keep_unicode_in_filenames: bool = False
     set_exif_datetime: bool = False
     live_photo_mov_filename_policy: Literal["original", "suffix"] = "suffix"
-    file_match_policy: Literal[
-        "name-size-dedup-with-suffix", "name-id7"
-    ] = "name-size-dedup-with-suffix"
+    file_match_policy: Literal["name-size-dedup-with-suffix", "name-id7"] = (
+        "name-size-dedup-with-suffix"
+    )
     xmp_sidecar: bool = False
     use_os_locale: bool = False
 
@@ -77,6 +77,8 @@ class PolicyConfigs(BaseModel):
 
     @field_validator("interval")
     def validate_cron_expression(cls, v: str | None) -> str | None:  # noqa: N805 ANN101
+        if v == "":
+            return None
         if v is not None:
             if not croniter.is_valid(v):
                 raise ValueError(

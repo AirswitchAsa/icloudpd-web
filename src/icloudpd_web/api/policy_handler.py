@@ -364,6 +364,7 @@ class PolicyHandler:
             logger, photos_count, self._configs.size, self._configs.skip_videos, directory
         )
         consecutive_files_found = Counter(0)
+
         while True:
             try:
                 if self._status == PolicyStatus.STOPPED:  # policy is interrupted
@@ -377,6 +378,7 @@ class PolicyHandler:
                     break
                 item: PhotoAsset = next(photos_iterator)  # type: ignore
                 if should_skip(logger, item, self._configs):
+                    download_counter.increment()
                     continue
                 download_result = await async_download_photo(consecutive_files_found, item)
                 if download_result and self._configs.keep_icloud_recent_days:

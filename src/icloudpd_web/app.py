@@ -700,7 +700,7 @@ def create_app(  # noqa: C901
         client_id: str,
         client_handler: ClientHandler,
         policy: PolicyHandler,
-    ) -> None:  # noqa: C901 # TODO: simplify
+    ) -> None:  # noqa: C901
         """
         Start the download for the given policy.
         """
