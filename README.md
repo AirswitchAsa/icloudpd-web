@@ -60,7 +60,7 @@ run `icloudpd-web --help` to see the available options.
 
 ## Term of Use
 
-The copyright of icloudpd-web ("the software") fully belongs to the author(s). There will be a hosted version created by the author(s) for public access. The software is free to use for personal, educational, or non-commercial purposes only. Unauthorized use to generate revenue is not allowed.
+The copyright of icloudpd-web ("the software") fully belongs to the author(s). The software is free to use for personal, educational, or non-commercial purposes only. Unauthorized use to generate revenue is not allowed.
 
 ## License
 
