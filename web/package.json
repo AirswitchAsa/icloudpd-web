@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build && rm -rf ../src/icloudpd_web/webapp/* && cp -r ./out/* ../src/icloudpd_web/webapp/",
+    "build": "env-cmd -f .env.production next build --no-lint && rm -rf ../src/icloudpd_web/webapp/* && cp -r ./out/* ../src/icloudpd_web/webapp/",
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit"
@@ -27,6 +27,7 @@
   "devDependencies": {
     "@types/node": "^20.0.0",
     "@types/react": "^18.2.0",
+    "env-cmd": "^10.1.0",
     "eslint": "^8.0.0",
     "eslint-config-next": "^14.0.0",
     "typescript": "^5.0.0"
