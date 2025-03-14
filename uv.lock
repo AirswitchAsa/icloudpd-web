@@ -344,7 +344,7 @@ wheels = [
 
 [[package]]
 name = "icloudpd-web"
-version = "2025.1.14"
+version = "2025.1.17"
 source = { editable = "." }
 dependencies = [
     { name = "aiofiles" },
