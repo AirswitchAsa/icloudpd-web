@@ -1,7 +1,9 @@
 import io
 import logging
 import logging.config
+import os
 import sys
+import time
 from typing import Callable
 
 from click import style
@@ -45,23 +47,43 @@ server_logger = logging.getLogger("server_logger")
 server_logger.handlers.clear()  # Clear any existing handlers
 
 # Create and configure the handler
-handler = logging.StreamHandler(sys.stdout)
-handler.setFormatter(
+server_stream_handler = logging.StreamHandler(sys.stdout)
+server_stream_handler.setFormatter(
     ClickFormatter(
         fmt="%(asctime)s %(levelname)-8s %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 )
-server_logger.addHandler(handler)
+server_logger.addHandler(server_stream_handler)
+
+# Create file handler (defaults to /dev/null if LOG_LOCATION not set)
+log_file = "/dev/null"
+if log_location := os.environ.get("LOG_LOCATION"):
+    # Create log directory if it doesn't exist
+    os.makedirs(log_location, exist_ok=True)
+
+    # Create log file with timestamp
+    timestamp = int(time.time())
+    log_file = os.path.join(log_location, "icloudpd-web.log")
+    server_logger.info(f"Logging to file: {log_file}")
+
+file_handler = logging.FileHandler(log_file)
+file_handler.setFormatter(
+    logging.Formatter(
+        fmt="%(asctime)s %(levelname)-8s %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+)
+server_logger.addHandler(file_handler)
 
 # Configure uvicorn loggers
 uvicorn_logger = logging.getLogger("uvicorn")
-uvicorn_logger.handlers = [handler]
+uvicorn_logger.handlers = [server_stream_handler, file_handler]
 uvicorn_logger.propagate = False
 uvicorn_logger.setLevel(logging.INFO)
 
 uvicorn_access_logger = logging.getLogger("uvicorn.access")
-uvicorn_access_logger.handlers = [handler]
+uvicorn_access_logger.handlers = [server_stream_handler, file_handler]
 uvicorn_access_logger.propagate = False
 uvicorn_access_logger.setLevel(logging.INFO)
 
@@ -72,8 +94,12 @@ def build_logger_level(level: str) -> int:
             return logging.DEBUG
         case "info":
             return logging.INFO
+        case "warning":
+            return logging.WARNING
         case "error":
             return logging.ERROR
+        case "critical":
+            return logging.CRITICAL
         case _:
             raise ValueError(f"Unsupported logger level: {level}")
 
@@ -110,6 +136,7 @@ def build_logger(policy_name: str) -> tuple[logging.Logger, LogCaptureStream]:
         )
     )
     logger.addHandler(stream_handler)
+    logger.addHandler(file_handler)
     return logger, log_capture_stream
 
 

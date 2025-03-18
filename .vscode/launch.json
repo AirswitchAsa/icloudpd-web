@@ -19,6 +19,8 @@
         "./example_policy/example.toml",
         "--cookie-directory",
         "~/.pyicloud",
+        "--log-location",
+        "./logs",
         "--server-only",
         "--reload"
       ]
@@ -39,6 +41,8 @@
         "http://localhost:5001",
         "--toml-path",
         "./example_policy/example.toml",
+        "--log-location",
+        "./logs",
         "--reload"
       ]
     },

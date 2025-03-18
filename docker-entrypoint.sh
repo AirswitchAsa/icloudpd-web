@@ -13,6 +13,7 @@ CMD="icloudpd-web"
 [[ ! -z "$GUEST_TIMEOUT_SECONDS" ]] && CMD="$CMD --guest-timeout-seconds $GUEST_TIMEOUT_SECONDS"
 [[ ! -z "$COOKIE_DIRECTORY" ]] && CMD="$CMD --cookie-directory $COOKIE_DIRECTORY"
 [[ ! -z "$APPRISE_CONFIG_PATH" ]] && CMD="$CMD --apprise-config-path $APPRISE_CONFIG_PATH"
+[[ ! -z "$LOG_LOCATION" ]] && CMD="$CMD --log-location $LOG_LOCATION"
 # Handle boolean flags
 [[ "$NO_PASSWORD" == "true" ]] && CMD="$CMD --no-password"
 [[ "$ALWAYS_GUEST" == "true" ]] && CMD="$CMD --always-guest"

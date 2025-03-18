@@ -59,6 +59,11 @@ import uvicorn
     type=int,
     help="Timeout for guest users in seconds. Default: 3600 (1 hour)",
 )
+@click.option(
+    "--log-location",
+    help="Path to the directory where server logs will be saved. "
+    "Logs will be saved as icloudpd-web-{timestamp}.log",
+)
 # dev options
 @click.option(
     "--server-only",
@@ -85,6 +90,7 @@ def main(  # noqa: C901
     guest_timeout_seconds: int,
     cookie_directory: str,
     apprise_config_path: str,
+    log_location: str,
 ) -> None:
     """Launch the iCloud Photos Downloader server with the Web interface"""
 
@@ -108,6 +114,9 @@ def main(  # noqa: C901
 
     if apprise_config_path:
         os.environ["APPRISE_CONFIG_PATH"] = apprise_config_path
+
+    if log_location:
+        os.environ["LOG_LOCATION"] = log_location
 
     if no_password and always_guest:
         raise click.BadParameter("Cannot enable --no-password and --always-guest together")
