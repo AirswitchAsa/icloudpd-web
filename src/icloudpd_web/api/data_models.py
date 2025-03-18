@@ -38,7 +38,7 @@ class PolicyConfigs(BaseModel):
     size: Sequence[Literal["original", "medium", "thumb", "adjusted", "alternative"]] = ["original"]
     live_photo_size: Literal["original", "medium", "thumb"] = "original"
     force_size: bool = False
-    align_raw: Literal["original", "alternative", "as-is"] = "original"
+    align_raw: Literal["original", "alternative", "as-is"] = "as-is"
     keep_unicode_in_filenames: bool = False
     set_exif_datetime: bool = False
     live_photo_mov_filename_policy: Literal["original", "suffix"] = "suffix"

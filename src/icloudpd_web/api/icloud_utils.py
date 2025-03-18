@@ -10,6 +10,7 @@ from icloudpd_web.api.error import ICloudPdWebServerError
 from icloudpd_web.api.logger import server_logger
 from pyicloud_ipd.base import PyiCloudService
 from pyicloud_ipd.file_match import FileMatchPolicy
+from pyicloud_ipd.version_size import AssetVersionSize, LivePhotoVersionSize
 
 
 class ICloudManager:
@@ -89,7 +90,9 @@ def build_downloader_builder_args(configs: PolicyConfigs) -> dict:
     builder_params = signature(download_builder).parameters.keys()
     downloader_args = {k: v for k, v in downloader_args.items() if k in builder_params}
     # Map size to primary_sizes
-    downloader_args["primary_sizes"] = configs.size
+    downloader_args["primary_sizes"] = [AssetVersionSize(size) for size in configs.size]
+    downloader_args["live_photo_size"] = LivePhotoVersionSize(configs.live_photo_size + "Video")
+    downloader_args["file_match_policy"] = file_match_policy_generator(configs.file_match_policy)
     return downloader_args
 
 

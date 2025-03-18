@@ -139,7 +139,11 @@ interface SuffixFieldProps {
 
 const AVAILABLE_SUFFIXES = [
   "HEIC",
+  "HIC",
+  "HEIF",
+  "HIF",
   "JPEG",
+  "JPG",
   "PNG",
   "GIF",
   "TIFF",
