@@ -31,10 +31,7 @@ class ClickFormatter(logging.Formatter):
         # Store the original levelname
         original_levelname = record.levelname
         # Apply styling only for terminal output (StreamHandler to sys.stdout/stderr)
-        if any(
-            isinstance(h, logging.StreamHandler) and h.stream in (sys.stdout, sys.stderr)
-            for h in logging.getLogger().handlers
-        ):
+        if not record.name.startswith("policy_"):
             record.levelname = style(record.levelname, fg=level_styles.get(record.levelname, "red"))
         result = super().format(record)
         # Restore the original levelname
@@ -125,7 +122,7 @@ class LogCaptureStream(io.StringIO):
 
 def build_logger(policy_name: str) -> tuple[logging.Logger, LogCaptureStream]:
     log_capture_stream = LogCaptureStream()
-    logger = logging.getLogger(f"{policy_name}-logger")
+    logger = logging.getLogger(f"policy_{policy_name}")
     logger.handlers.clear()
     stream_handler = logging.StreamHandler(log_capture_stream)
     # Use the ClickFormatter here too
@@ -135,8 +132,10 @@ def build_logger(policy_name: str) -> tuple[logging.Logger, LogCaptureStream]:
             datefmt="%Y-%m-%d %H:%M:%S",
         )
     )
-    logger.addHandler(stream_handler)
+    logger.addHandler(server_stream_handler)
     logger.addHandler(file_handler)
+    logger.addHandler(stream_handler)
+
     return logger, log_capture_stream
 
 

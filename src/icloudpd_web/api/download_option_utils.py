@@ -1,4 +1,5 @@
 import fnmatch
+import io
 import itertools
 import logging
 import os
@@ -6,10 +7,14 @@ from collections.abc import Iterable, Sequence
 from datetime import datetime
 from typing import Literal
 
+import requests
+from PIL import ExifTags, Image
+
 from icloudpd.counter import Counter
 from icloudpd.download import mkdirs_for_path
 from icloudpd_web.api.data_models import PolicyConfigs
 from pyicloud_ipd.services.photos import PhotoAsset
+from pyicloud_ipd.version_size import AssetVersionSize
 
 
 class DryRunFilter(logging.Filter):
@@ -73,7 +78,41 @@ def should_break(counter: Counter, until_found: int | None) -> bool:
     return until_found is not None and counter.value() >= until_found
 
 
+def check_exif(logger: logging.Logger, item: PhotoAsset, configs: PolicyConfigs) -> bool:
+    try:
+        url = item.versions[AssetVersionSize.THUMB].url
+        response = requests.get(url)
+        response.raise_for_status()  # Ensure the request was successful
+
+        # Store the content in a BytesIO object
+        file_bytes = io.BytesIO(response.content)
+        image = Image.open(file_bytes)
+        exif = {
+            ExifTags.TAGS[k]: v
+            for k, v in image._getexif().items()  # type: ignore
+            if k in ExifTags.TAGS
+        }
+        make = exif.get("Make", "")
+        model = exif.get("Model", "")
+        if configs.device_make and any(
+            match_make.lower() in make.lower() for match_make in configs.device_make
+        ):
+            logging.debug(f"{item.filename} matches device make {make}")
+            return True
+        if configs.device_model and any(
+            match_model.lower() in model.lower() for match_model in configs.device_model
+        ):
+            logging.debug(f"{item.filename} matches device model {model}")
+            return True
+    except Exception:
+        logger.error(f"Error getting exif data for {item.filename}, skipping the file.")
+    logging.debug(f"{item.filename} does not match any required device make or model")
+    return False
+
+
 def should_skip(logger: logging.Logger, item: PhotoAsset, configs: PolicyConfigs) -> bool:  # noqa: C901
+    if (configs.device_make or configs.device_model) and not check_exif(logger, item, configs):
+        return True
     # convert created_after, created_before, added_after, added_before to datetime if not empty
     created_after = (
         datetime.strptime(configs.created_after, "%Y-%m-%d") if configs.created_after else None

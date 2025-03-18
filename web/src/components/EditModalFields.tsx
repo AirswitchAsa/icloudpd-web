@@ -188,7 +188,8 @@ export function SuffixField({ value, onChange }: SuffixFieldProps) {
         <FormLabel mt={2}>File Suffixes</FormLabel>
         <Spacer />
         <Text fontSize="sm" color="gray.600">
-          Filter files by their extensions. Open the dropdown to select.
+          Filter files by their extensions. Open the dropdown to select. Download all
+          by default.
         </Text>
       </HStack>
 
@@ -366,6 +367,170 @@ export function DownloadSizesField({
                   onClick={() => handleTagAdd(size)}
                 >
                   <TagLabel>{size}</TagLabel>
+                </Tag>
+              </WrapItem>
+            ))}
+          </Wrap>
+        </Box>
+      </Collapse>
+    </FormControl>
+  );
+}
+
+interface MakeFieldProps {
+  value: string[] | null;
+  onChange: (value: string[] | null) => void;
+}
+
+export function MakeField({ value, onChange }: MakeFieldProps) {
+  const [inputValue, setInputValue] = useState('');
+  const { isOpen, onToggle } = useDisclosure();
+
+  const handleAdd = () => {
+    if (inputValue.trim()) {
+      const newValue = [...(value || [])];
+      if (!newValue.includes(inputValue.trim())) {
+        newValue.push(inputValue.trim());
+        onChange(newValue);
+      }
+      setInputValue('');
+    }
+  };
+
+  const handleRemove = (make: string) => {
+    const newValue = (value || []).filter(m => m !== make);
+    onChange(newValue.length ? newValue : null);
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAdd();
+    }
+  };
+
+  return (
+    <FormControl>
+      <HStack align="center">
+        <IconButton
+          aria-label="Toggle make selection"
+          icon={isOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
+          size="sm"
+          variant="ghost"
+          onClick={onToggle}
+        />
+        <FormLabel mt={2}>Device Make</FormLabel>
+        <Spacer />
+        <Text fontSize="sm" color="gray.600">
+          Filter files by device manufacturer using exif data based on substring match.
+        </Text>
+      </HStack>
+
+      <Collapse in={isOpen}>
+        <Box borderWidth="1px" borderRadius="md" p={2} bg="gray.50">
+          <HStack mb={2}>
+            <Input
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={handleKeyPress}
+              placeholder="e.g. Use `fuji` to match any of Fuji, Fujifilm."
+              size="sm"
+            />
+            <IconButton
+              aria-label="Add make"
+              icon={<ChevronDownIcon />}
+              size="sm"
+              onClick={handleAdd}
+            />
+          </HStack>
+          <Wrap spacing={2}>
+            {(value || []).map((make) => (
+              <WrapItem key={make}>
+                <Tag size="md" colorScheme="blue" borderRadius="full">
+                  <TagLabel>{make}</TagLabel>
+                  <TagCloseButton onClick={() => handleRemove(make)} />
+                </Tag>
+              </WrapItem>
+            ))}
+          </Wrap>
+        </Box>
+      </Collapse>
+    </FormControl>
+  );
+}
+
+interface ModelFieldProps {
+  value: string[] | null;
+  onChange: (value: string[] | null) => void;
+}
+
+export function ModelField({ value, onChange }: ModelFieldProps) {
+  const [inputValue, setInputValue] = useState('');
+  const { isOpen, onToggle } = useDisclosure();
+
+  const handleAdd = () => {
+    if (inputValue.trim()) {
+      const newValue = [...(value || [])];
+      if (!newValue.includes(inputValue.trim())) {
+        newValue.push(inputValue.trim());
+        onChange(newValue);
+      }
+      setInputValue('');
+    }
+  };
+
+  const handleRemove = (model: string) => {
+    const newValue = (value || []).filter(m => m !== model);
+    onChange(newValue.length ? newValue : null);
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAdd();
+    }
+  };
+
+  return (
+    <FormControl>
+      <HStack align="center">
+        <IconButton
+          aria-label="Toggle model selection"
+          icon={isOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
+          size="sm"
+          variant="ghost"
+          onClick={onToggle}
+        />
+        <FormLabel mt={2}>Device Model</FormLabel>
+        <Spacer />
+        <Text fontSize="sm" color="gray.600">
+        Filter files by device model using exif data based on substring match.
+        </Text>
+      </HStack>
+
+      <Collapse in={isOpen}>
+        <Box borderWidth="1px" borderRadius="md" p={2} bg="gray.50">
+          <HStack mb={2}>
+            <Input
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={handleKeyPress}
+              placeholder="e.g. Use `iPhone` to match any of iPhone 13 Pro, iPhone 13 Pro Max."
+              size="sm"
+            />
+            <IconButton
+              aria-label="Add model"
+              icon={<ChevronDownIcon />}
+              size="sm"
+              onClick={handleAdd}
+            />
+          </HStack>
+          <Wrap spacing={2}>
+            {(value || []).map((model) => (
+              <WrapItem key={model}>
+                <Tag size="md" colorScheme="blue" borderRadius="full">
+                  <TagLabel>{model}</TagLabel>
+                  <TagCloseButton onClick={() => handleRemove(model)} />
                 </Tag>
               </WrapItem>
             ))}

@@ -33,6 +33,8 @@ export interface Policy {
   skip_videos: boolean;
   skip_live_photos: boolean;
   file_suffixes: string[] | null;
+  device_make: string[] | null;
+  device_model: string[] | null;
   match_pattern: string | null;
   created_after: string | null;
   created_before: string | null;

@@ -289,7 +289,9 @@ class PolicyHandler:
         Start running the policy for download.
         """
         if not self.authenticated:
-            raise ICloudAccessError("Can only start when authenticated")
+            raise ICloudAccessError(
+                "Can only start when authenticated. Please try again after authenticating the policy."  # noqa: E501
+            )
         self._status = PolicyStatus.RUNNING
         logger.setLevel(build_logger_level(self._configs.log_level))
 
@@ -330,8 +332,8 @@ class PolicyHandler:
             raise e
 
         logger.info(
-            f"Total of {download_counter.value()} items in {self._configs.library} "
-            f"from album {self._configs.album} have been downloaded "
+            f"Total of {download_counter.value()} items including skipped "
+            f"in {self._configs.library} from album {self._configs.album} have been downloaded "
             f"at {self._configs.directory}"
         )
         self._status = PolicyStatus.STOPPED

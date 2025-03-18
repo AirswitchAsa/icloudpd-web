@@ -45,6 +45,7 @@ dependencies = [
     "srp==1.0.22",
     "boto3>=1.35.97",
     "croniter>=6.0.0",
+    "pillow>=11.1.0",
 ]
 
 [dependency-groups]

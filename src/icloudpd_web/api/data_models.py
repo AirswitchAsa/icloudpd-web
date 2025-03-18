@@ -56,6 +56,8 @@ class PolicyConfigs(BaseModel):
     skip_videos: bool = False
     skip_live_photos: bool = False
     file_suffixes: list[str] | None = []
+    device_make: list[str] | None = []
+    device_model: list[str] | None = []
     match_pattern: str | None = None
     created_after: str | None = None
     created_before: str | None = None

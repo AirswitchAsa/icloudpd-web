@@ -29,6 +29,8 @@ import {
   DateRangeField,
   DownloadSizesField,
   IntegrationField,
+  MakeField,
+  ModelField,
 } from "@/components/EditModalFields";
 
 interface EditPolicyModalProps {
@@ -91,6 +93,8 @@ export function EditPolicyModal({
     scheduled: policy?.scheduled || false,
     authenticated: policy?.authenticated || false,
     waiting_mfa: policy?.waiting_mfa || false,
+    device_make: policy?.device_make || null,
+    device_model: policy?.device_model || null,
   });
 
   const handleSave = () => {
@@ -376,6 +380,19 @@ export function EditPolicyModal({
                   value={formData.file_suffixes}
                   onChange={(value) =>
                     setFormData({ ...formData, file_suffixes: value })
+                  }
+                />
+
+                <MakeField
+                  value={formData.device_make}
+                  onChange={(value) =>
+                    setFormData({ ...formData, device_make: value })
+                  }
+                />
+                <ModelField
+                  value={formData.device_model}
+                  onChange={(value) =>
+                    setFormData({ ...formData, device_model: value })
                   }
                 />
 
