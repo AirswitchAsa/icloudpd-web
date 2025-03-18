@@ -224,6 +224,17 @@ export function IntegrationSettings({ socket }: IntegrationSettingsProps) {
           </HStack>
           <Collapse in={isAppriseOpen}>
             <VStack spacing={3} align="stretch" maxW="400px" mt={4} ml={2}>
+              <Text fontSize="sm" fontWeight="semibold" color="gray.500">
+                Configure icloudpd-web to send notifications via Apprise.
+                {" See "}
+                <Link
+                  href="https://github.com/caronc/apprise"
+                  target="_blank"
+                >
+                  {"Apprise on Github"}
+                </Link>
+                {" for more information."}
+              </Text>
               <HStack justify="space-between">
                 <Text fontSize="sm" fontWeight="semibold">
                   Added Services
@@ -295,7 +306,7 @@ export function IntegrationSettings({ socket }: IntegrationSettingsProps) {
             <VStack spacing={3} align="stretch" maxW="400px" mt={4} ml={2}>
               <Text fontSize="sm" fontWeight="semibold" color="gray.500">
                 Connect to your AWS S3 bucket using Access Key ID and Secret.
-                {"See "}
+                {" See "}
                 <Link
                   href="https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html?icmpid=docs_iam_console#Using_CreateAccessKey"
                   target="_blank"

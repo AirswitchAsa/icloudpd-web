@@ -280,7 +280,7 @@ export function PatternMatchField({
     <FormControl>
       <FieldWithInfo
         label="Match Pattern"
-        info="Filter files by matching pattern (supports glob patterns separated by commas)"
+        info="Filter files by matching pattern (supports glob patterns separated by commas)."
       >
         <Input
           value={value || ""}

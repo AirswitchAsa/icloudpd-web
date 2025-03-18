@@ -170,7 +170,7 @@ export function GeneralSettings({ socket }: GeneralSettingsProps) {
         <FormControl>
           <FieldWithInfo
             label="Raw File Size"
-            info="The size of raw files to download"
+            info="Specify the size used for raw files. See RAW Assets of the icloudpd documentation for more details."
           >
             <Select
               value={settings.align_raw}

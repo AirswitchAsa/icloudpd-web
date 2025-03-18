@@ -244,7 +244,7 @@ export function EditPolicyModal({
                 <FormControl isRequired>
                   <FieldWithInfo
                     label="Download Directory"
-                    info="The local directory where photos will be downloaded"
+                    info="The local directory where photos will be downloaded. The directory will be created if it does not exist."
                   >
                     <Input
                       value={formData.directory}
@@ -259,7 +259,7 @@ export function EditPolicyModal({
                 <FormControl>
                   <FieldWithInfo
                     label="Download via Browser "
-                    info="Download photos via browser to local directory"
+                    info="Download photos via browser to local directory."
                   >
                     <Switch
                       isChecked={formData.download_via_browser}
@@ -283,7 +283,7 @@ export function EditPolicyModal({
                 <FormControl>
                   <FieldWithInfo
                     label="Domain"
-                    info="The iCloud service domain to use"
+                    info="The iCloud service domain to use. Only change this if you are using an iCloud account from China."
                   >
                     <Select
                       value={formData.domain}
@@ -341,7 +341,7 @@ export function EditPolicyModal({
                 <FormControl>
                   <FieldWithInfo
                     label="Folder Structure"
-                    info="The folder structure pattern using Python's strftime format"
+                    info="The folder structure pattern using Python's strftime format."
                   >
                     <Input
                       value={formData.folder_structure}
@@ -387,7 +387,7 @@ export function EditPolicyModal({
                 />
                 <DateRangeField
                   label="Created Date Range"
-                  info="Filter files by creation date"
+                  info="Filter files by creation date."
                   startDate={formData.created_after}
                   endDate={formData.created_before}
                   onChange={(start, end) =>
@@ -400,7 +400,7 @@ export function EditPolicyModal({
                 />
                 <DateRangeField
                   label="Added Date Range"
-                  info="Filter files by the date they were added to iCloud"
+                  info="Filter files by the date they were added to iCloud."
                   startDate={formData.added_after}
                   endDate={formData.added_before}
                   onChange={(start, end) =>
@@ -415,7 +415,7 @@ export function EditPolicyModal({
                 <FormControl>
                   <FieldWithInfo
                     label="Download Recent X"
-                    info="Stop downloading after X recent photos are downloaded (leave empty for all)"
+                    info="Stop downloading after X recent photos are downloaded (leave empty for all)."
                   >
                     <NumberInput
                       value={formData.recent || ""}
@@ -437,7 +437,7 @@ export function EditPolicyModal({
                 <FormControl>
                   <FieldWithInfo
                     label="Download Until Found X"
-                    info="Stop downloading after X existing photos are checked (leave empty for all)"
+                    info="Stop downloading after X existing photos are checked (leave empty for all)."
                   >
                     <NumberInput
                       value={formData.until_found || ""}
@@ -459,7 +459,7 @@ export function EditPolicyModal({
                 <FormControl>
                   <FieldWithInfo
                     label="Skip Videos"
-                    info="Skip downloading video files"
+                    info="Skip downloading video files when checked."
                   >
                     <Switch
                       isChecked={formData.skip_videos}
@@ -476,7 +476,7 @@ export function EditPolicyModal({
                 <FormControl>
                   <FieldWithInfo
                     label="Skip Live Photos"
-                    info="Skip downloading live photos"
+                    info="Skip downloading live photos when checked."
                   >
                     <Switch
                       isChecked={formData.skip_live_photos}
@@ -501,7 +501,7 @@ export function EditPolicyModal({
                 <FormControl>
                   <FieldWithInfo
                     label="Auto Delete"
-                    info="Automatically delete photos that are no longer in iCloud"
+                    info="Delete photos from iCloud after download."
                   >
                     <Switch
                       isChecked={formData.auto_delete}
@@ -548,7 +548,7 @@ export function EditPolicyModal({
                 <FormControl>
                   <FieldWithInfo
                     label="Dry Run"
-                    info="Simulate the download process without actually downloading or modifying any files"
+                    info="Run the download process without actually downloading or modifying any files."
                   >
                     <Switch
                       isChecked={formData.dry_run}
@@ -562,7 +562,7 @@ export function EditPolicyModal({
                 <FormControl>
                   <FieldWithInfo
                     label="Schedule Interval"
-                    info="The schedule to run the policy as a cron job (leave empty to keep it manual)"
+                    info="The schedule to run the policy as a cron job (leave empty to keep it manual)."
                   >
                     <Input
                       value={formData.interval || ""}
@@ -577,7 +577,7 @@ export function EditPolicyModal({
                 <FormControl>
                   <FieldWithInfo
                     label="Log Level"
-                    info="The level of detail in log messages"
+                    info="The level of detail for the download log messages. Server logs are configured when starting."
                   >
                     <Select
                       value={formData.log_level}
