@@ -1,5 +1,7 @@
 # icloudpd-web Docker Image
 
+Current package version: 2025.3.18.dev1
+
 ## Quick Start
 
 ```bash
@@ -16,6 +18,7 @@ The following environment variables can be used to configure the application:
 - `SECRET_HASH_PATH`: Path to the secret hash file. In most cases you can leave it empty.
 - `COOKIE_DIRECTORY`: Path to store icloud session files.
 - `APPRISE_CONFIG_PATH`: Path to store AppRise assets.
+- `LOG_LOCATION`: Path to store the logs (both server and client)
 - `ALLOWED_ORIGINS`: Comma-separated list of allowed CORS origins. Use `*` to allow all origins, otherwise use the address that you will use to access the web interface.
 - `MAX_SESSIONS`: Maximum number of sessions to allow.
 - `GUEST_TIMEOUT_SECONDS`: Timeout for guest users in seconds.
