@@ -217,9 +217,9 @@ def create_app(  # noqa: C901
         if client_id := sid_to_client.get(sid):
             try:
                 server_logger.info("Resetting server secret, removing all sessions")
-                handler_manager.clear()
                 with suppress(FileNotFoundError):
                     os.remove(app_config.secret_hash_path)
+                    handler_manager.clear()
                 await maybe_emit("server_secret_reset", client_id, preferred_sid=sid)
             except Exception as e:
                 await maybe_emit(
