@@ -108,7 +108,9 @@ class PolicyHandler:
         """
         if library := self.library_name:
             icloud = self.require_icloud("Can only get albums when authenticated")
-            return [str(a) for a in icloud.photos.libraries[library].albums.values()]
+            return ["All Photos"] + [
+                str(a) for a in icloud.photos.private_libraries[library].albums.values()
+            ]
         else:
             return []
 
@@ -120,7 +122,7 @@ class PolicyHandler:
         if not self.authenticated:
             return None
         icloud = self.require_icloud("Can only get library name when authenticated")
-        libraries = list(icloud.photos.libraries.keys())
+        libraries = list(icloud.photos.private_libraries.keys())
         shared_library_name = next((lib for lib in libraries if "SharedSync" in lib), None)
         if shared_library_name and self._configs.library == "Shared Library":
             return shared_library_name
@@ -349,10 +351,14 @@ class PolicyHandler:
 
         if (library_name := self.library_name) is None:
             raise ValueError(f"Unavailable library: {self._configs.library}")
-        library = icloud.photos.libraries[library_name]
-        if self._configs.album not in library.albums:
+        library = icloud.photos.private_libraries[library_name]
+        if self._configs.album not in library.albums and self._configs.album != "All Photos":
             raise ICloudAPIError(f"Album {self._configs.album} not found in library {library_name}")
-        photos: PhotoAlbum = library.albums[self._configs.album]
+        photos: PhotoAlbum = (
+            library.albums[self._configs.album]
+            if self._configs.album != "All Photos"
+            else library.all
+        )
         error_handler = build_photos_exception_handler(logger, icloud)
         photos.exception_handler = error_handler
         photos_count: int | None = len(photos)

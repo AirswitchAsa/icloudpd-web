@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "env-cmd -f .env.local next dev",
     "build": "env-cmd -f .env.production next build --no-lint && rm -rf ../src/icloudpd_web/webapp/* && cp -r ./out/* ../src/icloudpd_web/webapp/",
     "start": "next start",
     "lint": "next lint",
