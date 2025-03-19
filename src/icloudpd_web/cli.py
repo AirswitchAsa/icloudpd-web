@@ -36,7 +36,8 @@ import uvicorn
 @click.option(
     "--max-sessions",
     type=int,
-    help="Maximum number of sessions to allow. Default: 5",
+    help="Maximum number of websocket sessions to allow. Default: 10"
+    "This limits the number of concurrent web access to the server. Set to 0 for unlimited.",
 )
 @click.option(
     "--no-password",

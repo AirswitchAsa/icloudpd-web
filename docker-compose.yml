@@ -14,7 +14,7 @@ services:
       # - SECRET_HASH_PATH=/path/to/secret_hash
       # - COOKIE_DIRECTORY=/path/to/cookie_directory
       # - APPRISE_CONFIG_PATH=/path/to/apprise.yml
-      # - MAX_SESSIONS=5
+      # - MAX_SESSIONS=10
       # - GUEST_TIMEOUT_SECONDS=300
       # - NO_PASSWORD=false
       # - ALWAYS_GUEST=false

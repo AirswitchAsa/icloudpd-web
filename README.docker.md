@@ -20,7 +20,7 @@ The following environment variables can be used to configure the application:
 - `APPRISE_CONFIG_PATH`: Path to store AppRise assets.
 - `LOG_LOCATION`: Path to store the logs (both server and client)
 - `ALLOWED_ORIGINS`: Comma-separated list of allowed CORS origins. Use `*` to allow all origins, otherwise use the address that you will use to access the web interface.
-- `MAX_SESSIONS`: Maximum number of sessions to allow.
+- `MAX_SESSIONS`: Maximum number of websocket sessions to allow. (default: 10)
 - `GUEST_TIMEOUT_SECONDS`: Timeout for guest users in seconds.
 - `NO_PASSWORD`: Set to "true" to disable server password authentication.
 - `ALWAYS_GUEST`: Set to "true" to always login users as guests.

@@ -28,7 +28,7 @@ allowed_origins = allowed_origins.split(",") if allowed_origins != "*" else "*"
 class AppConfig:
     client_ids: set[str]
     allowed_origins: list[str] | Literal["*"]
-    max_sessions: int = int(os.environ.get("MAX_SESSIONS", 5))
+    max_sessions: int = int(os.environ.get("MAX_SESSIONS", 10))
     default_client_id: str = "default-user"
     no_password: bool = os.environ.get("NO_PASSWORD", "false").lower() == "true"
     always_guest: bool = os.environ.get("ALWAYS_GUEST", "false").lower() == "true"
@@ -245,7 +245,7 @@ def create_app(  # noqa: C901
             guest_timeout_tasks[client_id].cancel()
             guest_timeout_tasks.pop(client_id)
 
-        if len(sid_to_client) <= app_config.max_sessions:
+        if len(sid_to_client) <= app_config.max_sessions or app_config.max_sessions == 0:
             if client_id in handler_manager:
                 server_logger.info(f"New session {sid} created for client {client_id}")
             else:
