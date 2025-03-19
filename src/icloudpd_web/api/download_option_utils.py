@@ -78,7 +78,7 @@ def should_break(counter: Counter, until_found: int | None) -> bool:
     return until_found is not None and counter.value() >= until_found
 
 
-def check_exif(logger: logging.Logger, item: PhotoAsset, configs: PolicyConfigs) -> bool:
+def match_exif(logger: logging.Logger, item: PhotoAsset, configs: PolicyConfigs) -> bool:
     try:
         url = item.versions[AssetVersionSize.THUMB].url
         response = requests.get(url)
@@ -94,24 +94,24 @@ def check_exif(logger: logging.Logger, item: PhotoAsset, configs: PolicyConfigs)
         }
         make = exif.get("Make", "")
         model = exif.get("Model", "")
-        if configs.device_make and any(
+        if configs.device_make and not any(
             match_make.lower() in make.lower() for match_make in configs.device_make
         ):
-            logging.debug(f"{item.filename} matches device make {make}")
-            return True
-        if configs.device_model and any(
+            logger.info(f"{item.filename} does not match any of {configs.device_make}, skipping")
+            return False
+        if configs.device_model and not any(
             match_model.lower() in model.lower() for match_model in configs.device_model
         ):
-            logging.debug(f"{item.filename} matches device model {model}")
-            return True
+            logger.info(f"{item.filename} does not match any of {configs.device_model}, skipping")
+            return False
+        return True
     except Exception:
         logger.error(f"Error getting exif data for {item.filename}, skipping the file.")
-    logging.debug(f"{item.filename} does not match any required device make or model")
-    return False
+        return False
 
 
 def should_skip(logger: logging.Logger, item: PhotoAsset, configs: PolicyConfigs) -> bool:  # noqa: C901
-    if (configs.device_make or configs.device_model) and not check_exif(logger, item, configs):
+    if (configs.device_make or configs.device_model) and not match_exif(logger, item, configs):
         return True
     # convert created_after, created_before, added_after, added_before to datetime if not empty
     created_after = (
@@ -127,36 +127,30 @@ def should_skip(logger: logging.Logger, item: PhotoAsset, configs: PolicyConfigs
         datetime.strptime(configs.added_before, "%Y-%m-%d") if configs.added_before else None
     )
     if created_after and item.created < created_after.replace(tzinfo=item.created.tzinfo):
-        logger.info(f"Skipping {item.filename} because it was created before {created_after}")
+        logger.info(f"{item.filename} was created before {created_after}, skipping")
         return True
     if created_before and item.created > created_before.replace(tzinfo=item.created.tzinfo):
-        logger.info(f"Skipping {item.filename} because it was created after {created_before}")
+        logger.info(f"{item.filename} was created after {created_before}, skipping")
         return True
     if added_after and item.added_date < added_after.replace(tzinfo=item.added_date.tzinfo):
-        logger.info(f"Skipping {item.filename} because it was added before {added_after}")
+        logger.info(f"{item.filename} was added before {added_after}, skipping")
         return True
     if added_before and item.added_date > added_before.replace(tzinfo=item.added_date.tzinfo):
-        logger.info(f"Skipping {item.filename} because it was added after {added_before}")
+        logger.info(f"{item.filename} was added after {added_before}, skipping")
         return True
-    #  do not skip the item if no filters are specified
-    if not configs.file_suffixes and not configs.match_pattern:
-        return False
     # check suffix first to avoid unnecessary glob pattern matching
-    if configs.file_suffixes:
-        for suffix in configs.file_suffixes:
-            if item.filename.endswith(suffix):
-                return False
+    if configs.file_suffixes and not any(
+        item.filename.endswith(suffix) for suffix in configs.file_suffixes
+    ):
+        logger.info(f"{item.filename} does not end with any of {configs.file_suffixes}, skipping")
+        return True
     # split match_pattern by comma and check if any of the glob patterns match the item
-    if configs.match_pattern:
-        for pattern in configs.match_pattern.split(","):
-            if fnmatch.fnmatch(item.filename, pattern):
-                return False
-
-    logger.info(
-        f"Skipping {item.filename} because it does not end with any of {configs.file_suffixes} "
-        f"or match any of {configs.match_pattern}"
-    )
-    return True
+    if configs.match_pattern and not any(
+        fnmatch.fnmatch(item.filename, pattern) for pattern in configs.match_pattern.split(",")
+    ):
+        logger.info(f"{item.filename} does not match any of {configs.match_pattern}, skipping")
+        return True
+    return False
 
 
 def check_folder_structure(

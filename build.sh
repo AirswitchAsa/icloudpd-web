@@ -21,7 +21,10 @@ cd ..
 echo "Building Python package..."
 uv build
 
+uv publish
+
 # Build Docker image
 echo "Building Docker image..."
 docker build --build-arg VERSION="$VERSION" -t spicadust/icloudpd-web:latest .
 docker tag spicadust/icloudpd-web:latest spicadust/icloudpd-web:latest
+docker push spicadust/icloudpd-web:latest

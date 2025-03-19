@@ -1,7 +1,7 @@
 [project]
 name = "icloudpd-web"
 authors = [{ name = "Qian Zhang", email = "contact@qzsh.email" }]
-version = "2025.3.18.dev1"
+version = "2025.3.18"
 keywords = ["icloud", "photos", "downloader", "webapp"]
 description = "Web application for iCloud Photos Downloader, based on icloudpd"
 readme = "README.md"
