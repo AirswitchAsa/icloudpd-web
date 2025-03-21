@@ -25,6 +25,10 @@ uv publish
 
 # Build Docker image
 echo "Building Docker image..."
-docker build --build-arg VERSION="$VERSION" -t spicadust/icloudpd-web:latest .
-docker tag spicadust/icloudpd-web:latest spicadust/icloudpd-web:latest
-docker push spicadust/icloudpd-web:latest
+docker buildx create --use
+docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  --build-arg VERSION="$VERSION" \
+  --tag spicadust/icloudpd-web:latest \
+  --push \
+  .
