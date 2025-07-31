@@ -202,21 +202,3 @@ def pipe2(
     True
     """
     return expand2(pipe(compact2(f), g))
-
-
-__all__ = [
-    "compose",
-    "identity",
-    "constant",
-    "pipe",
-    "apply_reverse",
-    "curry2",
-    "uncurry2",
-    "curry3",
-    "fst",
-    "snd",
-    "flip",
-    "compact2",
-    "expand2",
-    "pipe2",
-]

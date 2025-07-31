@@ -222,7 +222,7 @@ class PolicyHandler:
                 **pyicloudservice_args,
                 domain=self._configs.domain,
                 apple_id=self.username,
-                password=password,
+                password_provider=lambda: password,
                 cookie_directory=self._icloud_manager.cookie_directory,
             )
         except PyiCloudFailedLoginException as e:
@@ -312,9 +312,14 @@ class PolicyHandler:
                 attributes=pyicloudservice_args,
             )
             icloud = self.require_icloud("Can only start when icloud access is available")
-            download_photo: Callable = download_builder(
-                logger=logger, **build_downloader_builder_args(self._configs)
-            )(icloud)
+            download_photo = partial(
+                partial(
+                    download_builder,
+                    logger=logger,
+                    **build_downloader_builder_args(self._configs),
+                ),
+                icloud,
+            )
 
             async def async_download_photo(*args, **kwargs):  # noqa: ANN202
                 loop = asyncio.get_running_loop()
@@ -435,6 +440,7 @@ class PolicyHandler:
                 else:
                     self._progress = 0  # set progress to 0 when using until_found
             except StopIteration:
+                logger.debug("Downloading stopped")
                 break
 
         if self._configs.auto_delete:

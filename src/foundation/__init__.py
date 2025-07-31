@@ -4,8 +4,6 @@ from typing import Callable, NamedTuple, TypeVar
 import pytz
 from tzlocal import get_localzone
 
-from . import core
-
 
 class VersionInfo(NamedTuple):
     version: str
@@ -15,7 +13,7 @@ class VersionInfo(NamedTuple):
 
 # will be updated by CI
 version_info = VersionInfo(
-    version="2025.01.09",
+    version="2025.7.31",
     commit_sha="abcdefgh",
     commit_timestamp=1234567890,
 )
@@ -26,7 +24,9 @@ def version_info_formatted() -> str:
     ts = datetime.datetime.fromtimestamp(vi.commit_timestamp, tz=pytz.utc).astimezone(
         get_localzone()
     )
-    return f"version:{vi.version}, commit sha:{vi.commit_sha}, commit timestamp:{ts:%c %Z}"
+    return f"version:{vi.version}, commit sha:{vi.commit_sha}, commit timestamp:{ts:%c %Z}".replace(
+        "  ", " "
+    )
 
 
 def bytes_decode(encoding: str) -> Callable[[bytes], str]:
@@ -50,13 +50,3 @@ def wrap_param_in_exception(caption: str, func: Callable[[T_in], T_out]) -> Call
             raise ValueError(f"Invalid Input ({caption}): {input!r}") from err
 
     return _internal
-
-
-__all__ = [
-    "VersionInfo",
-    "version_info",
-    "version_info_formatted",
-    "bytes_decode",
-    "wrap_param_in_exception",
-    "core",  # Expose the core module
-]

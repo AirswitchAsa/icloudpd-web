@@ -1,4 +1,4 @@
-from typing import Callable, Optional, TypeVar
+from typing import Callable, TypeVar
 
 
 _Tin = TypeVar("_Tin")
@@ -8,13 +8,13 @@ _Tout = TypeVar("_Tout")
 
 
 def bind(
-    func: Callable[[_Tin], Optional[_Tout]],
-) -> Callable[[Optional[_Tin]], Optional[_Tout]]:
+    func: Callable[[_Tin], _Tout | None],
+) -> Callable[[_Tin | None], _Tout | None]:
     """
     Monadic bind for Optional.
 
     Example usage:
-        >>> def div8(divider: int) -> Optional[float]:
+        >>> def div8(divider: int) -> float | None:
         ...     if divider == 0:
         ...         return None
         ...     return 8 / divider
@@ -42,7 +42,7 @@ def bind(
 
     """
 
-    def _intern(input: Optional[_Tin]) -> Optional[_Tout]:
+    def _intern(input: _Tin | None) -> _Tout | None:
         if input:
             return func(input)
         return None
@@ -52,7 +52,7 @@ def bind(
 
 def lift2(
     func: Callable[[_Tin, _Tin2], _Tout],
-) -> Callable[[Optional[_Tin], Optional[_Tin2]], Optional[_Tout]]:
+) -> Callable[[_Tin | None, _Tin2 | None], _Tout | None]:
     """
     Lifts regular function into Optional. (Lift2 for Optional Applicative Functor)
     (a -> b -> c) -> Maybe a -> Maybe b -> Maybe c
@@ -76,7 +76,7 @@ def lift2(
 
     """
 
-    def _intern(input: Optional[_Tin], input2: Optional[_Tin2]) -> Optional[_Tout]:
+    def _intern(input: _Tin | None, input2: _Tin2 | None) -> _Tout | None:
         if input and input2:
             return func(input, input2)
         return None
@@ -86,24 +86,15 @@ def lift2(
 
 def lift3(
     func: Callable[[_Tin, _Tin2, _Tin3], _Tout],
-) -> Callable[[Optional[_Tin], Optional[_Tin2], Optional[_Tin3]], Optional[_Tout]]:
+) -> Callable[[_Tin | None, _Tin2 | None, _Tin3 | None], _Tout | None]:
     """
     Lifts regular function into Optional. see lift2 for Optional Applicative Functor
     (a -> b -> c) -> Maybe a -> Maybe b -> Maybe c
     """
 
-    def _intern(
-        input: Optional[_Tin], input2: Optional[_Tin2], input3: Optional[_Tin3]
-    ) -> Optional[_Tout]:
+    def _intern(input: _Tin | None, input2: _Tin2 | None, input3: _Tin3 | None) -> _Tout | None:
         if input and input2 and input3:
             return func(input, input2, input3)
         return None
 
     return _intern
-
-
-__all__ = [
-    "bind",
-    "lift2",
-    "lift3",
-]

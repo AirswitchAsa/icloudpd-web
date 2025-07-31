@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Box,
   VStack,
@@ -13,8 +13,12 @@ import {
   useToast,
   FormErrorMessage,
   Switch,
+  Image,
+  HStack,
+  Alert,
+  AlertIcon,
 } from "@chakra-ui/react";
-import { ViewIcon, ViewOffIcon } from "@chakra-ui/icons";
+import { ViewIcon, ViewOffIcon, AttachmentIcon } from "@chakra-ui/icons";
 import { Socket } from "socket.io-client";
 
 interface UserSettingsProps {
@@ -41,10 +45,28 @@ export function UserSettings({ socket, isGuest }: UserSettingsProps) {
     always_guest: false,
     disable_guest: false,
   });
+  const [faviconFile, setFaviconFile] = useState<File | null>(null);
+  const [faviconPreview, setFaviconPreview] = useState<string | null>(null);
+  const [isUploadingFavicon, setIsUploadingFavicon] = useState(false);
+  const [faviconError, setFaviconError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const toast = useToast();
 
   const passwordsMatch = newPassword === confirmPassword;
   const showMismatchError = confirmPassword !== "" && !passwordsMatch;
+
+  const updateFavicon = (dataUrl: string) => {
+    // Find existing favicon link or create one
+    let favicon = document.querySelector("link[rel*='icon']") as HTMLLinkElement;
+    
+    if (!favicon) {
+      favicon = document.createElement('link');
+      favicon.rel = 'icon';
+      document.head.appendChild(favicon);
+    }
+    
+    favicon.href = dataUrl;
+  };
 
   useEffect(() => {
     if (!socket) return;
@@ -135,9 +157,187 @@ export function UserSettings({ socket, isGuest }: UserSettingsProps) {
       socket.emit("update_app_config", key, value);
     };
 
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    setFaviconError(null);
+
+    if (!file) {
+      setFaviconFile(null);
+      setFaviconPreview(null);
+      return;
+    }
+
+    // Validate file type
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/x-icon', 'image/vnd.microsoft.icon'];
+    if (!allowedTypes.includes(file.type)) {
+      setFaviconError('Please select a PNG, JPG, JPEG, or ICO file');
+      return;
+    }
+
+    // Validate file size (max 1MB)
+    if (file.size > 1024 * 1024) {
+      setFaviconError('File size must be less than 1MB');
+      return;
+    }
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setFaviconPreview(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    setFaviconFile(file);
+  };
+
+  const handleFaviconUpload = () => {
+    if (!faviconFile || !faviconPreview) return;
+
+    setIsUploadingFavicon(true);
+    setFaviconError(null);
+
+    try {
+      // Save favicon data to localStorage
+      localStorage.setItem('customFavicon', faviconPreview);
+      
+      // Update favicon immediately
+      updateFavicon(faviconPreview);
+      
+      // Clean up UI
+      setIsUploadingFavicon(false);
+      setFaviconFile(null);
+      setFaviconPreview(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      
+      toast({
+        title: "Success",
+        description: "Favicon has been updated and saved to your browser.",
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+    } catch (error) {
+      setIsUploadingFavicon(false);
+      setFaviconError("Failed to save favicon to browser storage");
+      toast({
+        title: "Error",
+        description: "Failed to save favicon to browser storage",
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+  };
+
+  const handleRemoveFavicon = () => {
+    setFaviconFile(null);
+    setFaviconPreview(null);
+    setFaviconError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   return (
     <Box>
       <VStack spacing={8} align="stretch">
+        <Box>
+          <Text fontWeight="bold" fontSize="lg" mb={4}>
+            Customization
+          </Text>
+          <VStack spacing={3} align="stretch" maxW="400px">
+            <FormControl>
+              <HStack spacing={3} align="center" mb={3}>
+                <FormLabel fontSize="sm" mb={0}>Upload Favicon</FormLabel>
+                <Button
+                  leftIcon={<AttachmentIcon />}
+                  size="sm"
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  _hover={{ bg: "gray.50" }}
+                >
+                  Choose File
+                </Button>
+              </HStack>
+              <VStack spacing={3} align="stretch">
+                <Input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".png,.jpg,.jpeg,.ico"
+                  onChange={handleFileSelect}
+                  display="none"
+                />
+                <VStack spacing={1} align="stretch">
+                  <Text fontSize="xs" color="gray.500">
+                    Recommended: 32x32px PNG, JPG, JPEG, or ICO format.
+                  </Text>
+                  <Text fontSize="xs" color="gray.500">
+                    Max size 1MB. Favicon is saved locally in your browser and will be reset on clearing the browser cache.
+                  </Text>
+                </VStack>
+                {faviconFile && (
+                  <VStack spacing={0} align="start">
+                    <Text fontSize="xs" color="green.600" fontWeight="medium">
+                      Selected: {faviconFile.name}
+                    </Text>
+                    <Text fontSize="xs" color="gray.500">
+                      {(faviconFile.size / 1024).toFixed(1)} KB
+                    </Text>
+                  </VStack>
+                )}
+                {faviconError && (
+                  <Alert status="error" size="sm">
+                    <AlertIcon />
+                    {faviconError}
+                  </Alert>
+                )}
+
+                {faviconPreview && (
+                  <Box>
+                    <Text fontSize="sm" mb={2}>Preview:</Text>
+                    <HStack spacing={3} align="center">
+                      <Image
+                        src={faviconPreview}
+                        alt="Favicon preview"
+                        boxSize="32px"
+                        objectFit="contain"
+                        border="1px solid"
+                        borderColor="gray.200"
+                        borderRadius="md"
+                        bg="white"
+                      />
+                      <HStack spacing={2}>
+                        <Button
+                          size="sm"
+                          bg="black"
+                          color="white"
+                          _hover={{ bg: "gray.800" }}
+                          onClick={handleFaviconUpload}
+                          isLoading={isUploadingFavicon}
+                          isDisabled={!faviconFile}
+                          leftIcon={<AttachmentIcon />}
+                        >
+                          Upload
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={handleRemoveFavicon}
+                          isDisabled={isUploadingFavicon}
+                        >
+                          Cancel
+                        </Button>
+                      </HStack>
+                    </HStack>
+                  </Box>
+                )}
+              </VStack>
+            </FormControl>
+          </VStack>
+        </Box>
+
         <Box>
           <Text fontWeight="bold" fontSize="lg" mb={4}>
             Access Control
