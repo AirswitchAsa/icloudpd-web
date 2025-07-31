@@ -15,12 +15,12 @@ from pyicloud_ipd.version_size import AssetVersionSize, LivePhotoVersionSize
 
 class ICloudManager:
     @property
-    def cookie_directory(self: "ICloudManager") -> str | None:
+    def cookie_directory(self: "ICloudManager") -> str:
         return self._cookie_directory
 
-    def __init__(self: "ICloudManager", cookie_directory: str | None) -> None:
+    def __init__(self: "ICloudManager", cookie_directory: str) -> None:
         self._icloud_instances: dict[str, PyiCloudService] = {}
-        self._cookie_directory: str | None = cookie_directory
+        self._cookie_directory: str = cookie_directory
 
     def get_instance(self: "ICloudManager", username: str) -> PyiCloudService | None:
         """

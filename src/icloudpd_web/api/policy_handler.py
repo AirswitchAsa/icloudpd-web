@@ -218,7 +218,7 @@ class PolicyHandler:
             )
         # Check if session file exists for passwordless authentication
         session_path = os.path.join(
-            self._icloud_manager.cookie_directory,  # type: ignore
+            self._icloud_manager.cookie_directory,
             "".join([c for c in self.username if match(r"\w", c)]) + ".session",
         )
         if password is None and not os.path.exists(session_path):

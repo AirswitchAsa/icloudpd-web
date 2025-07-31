@@ -29,12 +29,12 @@ class ClientHandler:
     def __init__(
         self: "ClientHandler",
         saved_policies_path: str,
-        cookie_directory: str | None,
+        cookie_directory: str,
         apprise_config_path: str | None,
     ) -> None:
         self._policies: list[PolicyHandler] = []
         self._saved_policies_path: str = saved_policies_path
-        self._cookie_directory: str | None = cookie_directory
+        self._cookie_directory: str = cookie_directory
         self._aws_handler = AWSHandler()
         self._icloud_manager = ICloudManager(cookie_directory)
         self._apprise_handler = AppriseHandler(apprise_config_path)

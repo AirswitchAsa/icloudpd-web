@@ -22,6 +22,8 @@ secret_hash_path = os.environ.get("SECRET_HASH_PATH", "~/.icloudpd_web/secret_ha
 secret_hash_path = os.path.abspath(os.path.expanduser(secret_hash_path))
 allowed_origins = os.environ.get("ALLOWED_ORIGINS", "*")
 allowed_origins = allowed_origins.split(",") if allowed_origins != "*" else "*"
+cookie_directory = os.environ.get("COOKIE_DIRECTORY", "~/.pyicloud")
+cookie_directory = os.path.abspath(os.path.expanduser(cookie_directory))
 
 
 @dataclass
@@ -34,7 +36,7 @@ class AppConfig:
     always_guest: bool = os.environ.get("ALWAYS_GUEST", "false").lower() == "true"
     disable_guest: bool = os.environ.get("DISABLE_GUEST", "false").lower() == "true"
     toml_path: str = os.environ.get("TOML_PATH", "./policies.toml")
-    cookie_directory: str | None = os.environ.get("COOKIE_DIRECTORY", None)
+    cookie_directory: str = cookie_directory
     apprise_config_path: str | None = os.environ.get("APPRISE_CONFIG_PATH", None)
     secret_hash_path: str = secret_hash_path
     guest_timeout_seconds: int = int(

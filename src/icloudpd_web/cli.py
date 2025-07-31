@@ -26,7 +26,7 @@ import uvicorn
 @click.option(
     "--cookie-directory",
     help="Path to the icloud session cookie directory. "
-    "The cookies will be saved to system temp directory by default.",
+    "The cookies will be saved to ~/.pyicloud by default.",
 )
 @click.option(
     "--apprise-config-path",
