@@ -14,6 +14,9 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Create a non-root user and switch to it (do this AFTER chmod)
 RUN useradd -m appuser
+# Give appuser ownership of the /app directory
+RUN chown -R appuser:appuser /app
+
 USER appuser
 
 # Create necessary directories
@@ -25,7 +28,5 @@ EXPOSE 5000
 # Set environment variables (these can be overridden)
 ENV HOST=0.0.0.0
 ENV PORT=5000
-
-
 
 ENTRYPOINT ["docker-entrypoint.sh"]
