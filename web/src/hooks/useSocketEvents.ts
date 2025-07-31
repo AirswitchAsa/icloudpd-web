@@ -74,6 +74,48 @@ export function useSocketEvents({
       },
     );
 
+    // Auto-authentication events
+    socket.on(
+      "auto_authentication_results",
+      (data: {
+        results: Array<{
+          policy_name: string;
+          result: string;
+          message: string;
+          authenticated: boolean;
+        }>;
+        policies: Policy[];
+      }) => {
+        // Update policies with authentication results
+        setPolicies(data.policies);
+        
+        // Show toast notifications for successful auto-authentications
+        const successfulAuths = data.results.filter(r => r.result === "success");
+        const failedAuths = data.results.filter(r => r.result === "failed");
+        
+        if (successfulAuths.length > 0) {
+          toast({
+            title: "Auto-Authentication Successful",
+            description: `${successfulAuths.length} policies were automatically authenticated: ${successfulAuths.map(r => r.policy_name).join(", ")}`,
+            status: "success",
+            duration: 5000,
+            isClosable: true,
+          });
+        }
+        
+        if (failedAuths.length > 0 && successfulAuths.length === 0) {
+          // Only show failure toast if no policies were successfully authenticated
+          toast({
+            title: "Auto-Authentication",
+            description: `Auto-authentication attempted for ${failedAuths.length} policies but none had valid sessions`,
+            status: "info",
+            duration: 3000,
+            isClosable: true,
+          });
+        }
+      },
+    );
+
     // Helper function to update a single policy
     const updatePolicy = (policyUpdate: Partial<Policy> & { name: string }) => {
       setPolicies((prev) =>

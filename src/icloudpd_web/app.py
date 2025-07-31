@@ -174,6 +174,16 @@ def create_app(  # noqa: C901
             try:
                 if authenticate_secret(password, app_config.secret_hash_path):
                     await maybe_emit("server_authenticated", client_id, preferred_sid=sid)
+                    # Attempt auto-authentication for iCloud policies after successful server auth
+                    if handler := handler_manager.get(client_id):
+                        auto_auth_results = handler.attempt_auto_authentication()
+                        if auto_auth_results:
+                            await maybe_emit(
+                                "auto_authentication_results",
+                                client_id,
+                                {"results": auto_auth_results, "policies": handler.policies},
+                                preferred_sid=sid,
+                            )
                 else:
                     await maybe_emit(
                         "server_authentication_failed",

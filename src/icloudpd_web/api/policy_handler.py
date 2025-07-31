@@ -7,6 +7,7 @@ import shutil
 from collections.abc import AsyncGenerator, Callable
 from enum import Enum
 from functools import partial
+from re import match
 from typing import cast
 from zoneinfo import ZoneInfo
 
@@ -202,7 +203,9 @@ class PolicyHandler:
         self._configs = PolicyConfigs(**new_config_args)
         self._progress = 0
 
-    def authenticate(self: "PolicyHandler", password: str) -> tuple[AuthenticationResult, str]:
+    def authenticate(
+        self: "PolicyHandler", password: str | None
+    ) -> tuple[AuthenticationResult, str]:
         """
         Create the icloud instance with the given password. User may need to provide MFA code to
         finish authentication.
@@ -213,6 +216,14 @@ class PolicyHandler:
             raise ICloudAuthenticationError(
                 "Can only authenticate when policy is not authenticated"
             )
+        # Check if session file exists for passwordless authentication
+        session_path = os.path.join(
+            self._icloud_manager.cookie_directory,  # type: ignore
+            "".join([c for c in self.username if match(r"\w", c)]) + ".session",
+        )
+        if password is None and not os.path.exists(session_path):
+            return AuthenticationResult.FAILED, "No session file found."
+
         try:
             self._icloud_manager.remove_instance(
                 self.username
@@ -251,6 +262,47 @@ class PolicyHandler:
                 return AuthenticationResult.SUCCESS, "Authenticated."
         else:
             raise ICloudAccessError("iCloud instance should have been created")
+
+    def auto_authenticate(self: "PolicyHandler") -> tuple[AuthenticationResult, str]:
+        """
+        Attempt to authenticate using existing session files without requiring a password.
+        Returns the authentication result and a message.
+        """
+        if self._status != PolicyStatus.STOPPED and self._status != PolicyStatus.ERRORED:
+            raise ICloudAuthenticationError("Can only authenticate when policy is stopped")
+        if self.authenticated:
+            raise ICloudAuthenticationError(
+                "Can only authenticate when policy is not authenticated"
+            )
+
+        try:
+            self._icloud_manager.remove_instance(
+                self.username
+            )  # Remove the existing instance if any
+            pyicloudservice_args = build_pyicloudservice_args(self._configs)
+
+            # Create instance with empty password provider for auto-authentication
+            self.icloud = PyiCloudService(
+                **pyicloudservice_args,
+                domain=self._configs.domain,
+                apple_id=self.username,
+                password_provider=lambda: None,  # No password for auto-auth
+                cookie_directory=self._icloud_manager.cookie_directory,
+            )
+        except Exception as e:
+            # Auto-authentication failed, clean up
+            self._icloud_manager.remove_instance(self.username)
+            return AuthenticationResult.FAILED, f"Auto-authentication failed: {str(e)}"
+
+        if self.authenticated:
+            return AuthenticationResult.SUCCESS, "Auto-authenticated successfully."
+        else:
+            # Remove the instance since auto-auth didn't work
+            self._icloud_manager.remove_instance(self.username)
+            return (
+                AuthenticationResult.FAILED,
+                "Auto-authentication failed: no valid session found.",
+            )
 
     def interrupt(self: "PolicyHandler") -> None:
         """
@@ -313,17 +365,17 @@ class PolicyHandler:
             )
             icloud = self.require_icloud("Can only start when icloud access is available")
             download_photo = partial(
-                partial(
-                    download_builder,
-                    logger=logger,
-                    **build_downloader_builder_args(self._configs),
-                ),
-                icloud,
+                download_builder,
+                logger=logger,
+                **build_downloader_builder_args(self._configs),
+                icloud=icloud,
             )
 
-            async def async_download_photo(*args, **kwargs):  # noqa: ANN202
+            async def async_download_photo(counter: Counter, photo: PhotoAsset):  # noqa: ANN202
                 loop = asyncio.get_running_loop()
-                return await loop.run_in_executor(None, download_photo, *args, **kwargs)
+                return await loop.run_in_executor(
+                    None, lambda: download_photo(counter=counter, photo=photo)
+                )
 
             download_counter = Counter(0)
             async for file_info in self.download(
@@ -393,7 +445,7 @@ class PolicyHandler:
                 if should_skip(logger, item, self._configs):
                     download_counter.increment()
                     continue
-                download_result = await async_download_photo(consecutive_files_found, item)
+                download_result = await async_download_photo(Counter(0), photo=item)
                 if download_result and self._configs.keep_icloud_recent_days:
                     delete_local = partial(
                         delete_photo,

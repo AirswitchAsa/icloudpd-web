@@ -1,9 +1,9 @@
 import os
 from datetime import datetime
 from queue import PriorityQueue  # Priority queue
+from zoneinfo import ZoneInfo
 
 import toml
-from zoneinfo import ZoneInfo
 
 from icloudpd_web.api.apprise_handler import AppriseHandler
 from icloudpd_web.api.aws_handler import AWSHandler
@@ -67,6 +67,50 @@ class ClientHandler:
             with open(self._saved_policies_path) as file:
                 saved_policies = toml.load(file).get("policy", [])
                 self._load_policies_from_toml(saved_policies)
+
+    def attempt_auto_authentication(self: "ClientHandler") -> list[dict]:
+        """
+        Attempt auto-authentication for all policies that are not currently authenticated.
+        Returns a list of results containing policy names and their auth status.
+        """
+        from icloudpd_web.api.logger import server_logger
+
+        auto_auth_results = []
+
+        for policy in self._policies:
+            if not policy.authenticated:
+                try:
+                    result, message = policy.authenticate(password=None)
+                    auto_auth_results.append(
+                        {
+                            "policy_name": policy.name,
+                            "result": result.value,
+                            "message": message,
+                            "authenticated": policy.authenticated,
+                        }
+                    )
+                    if result.value == "success":
+                        server_logger.info(
+                            f"Auto-authenticated policy '{policy.name}' for user {policy.username}"
+                        )
+                    else:
+                        server_logger.debug(
+                            f"Auto-authentication failed for policy '{policy.name}': {message}"
+                        )
+                except Exception as e:
+                    server_logger.debug(
+                        f"Auto-authentication error for policy '{policy.name}': {str(e)}"
+                    )
+                    auto_auth_results.append(
+                        {
+                            "policy_name": policy.name,
+                            "result": "failed",
+                            "message": f"Auto-authentication error: {str(e)}",
+                            "authenticated": False,
+                        }
+                    )
+
+        return auto_auth_results
 
     def _save_policies(self: "ClientHandler") -> None:
         """
