@@ -17,7 +17,7 @@ from croniter import croniter
 from stream_zip import ZIP_64, AsyncMemberFile, async_stream_zip
 
 from icloudpd.autodelete import autodelete_photos
-from icloudpd.base import delete_photo, download_builder, retrier
+from icloudpd.base import delete_photo, download_builder
 from icloudpd.counter import Counter
 from icloudpd_web.api.aws_handler import AWSHandler
 from icloudpd_web.api.data_models import AuthenticationResult, PolicyConfigs
@@ -37,14 +37,15 @@ from icloudpd_web.api.error import (
 )
 from icloudpd_web.api.icloud_utils import (
     ICloudManager,
+    build_download_policy_args,
     build_downloader_builder_args,
-    build_pyicloudservice_args,
     request_2sa,
 )
-from icloudpd_web.api.logger import build_logger_level, build_photos_exception_handler
+from icloudpd_web.api.logger import build_logger_level
 from pyicloud_ipd.base import PyiCloudService
 from pyicloud_ipd.exceptions import PyiCloudFailedLoginException
 from pyicloud_ipd.services.photos import PhotoAlbum, PhotoAsset
+from pyicloud_ipd.version_size import AssetVersionSize
 
 
 class PolicyStatus(Enum):
@@ -82,11 +83,13 @@ class PolicyHandler:
 
     @property
     def authenticated(self: "PolicyHandler") -> bool:
-        return (
-            self.icloud is not None
-            and not self.icloud.requires_2sa
-            and not self.icloud.requires_2fa
-        )
+        if self.icloud is None:
+            return False
+        try:
+            return not self.icloud.requires_2sa and not self.icloud.requires_2fa
+        except KeyError:
+            # dsInfo may not be present in response data during connection issues
+            return False
 
     @property
     def waiting_mfa(self: "PolicyHandler") -> bool:
@@ -228,9 +231,7 @@ class PolicyHandler:
             self._icloud_manager.remove_instance(
                 self.username
             )  # Remove the existing instance if any
-            pyicloudservice_args = build_pyicloudservice_args(self._configs)
             self.icloud = PyiCloudService(
-                **pyicloudservice_args,
                 domain=self._configs.domain,
                 apple_id=self.username,
                 password_provider=lambda: password,
@@ -279,11 +280,9 @@ class PolicyHandler:
             self._icloud_manager.remove_instance(
                 self.username
             )  # Remove the existing instance if any
-            pyicloudservice_args = build_pyicloudservice_args(self._configs)
 
             # Create instance with empty password provider for auto-authentication
             self.icloud = PyiCloudService(
-                **pyicloudservice_args,
                 domain=self._configs.domain,
                 apple_id=self.username,
                 password_provider=lambda: None,  # No password for auto-auth
@@ -358,11 +357,6 @@ class PolicyHandler:
         try:
             logger.info(f"Starting policy: {self._name}...")
 
-            pyicloudservice_args = build_pyicloudservice_args(self._configs)
-            self._icloud_manager.update_instance(
-                username=self.username,
-                attributes=pyicloudservice_args,
-            )
             icloud = self.require_icloud("Can only start when icloud access is available")
             download_photo = partial(
                 download_builder,
@@ -418,8 +412,7 @@ class PolicyHandler:
             if self._configs.album != "All Photos"
             else library.all
         )
-        error_handler = build_photos_exception_handler(logger, icloud)
-        photos.exception_handler = error_handler
+        policy_args = build_download_policy_args(self._configs)
         photos_count: int | None = len(photos)
 
         photos_count, photos_iterator = handle_recent_until_found(
@@ -447,15 +440,9 @@ class PolicyHandler:
                     continue
                 download_result = await async_download_photo(Counter(0), photo=item)
                 if download_result and self._configs.keep_icloud_recent_days:
-                    delete_local = partial(
-                        delete_photo,
-                        logger,
-                        icloud.photos,
-                        library,
-                        item,
+                    delete_photo(
+                        logger, library, item, policy_args["filename_builder"]
                     )
-
-                    retrier(delete_local, error_handler)
 
                 def find_file_at_path(item: PhotoAsset) -> str | None:
                     for root, _, files in os.walk(directory):
@@ -502,7 +489,9 @@ class PolicyHandler:
                 library_object=library,
                 folder_structure=self._configs.folder_structure,
                 directory=directory,
-                _sizes=self._configs.size,  # type: ignore # string enum
+                _sizes=[AssetVersionSize(s) for s in self._configs.size],
+                lp_filename_generator=policy_args["lp_filename_generator"],
+                raw_policy=policy_args["raw_policy"],
             )
         if self.should_remove_local_copy:
             shutil.rmtree(directory)
