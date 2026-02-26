@@ -1,31 +1,12 @@
 [[policy]]
-name = "Test"
-username = "meuryuuki@gmail.com"
-domain = "com"
-directory = "/Volumes/darkroom/photo"
-download_via_browser = false
-folder_structure = "{:%Y/%Y-%m-%d}"
-size = [ "original",]
-live_photo_size = "original"
-force_size = false
-align_raw = "as-is"
-keep_unicode_in_filenames = false
-set_exif_datetime = false
-live_photo_mov_filename_policy = "suffix"
-file_match_policy = "name-size-dedup-with-suffix"
-xmp_sidecar = false
-use_os_locale = false
+name = "Test Policy"
+username = "demo@gmail.com"
+directory = "~/Photos/Test"
 album = "All Photos"
-library = "Shared Library"
-recent = 5000
-skip_videos = false
-skip_live_photos = false
-file_suffixes = []
-device_make = [ "fuji", "leica", "ricoh", "sigma",]
-device_model = []
-auto_delete = false
-dry_run = false
-log_level = "info"
-remove_local_copy = false
-upload_to_aws_s3 = false
+library = "Personal Library"
 
+
+[[policy]]
+name = "Favorites Backup"
+username = "demo@icloud.com"
+directory = "~/Photos/Favorites"
