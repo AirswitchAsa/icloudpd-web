@@ -1,13 +1,15 @@
 import bcrypt
 import os
 
+from icloudpd_web.api.error import ServerConfigError
+
 
 def authenticate_secret(password: str, path: str) -> bool:
     if not os.path.exists(path):
         if password == "":
             return True
         else:
-            raise FileNotFoundError("Secret file missing, please try resetting the server.")
+            raise ServerConfigError("Secret file missing, please try resetting the server.")
     with open(path, "rb") as f:
         secret_hash = f.read()
     return bcrypt.checkpw(password.encode(), secret_hash)
