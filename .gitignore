@@ -7,3 +7,4 @@ web/.env.local
 src/icloudpd_web/webapp
 tsconfig.tsbuildinfo
 logs
+.claude
