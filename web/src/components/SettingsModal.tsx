@@ -29,13 +29,13 @@ type TabType = "general" | "integration" | "user";
 interface TabConfig {
   id: TabType;
   label: string;
-  component: React.ComponentType<any>;
+  component?: React.ComponentType<{ socket: Socket | null }>;
 }
 
 const TABS: TabConfig[] = [
   { id: "general", label: "General", component: GeneralSettings },
   { id: "integration", label: "Integration", component: IntegrationSettings },
-  { id: "user", label: "User", component: UserSettings },
+  { id: "user", label: "User" },
 ];
 
 export function SettingsModal({

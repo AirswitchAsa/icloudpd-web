@@ -58,13 +58,13 @@ export function UserSettings({ socket, isGuest }: UserSettingsProps) {
   const updateFavicon = (dataUrl: string) => {
     // Find existing favicon link or create one
     let favicon = document.querySelector("link[rel*='icon']") as HTMLLinkElement;
-    
+
     if (!favicon) {
       favicon = document.createElement('link');
       favicon.rel = 'icon';
       document.head.appendChild(favicon);
     }
-    
+
     favicon.href = dataUrl;
   };
 
@@ -199,10 +199,10 @@ export function UserSettings({ socket, isGuest }: UserSettingsProps) {
     try {
       // Save favicon data to localStorage
       localStorage.setItem('customFavicon', faviconPreview);
-      
+
       // Update favicon immediately
       updateFavicon(faviconPreview);
-      
+
       // Clean up UI
       setIsUploadingFavicon(false);
       setFaviconFile(null);
@@ -210,7 +210,7 @@ export function UserSettings({ socket, isGuest }: UserSettingsProps) {
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
-      
+
       toast({
         title: "Success",
         description: "Favicon has been updated and saved to your browser.",
@@ -218,7 +218,7 @@ export function UserSettings({ socket, isGuest }: UserSettingsProps) {
         duration: 3000,
         isClosable: true,
       });
-    } catch (error) {
+    } catch {
       setIsUploadingFavicon(false);
       setFaviconError("Failed to save favicon to browser storage");
       toast({

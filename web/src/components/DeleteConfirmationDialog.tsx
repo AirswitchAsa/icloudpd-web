@@ -78,8 +78,7 @@ export function DeleteConfirmationDialog({
           </AlertDialogHeader>
 
           <AlertDialogBody>
-            Are you sure you want to delete policy "{policyName}"? This action
-            cannot be undone.
+            {`Are you sure you want to delete policy "${policyName}"? This action cannot be undone.`}
           </AlertDialogBody>
 
           <AlertDialogFooter>

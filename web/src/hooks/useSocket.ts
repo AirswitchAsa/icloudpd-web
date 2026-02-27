@@ -8,10 +8,6 @@ function generateGuestId() {
 }
 
 // Define types for the different event payloads
-interface PolicyUpdatePayload {
-  policies: Policy[];
-}
-
 interface ErrorWithPoliciesPayload {
   policy_name: string;
   error: string;

@@ -77,9 +77,10 @@ export function EditPolicyModal({
     recent: policy?.recent || null,
     until_found: policy?.until_found || null,
     skip_videos: policy?.skip_videos || false,
+    skip_photos: policy?.skip_photos || false,
     skip_live_photos: policy?.skip_live_photos || false,
     auto_delete: policy?.auto_delete || false,
-    keep_icloud_recent_days: policy?.keep_icloud_recent_days || null,
+    keep_icloud_recent_days: policy?.keep_icloud_recent_days ?? null,
     dry_run: policy?.dry_run || false,
     interval: policy?.interval || (null as string | null),
     log_level: policy?.log_level || "info",
@@ -131,7 +132,7 @@ export function EditPolicyModal({
       onClose();
     });
 
-    socket.once("error_saving_policy", (data: any) => {
+    socket.once("error_saving_policy", (data: { error: string }) => {
       toast({
         title: "Error",
         description: `Policy: "${formData.name}" failed to save. Error: ${data.error}`,
@@ -141,7 +142,7 @@ export function EditPolicyModal({
       });
     });
 
-    socket.once("error_creating_policy", (data: any) => {
+    socket.once("error_creating_policy", (data: { error: string }) => {
       toast({
         title: "Error",
         description: `Policy: "${formData.name}" failed to create. Error: ${data.error}`,
@@ -506,6 +507,23 @@ export function EditPolicyModal({
                     />
                   </FieldWithInfo>
                 </FormControl>
+
+                <FormControl>
+                  <FieldWithInfo
+                    label="Skip Photos"
+                    info="Skip downloading photo files (images) when checked. Useful when you only want to download videos."
+                  >
+                    <Switch
+                      isChecked={formData.skip_photos}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          skip_photos: e.target.checked,
+                        })
+                      }
+                    />
+                  </FieldWithInfo>
+                </FormControl>
               </VStack>
             </Box>
 
@@ -518,7 +536,7 @@ export function EditPolicyModal({
                 <FormControl>
                   <FieldWithInfo
                     label="Auto Delete"
-                    info="Delete photos from iCloud after download."
+                    info="When enabled, any photos you delete in iCloud (moved to 'Recently Deleted') will also be removed from your local download directory. This mirrors your iCloud deletions locally."
                   >
                     <Switch
                       isChecked={formData.auto_delete}
@@ -534,16 +552,16 @@ export function EditPolicyModal({
 
                 <FormControl>
                   <FieldWithInfo
-                    label="Keep Recent Days in iCloud"
-                    info="Delete assets in iCloud after they have been downloaded or confirmed present locally, except for those taken within the specified number of days. If set to 0, all photos will be deleted from iCloud."
+                    label="Delete from iCloud After Download (keep N days)"
+                    info="After downloading, delete photos from iCloud that are older than the specified number of days. Set to 0 to delete all downloaded photos from iCloud regardless of age. Leave empty to never delete from iCloud."
                   >
                     <NumberInput
-                      value={formData.keep_icloud_recent_days || ""}
+                      value={formData.keep_icloud_recent_days ?? ""}
                       onChange={(valueString) =>
                         setFormData({
                           ...formData,
                           keep_icloud_recent_days:
-                            parseInt(valueString) || null,
+                            valueString === "" ? null : parseInt(valueString),
                         })
                       }
                       min={0}

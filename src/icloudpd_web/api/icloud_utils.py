@@ -2,14 +2,16 @@ import os
 from inspect import signature
 from typing import Callable
 
-from foundation.core import compose, identity
+from foundation.core import identity
 from icloudpd.base import download_builder, lp_filename_concatinator, lp_filename_original
-from icloudpd.paths import clean_filename, remove_unicode_chars
+from icloudpd.filename_policies import create_filename_builder
+from icloudpd.paths import remove_unicode_chars
 from icloudpd_web.api.data_models import PolicyConfigs
 from icloudpd_web.api.error import ICloudPdWebServerError
 from icloudpd_web.api.logger import server_logger
 from pyicloud_ipd.base import PyiCloudService
 from pyicloud_ipd.file_match import FileMatchPolicy
+from pyicloud_ipd.raw_policy import RawTreatmentPolicy
 from pyicloud_ipd.version_size import AssetVersionSize, LivePhotoVersionSize
 
 
@@ -80,10 +82,14 @@ def request_2sa(icloud: PyiCloudService) -> None:
 
 
 def build_downloader_builder_args(configs: PolicyConfigs) -> dict:
+    policy_args = build_download_policy_args(configs)
     downloader_args = {
         "only_print_filenames": False,
         "dry_run": configs.dry_run,
         **configs.model_dump(),
+        "lp_filename_generator": policy_args["lp_filename_generator"],
+        "filename_builder": policy_args["filename_builder"],
+        "raw_policy": policy_args["raw_policy"],
     }
     # update the directory to be absolute path
     downloader_args["directory"] = os.path.abspath(os.path.expanduser(downloader_args["directory"]))
@@ -91,17 +97,14 @@ def build_downloader_builder_args(configs: PolicyConfigs) -> dict:
     downloader_args = {k: v for k, v in downloader_args.items() if k in builder_params}
     # Map size to primary_sizes
     downloader_args["primary_sizes"] = [AssetVersionSize(size) for size in configs.size]
-    downloader_args["live_photo_size"] = LivePhotoVersionSize(configs.live_photo_size + "Video")
-    downloader_args["file_match_policy"] = file_match_policy_generator(configs.file_match_policy)
+    downloader_args["live_photo_size"] = LivePhotoVersionSize[configs.live_photo_size.upper()]
+    downloader_args["file_match_policy"] = policy_args["file_match_policy"]
     return downloader_args
 
 
 def build_filename_cleaner(keep_unicode_in_filenames: bool) -> Callable[[str], str]:
     """Map keep_unicode parameter for function for cleaning filenames"""
-    return compose(
-        (remove_unicode_chars if not keep_unicode_in_filenames else identity),
-        clean_filename,
-    )
+    return identity if keep_unicode_in_filenames else remove_unicode_chars
 
 
 def build_lp_filename_generator(live_photo_mov_filename_policy: str) -> Callable[[str], str]:
@@ -122,24 +125,27 @@ def file_match_policy_generator(policy: str) -> FileMatchPolicy:
             raise ValueError(f"policy was provided with unsupported value of '{policy}'")
 
 
-def build_raw_policy(align_raw: str) -> str:
+def build_raw_policy(align_raw: str) -> RawTreatmentPolicy:
     match align_raw:
         case "original":
-            return "as-original"
+            return RawTreatmentPolicy.AS_ORIGINAL
         case "alternative":
-            return "as-alternative"
+            return RawTreatmentPolicy.AS_ALTERNATIVE
         case "as-is":
-            return "as-is"
+            return RawTreatmentPolicy.AS_IS
         case _:
             raise ValueError(f"align_raw was provided with unsupported value of '{align_raw}'")
 
 
-def build_pyicloudservice_args(configs: PolicyConfigs) -> dict:
+def build_download_policy_args(configs: PolicyConfigs) -> dict:
+    """Build the policy arguments needed by download_builder, delete_photo, and autodelete_photos."""
+    filename_cleaner = build_filename_cleaner(configs.keep_unicode_in_filenames)
+    file_match_policy = file_match_policy_generator(configs.file_match_policy)
     return {
-        "filename_cleaner": build_filename_cleaner(configs.keep_unicode_in_filenames),
         "lp_filename_generator": build_lp_filename_generator(
             configs.live_photo_mov_filename_policy
         ),
         "raw_policy": build_raw_policy(configs.align_raw),
-        "file_match_policy": file_match_policy_generator(configs.file_match_policy),
+        "file_match_policy": file_match_policy,
+        "filename_builder": create_filename_builder(file_match_policy, filename_cleaner),
     }

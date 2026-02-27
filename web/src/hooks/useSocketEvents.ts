@@ -35,12 +35,10 @@ export function useSocketEvents({
       connect_error: "Failed to connect to server",
     };
 
-    socket.on("connect_error", (data: any) => {
+    socket.on("connect_error", (data: Error) => {
       toast({
         title: "Error",
-        description: `Failed to connect to server: ${
-          data?.error || data?.message || ""
-        }`,
+        description: `Failed to connect to server: ${data?.message || ""}`,
         status: "error",
         duration: 5000,
         isClosable: true,
@@ -88,11 +86,11 @@ export function useSocketEvents({
       }) => {
         // Update policies with authentication results
         setPolicies(data.policies);
-        
+
         // Show toast notifications for successful auto-authentications
         const successfulAuths = data.results.filter(r => r.result === "success");
         const failedAuths = data.results.filter(r => r.result === "failed");
-        
+
         if (successfulAuths.length > 0) {
           toast({
             title: "Auto-Authentication Successful",
@@ -102,7 +100,7 @@ export function useSocketEvents({
             isClosable: true,
           });
         }
-        
+
         if (failedAuths.length > 0 && successfulAuths.length === 0) {
           // Only show failure toast if no policies were successfully authenticated
           toast({
@@ -185,6 +183,7 @@ export function useSocketEvents({
       socket.off("download_progress");
       socket.off("download_finished");
       socket.off("download_failed");
+      socket.off("auto_authentication_results");
     };
   }, [socket, toast, setPolicies]);
 }

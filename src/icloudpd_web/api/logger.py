@@ -4,17 +4,8 @@ import logging.config
 import os
 import sys
 import time
-from functools import partial
-from typing import Callable
 
 from click import style
-
-from icloudpd.base import (
-    compose_handlers,
-    internal_error_handle_builder,
-    session_error_handle_builder,
-)
-from pyicloud_ipd.base import PyiCloudService
 
 
 class ClickFormatter(logging.Formatter):
@@ -138,11 +129,3 @@ def build_logger(policy_name: str) -> tuple[logging.Logger, LogCaptureStream]:
     logger.addHandler(stream_handler)
 
     return logger, log_capture_stream
-
-
-def build_photos_exception_handler(logger: logging.Logger, icloud: PyiCloudService) -> Callable:
-    session_exception_handler = partial(session_error_handle_builder, logger, icloud)
-    internal_error_handler = partial(internal_error_handle_builder, logger)
-
-    error_handler = compose_handlers([session_exception_handler, internal_error_handler])
-    return error_handler
