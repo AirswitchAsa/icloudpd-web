@@ -13,6 +13,8 @@ from PIL import ExifTags, Image
 from icloudpd.counter import Counter
 from icloudpd.download import mkdirs_for_path
 from icloudpd_web.api.data_models import PolicyConfigs
+from icloudpd_web.api.error import PolicyError
+from pyicloud_ipd.item_type import AssetItemType
 from pyicloud_ipd.services.photos import PhotoAsset
 from pyicloud_ipd.version_size import AssetVersionSize
 
@@ -113,6 +115,12 @@ def match_exif(logger: logging.Logger, item: PhotoAsset, configs: PolicyConfigs)
 def should_skip(logger: logging.Logger, item: PhotoAsset, configs: PolicyConfigs) -> bool:  # noqa: C901
     if (configs.device_make or configs.device_model) and not match_exif(logger, item, configs):
         return True
+    if configs.skip_videos and item.item_type == AssetItemType.MOVIE:
+        logger.info(f"{item.filename} is a video, skipping")
+        return True
+    if configs.skip_photos and item.item_type == AssetItemType.IMAGE:
+        logger.info(f"{item.filename} is a photo, skipping")
+        return True
     # convert created_after, created_before, added_after, added_before to datetime if not empty
     created_after = (
         datetime.strptime(configs.created_after, "%Y-%m-%d") if configs.created_after else None
@@ -194,7 +202,7 @@ def check_folder_structure(
 
     # folder not empty but no .structure file
     if not directory_empty and not os.path.exists(structure_file_path):
-        raise ValueError(
+        raise PolicyError(
             "Cannot determine the structure of a non-empty directory. "
             "Please provide a .folderstructure file manually or "
             "use an empty directory."
@@ -203,7 +211,7 @@ def check_folder_structure(
     # folder exists and .structure file exists
     with open(structure_file_path) as f:
         if (provided_structure := f.read().strip()) != folder_structure:
-            raise ValueError(
+            raise PolicyError(
                 f"The specified folder structure: {folder_structure} is different from the one "
                 f"found in the existing .folderstructure file: {provided_structure}"
             )

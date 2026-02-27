@@ -31,6 +31,7 @@ export interface Policy {
   recent: number | null;
   until_found: number | null;
   skip_videos: boolean;
+  skip_photos: boolean;
   skip_live_photos: boolean;
   file_suffixes: string[] | null;
   device_make: string[] | null;

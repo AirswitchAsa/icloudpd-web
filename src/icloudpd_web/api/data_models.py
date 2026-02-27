@@ -54,6 +54,7 @@ class PolicyConfigs(BaseModel):
     recent: Annotated[int, Field(ge=0)] | None = None
     until_found: Annotated[int, Field(ge=0)] | None = None
     skip_videos: bool = False
+    skip_photos: bool = False
     skip_live_photos: bool = False
     file_suffixes: list[str] | None = []
     device_make: list[str] | None = []

@@ -9,6 +9,7 @@ import {
   useToast,
 } from "@chakra-ui/react";
 import { FieldWithInfo } from "@/components/EditModalFields";
+import { Policy } from "@/types";
 import { Socket } from "socket.io-client";
 
 interface GeneralSettings {
@@ -46,7 +47,7 @@ export function GeneralSettings({ socket }: GeneralSettingsProps) {
 
     socket.emit("get_policies");
 
-    socket.on("policies", (policies: any[]) => {
+    socket.on("policies", (policies: Policy[]) => {
       if (policies.length > 0) {
         const firstPolicy = policies[0];
         setSettings({
@@ -69,7 +70,7 @@ export function GeneralSettings({ socket }: GeneralSettingsProps) {
     };
   }, [socket]);
 
-  const handleSettingChange = (key: keyof GeneralSettings, value: any) => {
+  const handleSettingChange = (key: keyof GeneralSettings, value: string | boolean) => {
     const newSettings = { ...settings, [key]: value };
     setSettings(newSettings);
 

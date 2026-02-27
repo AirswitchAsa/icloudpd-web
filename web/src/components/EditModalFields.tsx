@@ -18,7 +18,8 @@ import {
   Spacer,
   Switch,
 } from "@chakra-ui/react";
-import { ChevronDownIcon, ChevronUpIcon, CloseIcon } from "@chakra-ui/icons";
+import { ChevronDownIcon, ChevronUpIcon } from "@chakra-ui/icons";
+import { Policy } from "@/types";
 
 interface FieldWithInfoProps {
   label: string;
@@ -78,7 +79,7 @@ export function IntegrationField({ value, onChange }: IntegrationFieldProps) {
 }
 
 interface AlbumFieldProps {
-  policy: any;
+  policy: Policy | undefined;
   value: string;
   onChange: (value: string) => void;
 }

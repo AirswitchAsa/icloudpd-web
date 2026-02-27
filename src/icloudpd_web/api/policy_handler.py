@@ -17,7 +17,7 @@ from croniter import croniter
 from stream_zip import ZIP_64, AsyncMemberFile, async_stream_zip
 
 from icloudpd.autodelete import autodelete_photos
-from icloudpd.base import delete_photo, download_builder
+from icloudpd.base import delete_photo, delete_photo_dry_run, download_builder
 from icloudpd.counter import Counter
 from icloudpd_web.api.aws_handler import AWSHandler
 from icloudpd_web.api.data_models import AuthenticationResult, PolicyConfigs
@@ -43,7 +43,11 @@ from icloudpd_web.api.icloud_utils import (
 )
 from icloudpd_web.api.logger import build_logger_level
 from pyicloud_ipd.base import PyiCloudService
-from pyicloud_ipd.exceptions import PyiCloudFailedLoginException
+from pyicloud_ipd.exceptions import (
+    PyiCloudConnectionErrorException,
+    PyiCloudFailedLoginException,
+    PyiCloudServiceUnavailableException,
+)
 from pyicloud_ipd.services.photos import PhotoAlbum, PhotoAsset
 from pyicloud_ipd.version_size import AssetVersionSize
 
@@ -377,10 +381,16 @@ class PolicyHandler:
             ):
                 yield file_info
         except Exception as e:
-            logger.error(f"Error running policy: {self._name}. Exiting.")
             self._status = PolicyStatus.ERRORED
             self._progress = 0
-            raise e
+            match e:
+                case PyiCloudConnectionErrorException() | PyiCloudServiceUnavailableException():
+                    raise ICloudAPIError(
+                        "Cannot connect to Apple iCloud service. Check your network and try again."
+                    ) from e
+                case _:
+                    logger.error(f"Error running policy: {self._name}. Exiting.")
+                    raise e
 
         logger.info(
             f"Total of {download_counter.value()} items including skipped "
@@ -403,7 +413,7 @@ class PolicyHandler:
         )
 
         if (library_name := self.library_name) is None:
-            raise ValueError(f"Unavailable library: {self._configs.library}")
+            raise ICloudAPIError(f"Unavailable library: {self._configs.library}")
         library = icloud.photos.private_libraries[library_name]
         if self._configs.album not in library.albums and self._configs.album != "All Photos":
             raise ICloudAPIError(f"Album {self._configs.album} not found in library {library_name}")
@@ -439,15 +449,22 @@ class PolicyHandler:
                     download_counter.increment()
                     continue
                 download_result = await async_download_photo(Counter(0), photo=item)
-                if download_result and self._configs.keep_icloud_recent_days:
-                    delete_photo(
-                        logger, library, item, policy_args["filename_builder"]
+                if download_result:
+                    consecutive_files_found = Counter(0)  # reset on new download
+                else:
+                    consecutive_files_found.increment()  # track consecutive already-present files
+                if download_result and self._configs.keep_icloud_recent_days is not None:
+                    cutoff = datetime.datetime.now(tz=item.created.tzinfo) - datetime.timedelta(
+                        days=self._configs.keep_icloud_recent_days
                     )
+                    if item.created < cutoff:
+                        _delete = delete_photo_dry_run if self._configs.dry_run else delete_photo
+                        _delete(logger, library, item, policy_args["filename_builder"])
 
                 def find_file_at_path(item: PhotoAsset) -> str | None:
                     for root, _, files in os.walk(directory):
                         for file in files:
-                            if item.filename in file:
+                            if file == item.filename:
                                 return os.path.join(root, file)
                     return None
 
