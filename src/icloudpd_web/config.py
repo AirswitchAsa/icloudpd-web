@@ -3,10 +3,9 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+import tomli_w
 import tomllib
 from pydantic import BaseModel, Field
-
-from icloudpd_web.store.policy_store import _dump_toml
 
 
 class AppriseSettings(BaseModel):
@@ -34,7 +33,7 @@ class SettingsStore:
     def save(self, settings: ServerSettings) -> None:
         self._path.parent.mkdir(parents=True, exist_ok=True)
         tmp = self._path.with_suffix(self._path.suffix + ".tmp")
-        payload = _dump_toml(settings.model_dump(mode="json"))
+        payload = tomli_w.dumps(settings.model_dump(mode="json", exclude_none=True)).encode("utf-8")
         fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o644)
         try:
             os.write(fd, payload)

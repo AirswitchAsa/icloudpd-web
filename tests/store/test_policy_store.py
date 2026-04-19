@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import os as _os
 from pathlib import Path
 from typing import NoReturn
@@ -118,7 +119,9 @@ async def test_concurrent_puts_no_corruption(tmp_path: Path) -> None:
 def test_invalid_toml_file_is_skipped_with_warning(
     tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
+    caplog.set_level(logging.WARNING)
     (tmp_path / "broken.toml").write_text("this is = not [ valid")
     s = PolicyStore(tmp_path)
     s.load()
     assert s.all() == []
+    assert any("skipping invalid policy file" in r.message for r in caplog.records)

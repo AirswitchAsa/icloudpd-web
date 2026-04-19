@@ -38,6 +38,7 @@ class RunSummary(BaseModel):
     ended_at: datetime | None
     status: Literal["running", "success", "failed", "stopped"]
     exit_code: int | None = None
+    error_id: str | None = None
 
 
 class Policy(BaseModel):

@@ -1,65 +1,19 @@
 from __future__ import annotations
 
 import contextlib
-import io
 import logging
 import os
 import threading
 from pathlib import Path
 from typing import Any
 
+import tomli_w
 import tomllib
 
 from .models import AwsConfig, NotificationConfig, Policy
 
 
 log = logging.getLogger(__name__)
-
-# Scalar types that _write_scalar handles
-_Scalar = bool | int | float | str | list  # type: ignore[type-arg]
-
-
-def _write_scalar(v: _Scalar) -> str:
-    """Render a scalar (or list of scalars) to a TOML value string."""
-    if isinstance(v, bool):
-        return "true" if v else "false"
-    if isinstance(v, int):
-        return str(v)
-    if isinstance(v, float):
-        return repr(v)
-    if isinstance(v, str):
-        esc = v.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
-        return f'"{esc}"'
-    if isinstance(v, list):
-        return "[" + ", ".join(_write_scalar(x) for x in v) + "]"
-    raise TypeError(f"unsupported value for TOML: {type(v).__name__}")
-
-
-def _write_table(buf: io.StringIO, header: str, tbl: dict[str, Any]) -> None:
-    """Write a [header] table, then any nested sub-tables."""
-    buf.write(f"\n[{header}]\n")
-    for sk, sv in tbl.items():
-        if not isinstance(sv, dict):
-            buf.write(f"{sk} = {_write_scalar(sv)}\n")
-    for sk, sv in tbl.items():
-        if isinstance(sv, dict):
-            buf.write(f"\n[{header}.{sk}]\n")
-            for ssk, ssv in sv.items():
-                buf.write(f"{ssk} = {_write_scalar(ssv)}\n")
-
-
-def _dump_toml(data: dict[str, Any]) -> bytes:
-    """Minimal TOML writer covering our schema (scalars, arrays, nested tables)."""
-    buf = io.StringIO()
-    # Top-level scalars first.
-    for k, v in data.items():
-        if not isinstance(v, dict):
-            buf.write(f"{k} = {_write_scalar(v)}\n")
-    # Then tables.
-    for k, v in data.items():
-        if isinstance(v, dict):
-            _write_table(buf, k, v)
-    return buf.getvalue().encode("utf-8")
 
 
 class PolicyStore:
@@ -94,7 +48,7 @@ class PolicyStore:
             return self._policies.get(name)
 
     def put(self, policy: Policy) -> None:
-        payload = _dump_toml(policy.to_toml_dict())
+        payload = tomli_w.dumps(policy.to_toml_dict()).encode("utf-8")
         with self._lock:
             path = self._dir / f"{policy.name}.toml"
             tmp = path.with_suffix(".toml.tmp")
