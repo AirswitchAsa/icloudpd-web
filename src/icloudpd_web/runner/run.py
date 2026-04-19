@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import collections
 import contextlib
+import json
 import os
 import re
 import signal
@@ -161,6 +162,26 @@ class Run:
         if self._log_fh is not None:
             self._log_fh.close()
             self._log_fh = None
+        self._write_sidecar()
         for q in list(self._subscribers):
             q.put_nowait(None)
         self._done.set()
+
+    def _write_sidecar(self) -> None:
+        """Atomically write a .meta.json sidecar next to the log file."""
+        meta: dict[str, Any] = {
+            "run_id": self.run_id,
+            "policy_name": self.policy_name,
+            "status": self.status,
+            "started_at": self.started_at,
+            "ended_at": self.ended_at,
+            "exit_code": self.exit_code,
+            "error_id": self.error_id,
+            "downloaded": self.progress.get("downloaded"),
+            "total": self.progress.get("total"),
+        }
+        payload = json.dumps(meta, separators=(",", ":"), default=str).encode("utf-8")
+        tmp_path = self.log_path.with_suffix(".meta.json.tmp")
+        final_path = self.log_path.with_suffix(".meta.json")
+        tmp_path.write_bytes(payload)
+        os.replace(tmp_path, final_path)

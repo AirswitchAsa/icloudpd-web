@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Request
@@ -43,14 +44,25 @@ def list_runs(name: str, request: Request) -> list[dict]:
     runs_dir: Path = request.app.state.data_dir / "runs" / name
     if not runs_dir.is_dir():
         return []
-    return [
-        {
+    rows = []
+    for p in runs_dir.glob("*.log"):
+        stat = p.stat()
+        entry: dict = {
             "run_id": p.stem,
-            "log_size": p.stat().st_size,
-            "mtime": p.stat().st_mtime,
+            "log_size": stat.st_size,
+            "mtime": stat.st_mtime,
         }
-        for p in sorted(runs_dir.glob("*.log"), key=lambda x: x.stat().st_mtime, reverse=True)
-    ]
+        sidecar = p.with_suffix(".meta.json")
+        if sidecar.is_file():
+            try:
+                meta = json.loads(sidecar.read_text("utf-8"))
+                entry.update(meta)
+            except (OSError, json.JSONDecodeError):
+                pass
+        rows.append(entry)
+    # Sort by ended_at (from sidecar) descending; fall back to mtime for stray logs.
+    rows.sort(key=lambda r: r.get("ended_at") or str(r["mtime"]), reverse=True)
+    return rows
 
 
 @router.get("/runs/{run_id}/log")

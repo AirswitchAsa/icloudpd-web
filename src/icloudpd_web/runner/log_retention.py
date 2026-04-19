@@ -12,4 +12,8 @@ def prune_logs(dir: Path, *, keep: int) -> int:
     for p in files[keep:]:
         with contextlib.suppress(OSError):
             p.unlink()
+        # Remove the matching sidecar, if it exists.
+        sidecar = p.with_suffix(".meta.json")
+        with contextlib.suppress(OSError):
+            sidecar.unlink()
     return min(len(files), keep)
