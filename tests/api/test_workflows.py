@@ -16,10 +16,15 @@ def test_wf1_happy_path(client: TestClient) -> None:
     # Wait for completion.
     wait_until_idle(client)
 
-    # History lists this run.
+    # History lists this run as successful.
     runs = client.get("/policies/p/runs").json()
     mine = next(r for r in runs if r["run_id"] == run_id)
-    assert mine["run_id"] == run_id
+    assert mine["status"] == "success"
+
+    # Policy summary surfaces last_run with status.
+    summary = client.get("/policies/p").json()
+    assert summary["last_run"]["run_id"] == run_id
+    assert summary["last_run"]["status"] == "success"
 
     # Persisted log contains the fake binary's progress lines.
     log = client.get(f"/runs/{run_id}/log")
