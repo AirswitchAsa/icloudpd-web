@@ -14,3 +14,5 @@ logs
 coverage.xml
 .coverage-html/
 web/coverage/
+dist/
+.dev-data/

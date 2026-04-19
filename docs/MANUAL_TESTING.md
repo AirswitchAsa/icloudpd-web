@@ -83,13 +83,34 @@ rm -rf ./.dev-data
 
 ## Gate 4 — release checklist
 
+Releases are cut locally via `scripts/release.sh` — no CI/CD. The flow is split so you can inspect artifacts before anything leaves the machine.
+
 Before cutting a release:
 
-- [ ] `make test` — full hermetic suite green
-- [ ] `make check-upstream` — Gate 1 green
+- [ ] `make test` — full hermetic suite green (also enforced by `prepare`)
+- [ ] `make check-upstream` — Gate 1 green (also enforced by `prepare`)
 - [ ] `ICLOUDPD_REAL_TEST=1 uv run pytest tests/runner/test_real_icloudpd_syntax.py` — Gate 2 green
 - [ ] Gate 3 manual smoke completed on at least one platform
 - [ ] CHANGELOG entry added
-- [ ] Version bumped in `pyproject.toml` and `web/package.json`
 
 If you bumped the `icloudpd` pin, Gate 2 and Gate 3 are mandatory.
+
+### Cutting the release
+
+```bash
+scripts/release.sh prepare           # auto CalVer, or pass --version X.Y.Z
+# inspect dist/ and the version-bump commit
+scripts/release.sh publish           # needs UV_PUBLISH_TOKEN and prior 'docker login'
+```
+
+`prepare` bumps version in `pyproject.toml`, `src/icloudpd_web/__init__.py`, and `web/package.json`, commits, builds wheel + sdist, and tags locally. `publish` uploads to PyPI, builds+pushes the multi-arch Docker image, then pushes `main` and the tag.
+
+To abort between stages:
+
+```bash
+git tag -d v<version>
+git reset --hard HEAD~1
+rm -rf dist/
+```
+
+Use `scripts/release.sh prepare --dry-run` to preview every command without mutating state.
