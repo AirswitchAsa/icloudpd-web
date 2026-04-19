@@ -21,6 +21,7 @@ from icloudpd_web.runner.mfa import MfaRegistry
 from icloudpd_web.runner.run import Run
 from icloudpd_web.runner.runner import Runner
 from icloudpd_web.scheduler.scheduler import Scheduler
+from icloudpd_web.static import install_static
 from icloudpd_web.store.policy_store import PolicyStore
 from icloudpd_web.store.secrets import SecretStore
 
@@ -50,6 +51,7 @@ def create_app(
     authenticator: Authenticator,
     session_secret: str,
     icloudpd_argv: Callable[[Path], list[str]] = _default_icloudpd_argv,
+    static_dir: Path | None = None,
 ) -> FastAPI:
     app = FastAPI(title="icloudpd-web", lifespan=_lifespan)
     install_handlers(app)
@@ -108,6 +110,7 @@ def create_app(
     app.include_router(runs_router.router)
     app.include_router(settings_router.router)
     app.include_router(streams_router.router)
+    install_static(app, static_dir)
     return app
 
 

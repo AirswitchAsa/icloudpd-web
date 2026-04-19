@@ -4,9 +4,18 @@ import argparse
 import os
 import secrets
 import sys
+from importlib.resources import files
 from pathlib import Path
 
 from icloudpd_web.auth import Authenticator
+
+
+def _default_static_dir() -> Path | None:
+    try:
+        p = Path(str(files("icloudpd_web").joinpath("web_dist")))
+    except (ModuleNotFoundError, FileNotFoundError):
+        return None
+    return p if p.exists() else None
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -45,6 +54,7 @@ def main(argv: list[str] | None = None) -> int:
         data_dir=Path(args.data_dir),
         authenticator=Authenticator(password_hash=args.password_hash or None),
         session_secret=session_secret,
+        static_dir=_default_static_dir(),
     )
     uvicorn.run(app, host=args.host, port=args.port)
     return 0
