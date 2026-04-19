@@ -10,3 +10,7 @@ src/icloudpd_web/web_dist/*
 tsconfig.tsbuildinfo
 logs
 .claude
+.coverage
+coverage.xml
+.coverage-html/
+web/coverage/
