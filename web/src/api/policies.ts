@@ -13,7 +13,9 @@ export const policiesApi = {
     apiFetch<void>(`/policies/${encodeURIComponent(name)}`, { method: "DELETE" }),
   setPassword: (name: string, password: string) =>
     apiFetch<void>(`/policies/${encodeURIComponent(name)}/password`, {
-      method: "PUT",
+      method: "POST",
       body: { password },
     }),
+  clearPassword: (name: string) =>
+    apiFetch<void>(`/policies/${encodeURIComponent(name)}/password`, { method: "DELETE" }),
 };

@@ -44,4 +44,23 @@ describe("policiesApi", () => {
       })
     );
   });
+
+  it("uses POST for setPassword", async () => {
+    await policiesApi.setPassword("p", "secret");
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "/policies/p/password",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ password: "secret" }),
+      })
+    );
+  });
+
+  it("uses DELETE for clearPassword", async () => {
+    await policiesApi.clearPassword("p");
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "/policies/p/password",
+      expect.objectContaining({ method: "DELETE" })
+    );
+  });
 });
