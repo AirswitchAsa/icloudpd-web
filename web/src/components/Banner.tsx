@@ -52,11 +52,11 @@ export function Banner({ onSettingsClick, onLogoutClick }: BannerProps) {
   return (
     <Box bg="white" borderBottom="1px" borderColor="gray.200" py={4} position="sticky" top={0} zIndex={1}>
       <Box mx="auto" width="100%">
-        <Flex 
-          maxW="container.xl" 
-          mx="auto" 
+        <Flex
+          maxW="container.xl"
+          mx="auto"
           width="100%"
-          justify="space-between" 
+          justify="space-between"
           align="center"
           pr={6}
         >
@@ -75,7 +75,7 @@ export function Banner({ onSettingsClick, onLogoutClick }: BannerProps) {
                 <MenuButton
                   as={Box}
                   color={isGithubOpen ? "gray.800" : "gray.600"}
-                  _hover={{ 
+                  _hover={{
                     color: 'gray.800',
                     cursor: 'pointer'
                   }}
@@ -86,15 +86,15 @@ export function Banner({ onSettingsClick, onLogoutClick }: BannerProps) {
                   Github
                 </MenuButton>
                 <Portal>
-                  <MenuList 
-                    onMouseEnter={handleGithubMouseEnter} 
+                  <MenuList
+                    onMouseEnter={handleGithubMouseEnter}
                     onMouseLeave={handleGithubMouseLeave}
                     fontSize="13px"
                     color="gray.600"
                     minW="auto"
                   >
-                    <MenuItem 
-                      as="a" 
+                    <MenuItem
+                      as="a"
                       href="https://github.com/AirswitchAsa/icloudpd-web"
                       target="_blank"
                       rel="noopener noreferrer"
@@ -102,8 +102,8 @@ export function Banner({ onSettingsClick, onLogoutClick }: BannerProps) {
                     >
                       Project icloudpd-web
                     </MenuItem>
-                    <MenuItem 
-                      as="a" 
+                    <MenuItem
+                      as="a"
                       href="https://icloud-photos-downloader.github.io/icloud_photos_downloader/"
                       target="_blank"
                       rel="noopener noreferrer"
@@ -121,7 +121,7 @@ export function Banner({ onSettingsClick, onLogoutClick }: BannerProps) {
                 <MenuButton
                   as={Box}
                   color={isUserOpen ? "gray.800" : "gray.600"}
-                  _hover={{ 
+                  _hover={{
                     color: 'gray.800',
                     cursor: 'pointer'
                   }}
@@ -132,21 +132,21 @@ export function Banner({ onSettingsClick, onLogoutClick }: BannerProps) {
                   My App
                 </MenuButton>
                 <Portal>
-                  <MenuList 
-                    onMouseEnter={handleUserMouseEnter} 
+                  <MenuList
+                    onMouseEnter={handleUserMouseEnter}
                     onMouseLeave={handleUserMouseLeave}
                     fontSize="13px"
                     color="gray.600"
                     minW="auto"
                   >
-                    <MenuItem 
+                    <MenuItem
                       onClick={onSettingsClick}
                       _hover={{ color: 'gray.800' }}
                     >
                       <IoSettingsOutline style={{ marginRight: '8px' }} />
                       Settings
                     </MenuItem>
-                    <MenuItem 
+                    <MenuItem
                       onClick={onLogoutClick}
                       _hover={{ color: 'gray.800' }}
                     >
@@ -162,4 +162,4 @@ export function Banner({ onSettingsClick, onLogoutClick }: BannerProps) {
       </Box>
     </Box>
   );
-} 
+}

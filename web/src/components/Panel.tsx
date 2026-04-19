@@ -9,19 +9,19 @@ interface PanelProps extends BoxProps {
 export function Panel({ title, children, headerRight, ...props }: PanelProps) {
   return (
     <Box width="100%" {...props}>
-      <Box 
-        bg="white" 
-        borderRadius="2xl" 
-        boxShadow="sm" 
-        border="1px" 
+      <Box
+        bg="white"
+        borderRadius="2xl"
+        boxShadow="sm"
+        border="1px"
         borderColor="gray.200"
         display="flex"
         flexDirection="column"
       >
-        <Flex 
+        <Flex
           px={12}
-          borderBottom="1px" 
-          borderColor="gray.100" 
+          borderBottom="1px"
+          borderColor="gray.100"
           height="56px"
           alignItems="center"
         >
@@ -52,4 +52,4 @@ export function Panel({ title, children, headerRight, ...props }: PanelProps) {
       </Box>
     </Box>
   );
-} 
+}

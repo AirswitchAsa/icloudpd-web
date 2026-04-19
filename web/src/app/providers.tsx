@@ -11,13 +11,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
       if (savedFavicon) {
         // Find existing favicon link or create one
         let favicon = document.querySelector("link[rel*='icon']") as HTMLLinkElement;
-        
+
         if (!favicon) {
           favicon = document.createElement('link');
           favicon.rel = 'icon';
           document.head.appendChild(favicon);
         }
-        
+
         favicon.href = savedFavicon;
       }
     } catch (error) {
