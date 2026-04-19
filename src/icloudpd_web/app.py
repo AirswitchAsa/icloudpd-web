@@ -9,6 +9,7 @@ from icloudpd_web.api import auth as auth_router
 from icloudpd_web.api import mfa as mfa_router
 from icloudpd_web.api import policies as policies_router
 from icloudpd_web.api import runs as runs_router
+from icloudpd_web.api import settings as settings_router
 from icloudpd_web.auth import Authenticator, install_session_middleware
 from icloudpd_web.config import SettingsStore
 from icloudpd_web.errors import install_handlers
@@ -90,6 +91,7 @@ def create_app(
     app.include_router(mfa_router.router)
     app.include_router(policies_router.router)
     app.include_router(runs_router.router)
+    app.include_router(settings_router.router)
     return app
 
 
