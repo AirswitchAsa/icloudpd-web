@@ -228,3 +228,39 @@ def test_wf7_scheduler_cron_tick(
         # Second tick in same minute must not re-enqueue
         scheduler.tick(datetime.now(timezone.utc))
         assert scheduler._pending == []
+
+
+def test_wf8_apprise_emitted_on_completion(
+    app_factory: Callable[..., FastAPI], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("FAKE_ICLOUDPD_MODE", "success")
+    monkeypatch.setenv("FAKE_ICLOUDPD_TOTAL", "1")
+    app = app_factory()
+
+    calls: list[tuple[str, str, str]] = []
+
+    def spy(event: str, *, policy_name: str, summary: str) -> None:
+        calls.append((event, policy_name, summary))
+
+    app.state.notifier.emit = spy  # type: ignore[method-assign]
+
+    with TestClient(app) as c:
+        c.post("/auth/login", json={"password": "pw"})
+        c.put(
+            "/policies/p",
+            json={
+                "name": "p",
+                "username": "u@icloud.com",
+                "directory": "/tmp/p",
+                "cron": "0 * * * *",
+                "enabled": True,
+                "timezone": None,
+                "icloudpd": {},
+                "notifications": {"on_start": False, "on_success": True, "on_failure": True},
+                "aws": None,
+            },
+        )
+        c.post("/policies/p/runs")
+        wait_until_idle(c)
+
+    assert any(ev == "success" and name == "p" for ev, name, _ in calls), calls
