@@ -166,3 +166,23 @@ def test_wf5_sse_resume(
         resumed_ids = [int(e["id"]) for e in resumed if "id" in e]
         assert all(i > cut for i in resumed_ids), (cut, resumed_ids)
         assert set(ids) == {i for i in ids if i <= cut} | set(resumed_ids)
+
+
+def test_wf6a_auth_required(app_factory: Callable[..., FastAPI]) -> None:
+    app = app_factory()  # default password "pw"
+    with TestClient(app) as c:
+        r = c.get("/policies")
+        assert r.status_code == 401
+        body = r.json()
+        assert "error" in body
+        assert "error_id" in body
+
+
+def test_wf6b_passwordless_mode(app_factory: Callable[..., FastAPI]) -> None:
+    app = app_factory(password=None)
+    with TestClient(app) as c:
+        status = c.get("/auth/status").json()
+        assert status["authenticated"] is True
+        assert status["auth_required"] is False
+        r = c.get("/policies")
+        assert r.status_code == 200
