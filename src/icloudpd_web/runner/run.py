@@ -1,0 +1,161 @@
+from __future__ import annotations
+
+import asyncio
+import collections
+import contextlib
+import os
+import re
+import signal
+import time
+from collections.abc import AsyncIterator
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Literal  # noqa: UP035
+
+
+PROGRESS_RE = re.compile(r"Downloading\s+(\d+)\s+of\s+(\d+)", re.IGNORECASE)
+
+RunStatus = Literal["pending", "running", "success", "failed", "stopped"]
+RunEventKind = Literal["log", "progress", "status"]
+
+
+@dataclass
+class RunEvent:
+    seq: int
+    kind: RunEventKind
+    ts: float
+    data: dict[str, Any]
+
+
+class Run:
+    BUFFER_CAP = 2000
+
+    def __init__(
+        self,
+        *,
+        run_id: str,
+        policy_name: str,
+        argv: list[str],
+        log_dir: Path,
+        env: dict[str, str] | None = None,
+    ) -> None:
+        self.run_id = run_id
+        self.policy_name = policy_name
+        self._argv = argv
+        self._env = env
+        self.log_dir = log_dir
+        self.log_dir.mkdir(parents=True, exist_ok=True)
+        self.log_path = self.log_dir / f"{run_id}.log"
+
+        self.started_at: datetime | None = None
+        self.ended_at: datetime | None = None
+        self.status: RunStatus = "pending"
+        self.exit_code: int | None = None
+        self.error_id: str | None = None
+        self.progress: dict[str, Any] = {"downloaded": 0, "total": None}
+
+        self._proc: asyncio.subprocess.Process | None = None
+        self._buffer: collections.deque[RunEvent] = collections.deque(maxlen=self.BUFFER_CAP)
+        self._seq = 0
+        self._subscribers: set[asyncio.Queue[RunEvent | None]] = set()
+        self._log_fh: Any = None
+        self._done = asyncio.Event()
+        self._stopping = False
+
+    async def start(self) -> None:
+        self.started_at = datetime.now(timezone.utc)
+        self.status = "running"
+        self._log_fh = open(self.log_path, "w", encoding="utf-8", buffering=1)  # noqa: SIM115, ASYNC230
+        env = {**os.environ, **(self._env or {})}
+        self._proc = await asyncio.create_subprocess_exec(
+            *self._argv,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            env=env,
+        )
+        assert self._proc.stdout is not None
+        assert self._proc.stderr is not None
+        asyncio.create_task(self._drain(self._proc.stdout, "stdout"))
+        asyncio.create_task(self._drain(self._proc.stderr, "stderr"))
+        asyncio.create_task(self._wait_exit())
+
+    async def stop(self) -> None:
+        if self._proc and self._proc.returncode is None:
+            self._stopping = True
+            with contextlib.suppress(ProcessLookupError):
+                self._proc.send_signal(signal.SIGTERM)
+
+    async def wait(self) -> None:
+        await self._done.wait()
+
+    async def subscribe(self, *, since: int | None) -> AsyncIterator[RunEvent]:
+        q: asyncio.Queue[RunEvent | None] = asyncio.Queue()
+        replay = [e for e in self._buffer if since is None or e.seq > since]
+        self._subscribers.add(q)
+        try:
+            for ev in replay:
+                yield ev
+            while True:
+                ev = await q.get()
+                if ev is None:
+                    return
+                if since is not None and ev.seq <= since:
+                    continue
+                yield ev
+        finally:
+            self._subscribers.discard(q)
+
+    async def _drain(self, stream: asyncio.StreamReader, kind: str) -> None:
+        while True:
+            line = await stream.readline()
+            if not line:
+                return
+            text = line.decode("utf-8", errors="replace").rstrip("\n")
+            self._emit_log(text)
+            self._maybe_progress(text)
+
+    def _emit_log(self, text: str) -> None:
+        if self._log_fh is not None:
+            self._log_fh.write(text + "\n")
+        self._publish("log", {"line": text})
+
+    def _maybe_progress(self, text: str) -> None:
+        m = PROGRESS_RE.search(text)
+        if not m:
+            return
+        downloaded = int(m.group(1))
+        total = int(m.group(2))
+        self.progress = {"downloaded": downloaded, "total": total}
+        self._publish("progress", dict(self.progress))
+
+    def _publish(self, kind: RunEventKind, data: dict[str, Any]) -> None:
+        self._seq += 1
+        ev = RunEvent(seq=self._seq, kind=kind, ts=time.time(), data=data)
+        self._buffer.append(ev)
+        for q in list(self._subscribers):
+            with contextlib.suppress(asyncio.QueueFull):
+                q.put_nowait(ev)
+
+    async def _wait_exit(self) -> None:
+        assert self._proc is not None
+        code = await self._proc.wait()
+        self.exit_code = code
+        self.ended_at = datetime.now(timezone.utc)
+        if self._stopping:
+            self.status = "stopped"
+        elif code == 0:
+            self.status = "success"
+        else:
+            self.status = "failed"
+            self.error_id = self.run_id
+        self._publish(
+            "status",
+            {"status": self.status, "exit_code": code, "error_id": self.error_id},
+        )
+        if self._log_fh is not None:
+            self._log_fh.close()
+            self._log_fh = None
+        for q in list(self._subscribers):
+            q.put_nowait(None)
+        self._done.set()
