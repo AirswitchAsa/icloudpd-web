@@ -44,7 +44,9 @@ def test_end_to_end(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         )
         # Set a policy password; required since icloudpd reads it via stdin.
         c.post("/policies/p/password", json={"password": "testpw"})
-        rid = c.post("/policies/p/runs").json()["run_id"]
+        start = c.post("/policies/p/runs")
+        assert start.status_code == 200, (start.status_code, start.text)
+        rid = start.json()["run_id"]
         for _ in range(100):
             if c.get("/policies/p").json()["is_running"] is False:
                 break
