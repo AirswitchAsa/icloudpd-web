@@ -19,6 +19,13 @@ def test_authenticator_none_hash_disables_auth() -> None:
     assert a.verify("anything") is True
 
 
+def test_authenticator_empty_hash_treated_as_none() -> None:
+    a = Authenticator(password_hash="")
+    assert a.auth_required is False
+    b = Authenticator(password_hash="   ")
+    assert b.auth_required is False
+
+
 def _make_app(authenticator: Authenticator | None = None) -> FastAPI:
     app = FastAPI()
     install_handlers(app)

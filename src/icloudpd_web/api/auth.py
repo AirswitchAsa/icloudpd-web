@@ -37,6 +37,6 @@ def login(body: LoginBody, request: Request) -> dict[str, bool]:
 
 
 @router.post("/logout")
-def logout(request: Request) -> dict:  # type: ignore[type-arg]
+def logout(request: Request) -> dict[str, bool]:
     request.session.clear()
     return {"ok": True}

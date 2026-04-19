@@ -17,6 +17,8 @@ def _normalize(password: str) -> bytes:
 
 class Authenticator:
     def __init__(self, password_hash: str | None) -> None:
+        if password_hash is not None and password_hash.strip() == "":
+            password_hash = None
         self._hash = password_hash
 
     @property
