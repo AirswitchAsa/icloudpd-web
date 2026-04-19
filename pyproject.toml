@@ -38,6 +38,7 @@ packages = ["src/icloudpd_web"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+markers = ["smoke: end-to-end smoke tests"]
 
 [dependency-groups]
 dev = [
