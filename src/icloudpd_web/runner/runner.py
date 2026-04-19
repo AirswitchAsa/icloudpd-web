@@ -31,6 +31,11 @@ class Runner:
         self._active: dict[str, Run] = {}
         self._by_id: dict[str, Run] = {}
         self._lock = asyncio.Lock()
+        # Remove any stale cfg.toml files left over from a prior crashed run.
+        if self._runs_base.exists():
+            for stale in self._runs_base.glob("*/*.cfg.toml"):
+                with contextlib.suppress(OSError):
+                    stale.unlink()
 
     def is_running(self, policy_name: str) -> bool:
         run = self._active.get(policy_name)
@@ -67,8 +72,15 @@ class Runner:
             )
             self._active[policy.name] = run
             self._by_id[run_id] = run
-            await run.start()
-            asyncio.create_task(self._on_complete(run, cfg_path))
+            try:
+                await run.start()
+            finally:
+                # Config contains the password; unlink immediately after the subprocess
+                # has been spawned. icloudpd loads --config-file at startup so removing
+                # the path now is safe.
+                with contextlib.suppress(FileNotFoundError, OSError):
+                    cfg_path.unlink()
+            asyncio.create_task(self._on_complete(run))
             self._on_event(run, "started")
             return run
 
@@ -79,10 +91,8 @@ class Runner:
         await run.stop()
         return True
 
-    async def _on_complete(self, run: Run, cfg_path: Path) -> None:
+    async def _on_complete(self, run: Run) -> None:
         await run.wait()
-        with contextlib.suppress(OSError):
-            cfg_path.unlink()
         prune_logs(run.log_dir, keep=self._retention)
         self._on_event(run, "completed")
 
