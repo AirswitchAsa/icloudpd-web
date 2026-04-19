@@ -1,270 +1,701 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Modal } from "@/components/ui/modal";
+import { useState } from "react";
+import {
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalCloseButton,
+  FormControl,
+  Input,
+  InputGroup,
+  InputRightElement,
+  IconButton,
+  VStack,
+  Select,
+  Button,
+  ModalFooter,
+  Switch,
+  NumberInput,
+  NumberInputField,
+  Box,
+  Text,
+} from "@chakra-ui/react";
+import { ViewIcon, ViewOffIcon } from "@chakra-ui/icons";
+import type { PolicyView } from "@/types/api";
 import { ApiError } from "@/api/client";
-import { useSetPolicyPassword, useUpsertPolicy } from "@/hooks/usePolicies";
+import {
+  useUpsertPolicy,
+  useSetPolicyPassword,
+} from "@/hooks/usePolicies";
 import { pushError, pushSuccess } from "@/store/toastStore";
-import type { Policy, PolicyView } from "@/types/api";
+import {
+  FormPolicy,
+  defaultFormPolicy,
+  fromPolicyView,
+  toBackendPolicy,
+} from "@/lib/policyMapping";
+import {
+  FieldWithInfo,
+  AlbumField,
+  SuffixField,
+  PatternMatchField,
+  DateRangeField,
+  DownloadSizesField,
+  IntegrationField,
+  MakeField,
+  ModelField,
+} from "@/components/EditModalFields";
 
-interface Props {
-  open: boolean;
+interface EditPolicyModalProps {
+  isOpen: boolean;
   onClose: () => void;
-  initial: PolicyView | null;
+  isEditing?: boolean;
+  policy?: PolicyView;
 }
 
-const BLANK: Policy = {
-  name: "",
-  username: "",
-  directory: "",
-  cron: "0 * * * *",
-  enabled: true,
-  timezone: null,
-  icloudpd: {},
-  notifications: { on_start: false, on_success: true, on_failure: true },
-  aws: null,
-};
-
-export function EditPolicyModal({ open, onClose, initial }: Props) {
+export function EditPolicyModal({
+  isOpen,
+  onClose,
+  isEditing = false,
+  policy,
+}: EditPolicyModalProps) {
   const upsert = useUpsertPolicy();
-  const setPassword = useSetPolicyPassword();
+  const setPolicyPassword = useSetPolicyPassword();
 
-  const [form, setForm] = useState<Policy>(BLANK);
-  const [password, setPasswordValue] = useState("");
-  const [fieldError, setFieldError] = useState<{ field: string | null; message: string } | null>(null);
+  const [formData, setFormData] = useState<FormPolicy>(() =>
+    policy ? fromPolicyView(policy) : defaultFormPolicy()
+  );
 
-  useEffect(() => {
-    if (open) {
-      setForm(initial ? stripView(initial) : BLANK);
-      setPasswordValue("");
-      setFieldError(null);
-    }
-  }, [open, initial]);
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
-  const isNew = initial === null;
+  const update = <K extends keyof FormPolicy>(key: K, value: FormPolicy[K]) =>
+    setFormData((prev) => ({ ...prev, [key]: value }));
 
-  const onSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setFieldError(null);
+  const handleSave = async () => {
     try {
-      await upsert.mutateAsync({ name: form.name, policy: form });
+      const payload = toBackendPolicy(formData);
+      await upsert.mutateAsync({ name: formData.name, policy: payload });
       if (password) {
-        await setPassword.mutateAsync({ name: form.name, password });
+        try {
+          await setPolicyPassword.mutateAsync({
+            name: formData.name,
+            password,
+          });
+        } catch (err) {
+          if (err instanceof ApiError) pushError(err.message, err.errorId);
+        }
       }
-      pushSuccess(isNew ? "Policy created" : "Policy saved");
+      pushSuccess(
+        isEditing
+          ? `Policy "${formData.name}" saved`
+          : `Policy "${formData.name}" created`
+      );
       onClose();
     } catch (err) {
-      if (err instanceof ApiError) {
-        setFieldError({ field: err.field, message: err.message });
-        pushError(err.message, err.errorId);
-      } else {
-        pushError("Unknown error");
-      }
+      if (err instanceof ApiError) pushError(err.message, err.errorId);
     }
   };
 
   return (
-    <Modal open={open} onClose={onClose} title={isNew ? "New Policy" : `Edit: ${initial?.name}`}>
-      <form onSubmit={onSubmit} className="space-y-4">
-        <Field label="Name" error={fieldError?.field === "name" ? fieldError.message : null}>
-          <Input
-            value={form.name}
-            disabled={!isNew}
-            invalid={fieldError?.field === "name"}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            required
-          />
-        </Field>
-        <Field label="iCloud username" error={fieldError?.field === "username" ? fieldError.message : null}>
-          <Input
-            type="email"
-            value={form.username}
-            invalid={fieldError?.field === "username"}
-            onChange={(e) => setForm({ ...form, username: e.target.value })}
-            required
-          />
-        </Field>
-        <Field label="Directory" error={fieldError?.field === "directory" ? fieldError.message : null}>
-          <Input
-            value={form.directory}
-            invalid={fieldError?.field === "directory"}
-            onChange={(e) => setForm({ ...form, directory: e.target.value })}
-            required
-          />
-        </Field>
-        <Field label="Cron" error={fieldError?.field === "cron" ? fieldError.message : null}>
-          <Input
-            value={form.cron}
-            invalid={fieldError?.field === "cron"}
-            onChange={(e) => setForm({ ...form, cron: e.target.value })}
-            required
-          />
-        </Field>
-        <Field label="Timezone (IANA, optional)">
-          <Input
-            value={form.timezone ?? ""}
-            onChange={(e) =>
-              setForm({ ...form, timezone: e.target.value === "" ? null : e.target.value })
-            }
-            placeholder="America/New_York"
-          />
-        </Field>
-        <label className="inline-flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={form.enabled}
-            onChange={(e) => setForm({ ...form, enabled: e.target.checked })}
-          />
-          Enabled
-        </label>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      isCentered
+      motionPreset="slideInBottom"
+      size="xl"
+      scrollBehavior="inside"
+    >
+      <ModalOverlay backdropFilter="blur(4px)" />
+      <ModalContent
+        maxW="800px"
+        w="90%"
+        bg="white"
+        borderRadius="2xl"
+        boxShadow="xl"
+      >
+        <ModalHeader fontFamily="Inter, sans-serif">
+          {isEditing ? "Edit Policy" : "New Policy"}
+        </ModalHeader>
+        <ModalCloseButton />
+        <ModalBody pb={6}>
+          <VStack
+            spacing={4}
+            align="stretch"
+            divider={<Box h="1px" bg="gray.100" />}
+          >
+            {/* Basic Settings */}
+            <Box>
+              <Text fontSize="lg" fontWeight="semibold" mb={4}>
+                Basic Settings
+              </Text>
+              <VStack spacing={4} align="stretch">
+                <FormControl isRequired>
+                  <FieldWithInfo
+                    label="Policy Name"
+                    info="A unique name to identify this policy"
+                  >
+                    <Input
+                      value={formData.name}
+                      onChange={(e) => update("name", e.target.value)}
+                      isDisabled={isEditing}
+                      maxW="300px"
+                    />
+                  </FieldWithInfo>
+                </FormControl>
 
-        <fieldset className="border rounded p-3 space-y-2">
-          <legend className="text-sm font-medium">Notifications</legend>
-          {(["on_start", "on_success", "on_failure"] as const).map((k) => (
-            <label key={k} className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={form.notifications[k]}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    notifications: { ...form.notifications, [k]: e.target.checked },
-                  })
-                }
-              />
-              {k}
-            </label>
-          ))}
-        </fieldset>
+                <FormControl isRequired>
+                  <FieldWithInfo
+                    label="iCloud Username"
+                    info="Your iCloud account email address"
+                  >
+                    <Input
+                      value={formData.username}
+                      onChange={(e) => update("username", e.target.value)}
+                      maxW="300px"
+                    />
+                  </FieldWithInfo>
+                </FormControl>
 
-        <Field label={`iCloud password${initial?.has_password ? " (already set; fill to replace)" : ""}`}>
-          <Input
-            type="password"
-            value={password}
-            onChange={(e) => setPasswordValue(e.target.value)}
-            placeholder="••••••••"
-          />
-        </Field>
+                <FormControl isRequired>
+                  <FieldWithInfo
+                    label="Download Directory"
+                    info="The local directory where photos will be downloaded. The directory will be created if it does not exist."
+                  >
+                    <Input
+                      value={formData.directory}
+                      onChange={(e) => update("directory", e.target.value)}
+                      maxW="300px"
+                    />
+                  </FieldWithInfo>
+                </FormControl>
 
-        <fieldset className="border rounded p-3 space-y-2">
-          <legend className="text-sm font-medium">icloudpd CLI options (JSON)</legend>
-          <IcloudpdOptions
-            value={form.icloudpd}
-            onChange={(next) => setForm({ ...form, icloudpd: next })}
-          />
-        </fieldset>
+                <FormControl>
+                  <FieldWithInfo
+                    label="iCloud Password"
+                    info={
+                      formData.has_password
+                        ? "A password is already stored. Entering a new one will overwrite it."
+                        : "Stored password for the iCloud account. Leave blank to skip."
+                    }
+                  >
+                    <InputGroup maxW="300px">
+                      <Input
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder={
+                          formData.has_password ? "(stored)" : "Enter password"
+                        }
+                      />
+                      <InputRightElement>
+                        <IconButton
+                          aria-label={
+                            showPassword ? "Hide password" : "Show password"
+                          }
+                          icon={showPassword ? <ViewOffIcon /> : <ViewIcon />}
+                          variant="ghost"
+                          onClick={() => setShowPassword(!showPassword)}
+                          size="sm"
+                        />
+                      </InputRightElement>
+                    </InputGroup>
+                  </FieldWithInfo>
+                </FormControl>
 
-        <fieldset className="border rounded p-3 space-y-2">
-          <legend className="text-sm font-medium">AWS S3 sync (optional)</legend>
-          <AwsFields
-            value={form.aws}
-            onChange={(next) => setForm({ ...form, aws: next })}
-          />
-        </fieldset>
+                <FormControl>
+                  <FieldWithInfo
+                    label="Enabled"
+                    info="Whether the policy is enabled for scheduled runs."
+                  >
+                    <Switch
+                      isChecked={formData.enabled}
+                      onChange={(e) => update("enabled", e.target.checked)}
+                    />
+                  </FieldWithInfo>
+                </FormControl>
 
-        <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="secondary" onClick={onClose}>
+                <FormControl isRequired>
+                  <FieldWithInfo
+                    label="Cron Schedule"
+                    info="Cron expression for when the policy should run (e.g. '0 * * * *' for hourly)."
+                  >
+                    <Input
+                      value={formData.cron}
+                      onChange={(e) => update("cron", e.target.value)}
+                      maxW="200px"
+                      placeholder="0 * * * *"
+                    />
+                  </FieldWithInfo>
+                </FormControl>
+
+                <FormControl>
+                  <FieldWithInfo
+                    label="Timezone"
+                    info="IANA timezone name used to interpret the cron schedule (e.g. 'America/Los_Angeles'). Leave blank for server default."
+                  >
+                    <Input
+                      value={formData.timezone ?? ""}
+                      onChange={(e) =>
+                        update("timezone", e.target.value || null)
+                      }
+                      maxW="200px"
+                      placeholder="UTC"
+                    />
+                  </FieldWithInfo>
+                </FormControl>
+
+                <IntegrationField
+                  value={formData.upload_to_aws_s3}
+                  onChange={(value) => update("upload_to_aws_s3", value)}
+                />
+
+                {formData.upload_to_aws_s3 && (
+                  <Box pl={10}>
+                    <VStack spacing={3} align="stretch">
+                      <FormControl isRequired>
+                        <FieldWithInfo
+                          label="S3 Bucket"
+                          info="Name of the S3 bucket to upload to."
+                        >
+                          <Input
+                            value={formData.aws_bucket}
+                            onChange={(e) =>
+                              update("aws_bucket", e.target.value)
+                            }
+                            maxW="300px"
+                          />
+                        </FieldWithInfo>
+                      </FormControl>
+                      <FormControl>
+                        <FieldWithInfo
+                          label="S3 Prefix"
+                          info="Optional key prefix within the bucket."
+                        >
+                          <Input
+                            value={formData.aws_prefix}
+                            onChange={(e) =>
+                              update("aws_prefix", e.target.value)
+                            }
+                            maxW="300px"
+                          />
+                        </FieldWithInfo>
+                      </FormControl>
+                      <FormControl>
+                        <FieldWithInfo
+                          label="AWS Region"
+                          info="Optional AWS region (e.g. 'us-east-1')."
+                        >
+                          <Input
+                            value={formData.aws_region}
+                            onChange={(e) =>
+                              update("aws_region", e.target.value)
+                            }
+                            maxW="200px"
+                          />
+                        </FieldWithInfo>
+                      </FormControl>
+                      <FormControl>
+                        <FieldWithInfo
+                          label="AWS Access Key ID"
+                          info="Optional — leave blank to use server default credentials."
+                        >
+                          <Input
+                            value={formData.aws_access_key_id}
+                            onChange={(e) =>
+                              update("aws_access_key_id", e.target.value)
+                            }
+                            maxW="300px"
+                          />
+                        </FieldWithInfo>
+                      </FormControl>
+                      <FormControl>
+                        <FieldWithInfo
+                          label="AWS Secret Access Key"
+                          info="Optional — leave blank to use server default credentials."
+                        >
+                          <Input
+                            type="password"
+                            value={formData.aws_secret_access_key}
+                            onChange={(e) =>
+                              update("aws_secret_access_key", e.target.value)
+                            }
+                            maxW="300px"
+                          />
+                        </FieldWithInfo>
+                      </FormControl>
+                    </VStack>
+                  </Box>
+                )}
+
+                <FormControl>
+                  <FieldWithInfo
+                    label="Domain"
+                    info="The iCloud service domain to use. Only change this if you are using an iCloud account from China."
+                  >
+                    <Select
+                      value={formData.domain}
+                      onChange={(e) =>
+                        update("domain", e.target.value as "com" | "cn")
+                      }
+                      maxW="100px"
+                    >
+                      <option value="com">com</option>
+                      <option value="cn">cn</option>
+                    </Select>
+                  </FieldWithInfo>
+                </FormControl>
+              </VStack>
+            </Box>
+
+            {/* Notifications */}
+            <Box>
+              <Text fontSize="lg" fontWeight="semibold" mb={4}>
+                Notifications
+              </Text>
+              <VStack spacing={4} align="stretch">
+                <FormControl>
+                  <FieldWithInfo
+                    label="Notify on Start"
+                    info="Send a notification when a run starts."
+                  >
+                    <Switch
+                      isChecked={formData.on_start_notify}
+                      onChange={(e) =>
+                        update("on_start_notify", e.target.checked)
+                      }
+                    />
+                  </FieldWithInfo>
+                </FormControl>
+                <FormControl>
+                  <FieldWithInfo
+                    label="Notify on Success"
+                    info="Send a notification when a run succeeds."
+                  >
+                    <Switch
+                      isChecked={formData.on_success_notify}
+                      onChange={(e) =>
+                        update("on_success_notify", e.target.checked)
+                      }
+                    />
+                  </FieldWithInfo>
+                </FormControl>
+                <FormControl>
+                  <FieldWithInfo
+                    label="Notify on Failure"
+                    info="Send a notification when a run fails."
+                  >
+                    <Switch
+                      isChecked={formData.on_failure_notify}
+                      onChange={(e) =>
+                        update("on_failure_notify", e.target.checked)
+                      }
+                    />
+                  </FieldWithInfo>
+                </FormControl>
+              </VStack>
+            </Box>
+
+            {/* Download Options */}
+            <Box>
+              <Text fontSize="lg" fontWeight="semibold" mb={4}>
+                Download Options
+              </Text>
+              <VStack spacing={4} align="stretch">
+                <AlbumField
+                  value={formData.album}
+                  onChange={(value) => update("album", value)}
+                />
+                <FormControl>
+                  <FieldWithInfo
+                    label="Library"
+                    info="The library to download from. Personal Library will be used if you do not have a shared library. Default: Personal Library"
+                  >
+                    <Select
+                      value={formData.library}
+                      onChange={(e) =>
+                        update(
+                          "library",
+                          e.target.value as
+                            | "Personal Library"
+                            | "Shared Library"
+                        )
+                      }
+                      maxW="200px"
+                    >
+                      <option value="Personal Library">Personal Library</option>
+                      <option value="Shared Library">Shared Library</option>
+                    </Select>
+                  </FieldWithInfo>
+                </FormControl>
+
+                <FormControl>
+                  <FieldWithInfo
+                    label="Folder Structure"
+                    info="The folder structure pattern using Python's strftime format."
+                  >
+                    <Input
+                      value={formData.folder_structure}
+                      onChange={(e) =>
+                        update("folder_structure", e.target.value)
+                      }
+                      maxW="200px"
+                    />
+                  </FieldWithInfo>
+                </FormControl>
+
+                <DownloadSizesField
+                  value={formData.size}
+                  onChange={(value) =>
+                    update(
+                      "size",
+                      value as (
+                        | "original"
+                        | "medium"
+                        | "thumb"
+                        | "adjusted"
+                        | "alternative"
+                      )[]
+                    )
+                  }
+                />
+
+                <SuffixField
+                  value={formData.file_suffixes}
+                  onChange={(value) => update("file_suffixes", value)}
+                />
+
+                <MakeField
+                  value={formData.device_make}
+                  onChange={(value) => update("device_make", value)}
+                />
+                <ModelField
+                  value={formData.device_model}
+                  onChange={(value) => update("device_model", value)}
+                />
+
+                <PatternMatchField
+                  value={formData.match_pattern}
+                  onChange={(value) => update("match_pattern", value)}
+                />
+                <DateRangeField
+                  label="Created Date Range"
+                  info="Filter files by creation date."
+                  startDate={formData.created_after}
+                  endDate={formData.created_before}
+                  onChange={(start, end) => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      created_after: start,
+                      created_before: end,
+                    }));
+                  }}
+                />
+                <DateRangeField
+                  label="Added Date Range"
+                  info="Filter files by the date they were added to iCloud."
+                  startDate={formData.added_after}
+                  endDate={formData.added_before}
+                  onChange={(start, end) => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      added_after: start,
+                      added_before: end,
+                    }));
+                  }}
+                />
+
+                <FormControl>
+                  <FieldWithInfo
+                    label="Download Recent X"
+                    info="Stop downloading after X recent photos are downloaded (leave empty for all)."
+                  >
+                    <NumberInput
+                      value={formData.recent || ""}
+                      onChange={(valueString) =>
+                        update(
+                          "recent",
+                          valueString === "" ? null : parseInt(valueString)
+                        )
+                      }
+                      min={0}
+                      maxW="100px"
+                    >
+                      <NumberInputField />
+                    </NumberInput>
+                  </FieldWithInfo>
+                </FormControl>
+
+                <FormControl>
+                  <FieldWithInfo
+                    label="Download Until Found X"
+                    info="Stop downloading after X existing photos are checked (leave empty for all)."
+                  >
+                    <NumberInput
+                      value={formData.until_found || ""}
+                      onChange={(valueString) =>
+                        update(
+                          "until_found",
+                          valueString === "" ? null : parseInt(valueString)
+                        )
+                      }
+                      min={0}
+                      maxW="100px"
+                    >
+                      <NumberInputField />
+                    </NumberInput>
+                  </FieldWithInfo>
+                </FormControl>
+
+                <FormControl>
+                  <FieldWithInfo
+                    label="Skip Videos"
+                    info="Skip downloading video files when checked."
+                  >
+                    <Switch
+                      isChecked={formData.skip_videos}
+                      onChange={(e) => update("skip_videos", e.target.checked)}
+                    />
+                  </FieldWithInfo>
+                </FormControl>
+
+                <FormControl>
+                  <FieldWithInfo
+                    label="Skip Live Photos"
+                    info="Skip downloading live photos when checked."
+                  >
+                    <Switch
+                      isChecked={formData.skip_live_photos}
+                      onChange={(e) =>
+                        update("skip_live_photos", e.target.checked)
+                      }
+                    />
+                  </FieldWithInfo>
+                </FormControl>
+
+                <FormControl>
+                  <FieldWithInfo
+                    label="Skip Photos"
+                    info="Skip downloading photo files (images) when checked. Useful when you only want to download videos."
+                  >
+                    <Switch
+                      isChecked={formData.skip_photos}
+                      onChange={(e) => update("skip_photos", e.target.checked)}
+                    />
+                  </FieldWithInfo>
+                </FormControl>
+              </VStack>
+            </Box>
+
+            {/* Delete Options */}
+            <Box>
+              <Text fontSize="lg" fontWeight="semibold" mb={4}>
+                Delete Options
+              </Text>
+              <VStack spacing={4} align="stretch">
+                <FormControl>
+                  <FieldWithInfo
+                    label="Auto Delete"
+                    info="When enabled, any photos you delete in iCloud (moved to 'Recently Deleted') will also be removed from your local download directory."
+                  >
+                    <Switch
+                      isChecked={formData.auto_delete}
+                      onChange={(e) => update("auto_delete", e.target.checked)}
+                    />
+                  </FieldWithInfo>
+                </FormControl>
+
+                <FormControl>
+                  <FieldWithInfo
+                    label="Delete from iCloud After Download (keep N days)"
+                    info="After downloading, delete photos from iCloud that are older than the specified number of days. Set to 0 to delete all. Leave empty to never delete from iCloud."
+                  >
+                    <NumberInput
+                      value={formData.keep_icloud_recent_days ?? ""}
+                      onChange={(valueString) =>
+                        update(
+                          "keep_icloud_recent_days",
+                          valueString === "" ? null : parseInt(valueString)
+                        )
+                      }
+                      min={0}
+                      maxW="100px"
+                    >
+                      <NumberInputField />
+                    </NumberInput>
+                  </FieldWithInfo>
+                </FormControl>
+              </VStack>
+            </Box>
+
+            {/* Server Options */}
+            <Box>
+              <Text fontSize="lg" fontWeight="semibold" mb={4}>
+                Server Options
+              </Text>
+              <VStack spacing={4} align="stretch">
+                <FormControl>
+                  <FieldWithInfo
+                    label="Dry Run"
+                    info="Run the download process without actually downloading or modifying any files."
+                  >
+                    <Switch
+                      isChecked={formData.dry_run}
+                      onChange={(e) => update("dry_run", e.target.checked)}
+                    />
+                  </FieldWithInfo>
+                </FormControl>
+
+                <FormControl>
+                  <FieldWithInfo
+                    label="Log Level"
+                    info="The level of detail for the download log messages."
+                  >
+                    <Select
+                      value={formData.log_level}
+                      onChange={(e) =>
+                        update(
+                          "log_level",
+                          e.target.value as "debug" | "info" | "error"
+                        )
+                      }
+                      maxW="200px"
+                    >
+                      <option value="debug">Debug</option>
+                      <option value="info">Info</option>
+                      <option value="error">Error</option>
+                    </Select>
+                  </FieldWithInfo>
+                </FormControl>
+              </VStack>
+            </Box>
+          </VStack>
+        </ModalBody>
+        <ModalFooter>
+          <Button
+            bg="black"
+            color="white"
+            _hover={{ bg: "gray.800" }}
+            mr={3}
+            borderRadius="xl"
+            fontFamily="Inter, sans-serif"
+            onClick={handleSave}
+            isLoading={upsert.isPending || setPolicyPassword.isPending}
+          >
+            Save
+          </Button>
+          <Button
+            onClick={onClose}
+            borderRadius="xl"
+            fontFamily="Inter, sans-serif"
+            variant="ghost"
+            _hover={{ bg: "gray.100" }}
+          >
             Cancel
           </Button>
-          <Button type="submit" disabled={upsert.isPending || setPassword.isPending}>
-            {upsert.isPending || setPassword.isPending ? "Saving…" : "Save"}
-          </Button>
-        </div>
-      </form>
+        </ModalFooter>
+      </ModalContent>
     </Modal>
   );
-}
-
-function Field({ label, error, children }: { label: string; error?: string | null; children: ReactNode }) {
-  return (
-    <label className="block space-y-1">
-      <span className="text-sm text-slate-700">{label}</span>
-      {children}
-      {error && <span className="text-xs text-danger">{error}</span>}
-    </label>
-  );
-}
-
-function IcloudpdOptions({
-  value,
-  onChange,
-}: {
-  value: Record<string, unknown>;
-  onChange: (next: Record<string, unknown>) => void;
-}) {
-  const [text, setText] = useState(JSON.stringify(value, null, 2));
-  const [err, setErr] = useState<string | null>(null);
-
-  const blur = () => {
-    try {
-      onChange(JSON.parse(text));
-      setErr(null);
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "Invalid JSON");
-    }
-  };
-
-  return (
-    <div>
-      <textarea
-        className="w-full font-mono text-xs border rounded p-2 h-32"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={blur}
-      />
-      {err && <div className="text-xs text-danger">{err}</div>}
-    </div>
-  );
-}
-
-function AwsFields({
-  value,
-  onChange,
-}: {
-  value: Policy["aws"];
-  onChange: (next: Policy["aws"]) => void;
-}) {
-  const on = value !== null;
-  return (
-    <div className="space-y-2">
-      <label className="inline-flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={on}
-          onChange={(e) =>
-            onChange(
-              e.target.checked
-                ? { bucket: "", prefix: "", region: "", access_key_id: "", secret_access_key: "" }
-                : null
-            )
-          }
-        />
-        Enable S3 sync
-      </label>
-      {on && value && (
-        <div className="grid grid-cols-2 gap-2">
-          <Input placeholder="bucket" value={value.bucket} onChange={(e) => onChange({ ...value, bucket: e.target.value })} />
-          <Input placeholder="prefix" value={value.prefix ?? ""} onChange={(e) => onChange({ ...value, prefix: e.target.value })} />
-          <Input placeholder="region" value={value.region ?? ""} onChange={(e) => onChange({ ...value, region: e.target.value })} />
-          <Input placeholder="access key id" value={value.access_key_id ?? ""} onChange={(e) => onChange({ ...value, access_key_id: e.target.value })} />
-          <Input placeholder="secret access key" type="password" value={value.secret_access_key ?? ""} onChange={(e) => onChange({ ...value, secret_access_key: e.target.value })} />
-        </div>
-      )}
-    </div>
-  );
-}
-
-function stripView(view: PolicyView): Policy {
-  const rest: Policy = {
-    name: view.name,
-    username: view.username,
-    directory: view.directory,
-    cron: view.cron,
-    enabled: view.enabled,
-    timezone: view.timezone ?? null,
-    icloudpd: view.icloudpd,
-    notifications: view.notifications,
-    aws: view.aws,
-  };
-  return rest;
 }

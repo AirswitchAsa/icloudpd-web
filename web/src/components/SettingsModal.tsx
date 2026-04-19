@@ -1,122 +1,89 @@
-import { useEffect, useState, type FormEvent } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Modal } from "@/components/ui/modal";
-import { ApiError } from "@/api/client";
-import { useSettings, useUpdateSettings } from "@/hooks/useSettings";
-import { pushError, pushSuccess } from "@/store/toastStore";
-import type { AppSettings } from "@/types/api";
+import { useState } from "react";
+import {
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  Button,
+  Box,
+  Flex,
+  VStack,
+  Text,
+} from "@chakra-ui/react";
+import { GeneralSettings } from "./settings/GeneralSettings";
+import { IntegrationSettings } from "./settings/IntegrationSettings";
+import { UserSettings } from "./settings/UserSettings";
 
-interface Props {
-  open: boolean;
+interface SettingsModalProps {
+  isOpen: boolean;
   onClose: () => void;
 }
 
-export function SettingsModal({ open, onClose }: Props) {
-  const query = useSettings();
-  const update = useUpdateSettings();
-  const [form, setForm] = useState<AppSettings | null>(null);
+type TabType = "general" | "integration" | "user";
 
-  useEffect(() => {
-    if (!open) {
-      setForm(null);
-      return;
-    }
-    if (query.data && form === null) {
-      setForm(query.data);
-    }
-  }, [open, query.data, form]);
+interface TabConfig {
+  id: TabType;
+  label: string;
+}
 
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!form) return;
-    try {
-      await update.mutateAsync(form);
-      pushSuccess("Settings saved");
-      onClose();
-    } catch (err) {
-      if (err instanceof ApiError) pushError(err.message, err.errorId);
-    }
-  };
+const TABS: TabConfig[] = [
+  { id: "general", label: "General" },
+  { id: "integration", label: "Notifications" },
+  { id: "user", label: "User" },
+];
+
+export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
+  const [activeTab, setActiveTab] = useState<TabType>("general");
 
   return (
-    <Modal open={open} onClose={onClose} title="Settings" widthClass="max-w-lg">
-      {!form ? (
-        <div className="text-sm text-slate-500">Loading…</div>
-      ) : (
-      <form onSubmit={submit} className="space-y-4" noValidate>
-        <fieldset className="space-y-2">
-          <legend className="text-sm font-medium">Apprise URLs</legend>
-          {form.apprise.urls.map((url, i) => (
-            <div key={i} className="flex gap-2">
-              <Input
-                value={url}
-                onChange={(e) => {
-                  const urls = [...form.apprise.urls];
-                  urls[i] = e.target.value;
-                  setForm({ ...form, apprise: { ...form.apprise, urls } });
-                }}
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() =>
-                  setForm({
-                    ...form,
-                    apprise: {
-                      ...form.apprise,
-                      urls: form.apprise.urls.filter((_, j) => j !== i),
-                    },
-                  })
-                }
-              >Remove</Button>
-            </div>
-          ))}
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() =>
-              setForm({ ...form, apprise: { ...form.apprise, urls: [...form.apprise.urls, ""] } })
-            }
-          >Add URL</Button>
-          <div className="space-y-1 pt-2">
-            {(["on_start", "on_success", "on_failure"] as const).map((k) => (
-              <label key={k} className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={form.apprise[k]}
-                  onChange={(e) =>
-                    setForm({ ...form, apprise: { ...form.apprise, [k]: e.target.checked } })
-                  }
-                />
-                Notify {k.replace("on_", "")}
-              </label>
-            ))}
-          </div>
-        </fieldset>
+    <Modal isOpen={isOpen} onClose={onClose} size="4xl" isCentered>
+      <ModalOverlay backdropFilter="blur(4px)" />
+      <ModalContent borderRadius="xl">
+        <ModalHeader borderBottomWidth="1px">Settings</ModalHeader>
+        <ModalBody p={0}>
+          <Flex h="600px">
+            <Box w="240px" borderRightWidth="1px" p={6}>
+              <VStack spacing={2} align="stretch">
+                {TABS.map((tab) => (
+                  <Box
+                    key={tab.id}
+                    py={2}
+                    px={4}
+                    cursor="pointer"
+                    borderRadius="md"
+                    bg={activeTab === tab.id ? "gray.100" : "transparent"}
+                    _hover={{
+                      bg: activeTab === tab.id ? "gray.100" : "gray.50",
+                    }}
+                    onClick={() => setActiveTab(tab.id)}
+                  >
+                    <Text
+                      fontSize="sm"
+                      fontWeight={activeTab === tab.id ? "semibold" : "normal"}
+                      color={activeTab === tab.id ? "black" : "gray.600"}
+                    >
+                      {tab.label}
+                    </Text>
+                  </Box>
+                ))}
+              </VStack>
+            </Box>
 
-        <label className="block space-y-1">
-          <span className="text-sm text-slate-700">Run log retention (count per policy)</span>
-          <Input
-            type="text"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            value={String(form.retention_runs)}
-            onChange={(e) => {
-              const n = Number(e.target.value);
-              setForm({ ...form, retention_runs: e.target.value === "" || Number.isNaN(n) ? 0 : n });
-            }}
-          />
-        </label>
-
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button type="submit" disabled={update.isPending}>
-            {update.isPending ? "Saving…" : "Save"}
+            <Box flex={1} p={8} overflowY="auto">
+              {activeTab === "general" && <GeneralSettings />}
+              {activeTab === "integration" && <IntegrationSettings />}
+              {activeTab === "user" && <UserSettings />}
+            </Box>
+          </Flex>
+        </ModalBody>
+        <ModalFooter borderTopWidth="1px">
+          <Button variant="ghost" onClick={onClose}>
+            Close
           </Button>
-        </div>
-      </form>
-      )}
+        </ModalFooter>
+      </ModalContent>
     </Modal>
   );
 }

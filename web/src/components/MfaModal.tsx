@@ -1,64 +1,110 @@
-import { useState, type FormEvent } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Modal } from "@/components/ui/modal";
+import { useState } from "react";
+import {
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  Button,
+  Input,
+  FormControl,
+  FormLabel,
+  Text,
+  VStack,
+  Flex,
+} from "@chakra-ui/react";
 import { ApiError } from "@/api/client";
 import { mfaApi } from "@/api/mfa";
 import { pushError, pushSuccess } from "@/store/toastStore";
 
-interface Props {
-  open: boolean;
-  policyName: string;
+interface MFAModalProps {
+  isOpen: boolean;
   onClose: () => void;
+  policyName: string;
 }
 
-export function MfaModal({ open, policyName, onClose }: Props) {
+export function MFAModal({ isOpen, onClose, policyName }: MFAModalProps) {
   const [code, setCode] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [error, setError] = useState<string | undefined>();
 
-  const onSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    setErr(null);
+  const handleSubmit = async () => {
+    setIsVerifying(true);
+    setError(undefined);
     try {
-      await mfaApi.submit(policyName, code.trim());
+      await mfaApi.submit(policyName, code);
       pushSuccess("MFA code submitted");
       setCode("");
       onClose();
-    } catch (e2) {
-      if (e2 instanceof ApiError) {
-        setErr(e2.message);
-        pushError(e2.message, e2.errorId);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+        pushError(err.message, err.errorId);
+      } else {
+        setError("Failed to submit MFA code");
       }
     } finally {
-      setBusy(false);
+      setIsVerifying(false);
     }
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Two-factor code" widthClass="max-w-sm">
-      <form onSubmit={onSubmit} className="space-y-3">
-        <p className="text-sm text-slate-700">
-          Enter the 6-digit code from your Apple device for <strong>{policyName}</strong>.
-        </p>
-        <Input
-          autoFocus
-          inputMode="numeric"
-          pattern="[0-9]{6}"
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          invalid={err !== null}
-          placeholder="123456"
-        />
-        {err && <div className="text-xs text-danger">{err}</div>}
-        <div className="flex justify-end gap-2">
-          <Button variant="secondary" type="button" onClick={onClose}>Cancel</Button>
-          <Button type="submit" disabled={busy || code.length !== 6}>
-            {busy ? "Submitting…" : "Submit"}
+    <Modal isOpen={isOpen} onClose={onClose} isCentered>
+      <ModalOverlay backdropFilter="blur(4px)" />
+      <ModalContent borderRadius="xl">
+        <ModalHeader>Two-Factor Authentication</ModalHeader>
+        <ModalBody>
+          <VStack spacing={4} align="stretch">
+            <FormControl>
+              <FormLabel>
+                {isVerifying ? (
+                  <Flex gap={2} align="center">
+                    <Text>Verifying...</Text>
+                  </Flex>
+                ) : (
+                  `Verification code is sent to your trusted devices`
+                )}
+              </FormLabel>
+              <Input
+                type="text"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && code) {
+                    handleSubmit();
+                  }
+                }}
+                placeholder="Enter code"
+                isDisabled={isVerifying}
+              />
+            </FormControl>
+            {error && (
+              <Text color="red.500" fontSize="sm">
+                {error}
+              </Text>
+            )}
+          </VStack>
+        </ModalBody>
+        <ModalFooter>
+          <Button
+            variant="ghost"
+            mr={3}
+            onClick={onClose}
+            isDisabled={isVerifying}
+          >
+            Cancel
           </Button>
-        </div>
-      </form>
+          <Button
+            colorScheme="blue"
+            onClick={handleSubmit}
+            isDisabled={!code || isVerifying}
+            isLoading={isVerifying}
+          >
+            Submit
+          </Button>
+        </ModalFooter>
+      </ModalContent>
     </Modal>
   );
 }

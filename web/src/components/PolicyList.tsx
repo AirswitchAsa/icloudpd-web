@@ -1,65 +1,91 @@
-import { Button } from "@/components/ui/button";
+import { Box, Flex, Text, VStack } from "@chakra-ui/react";
 import type { PolicyView } from "@/types/api";
 import { PolicyRow } from "./PolicyRow";
+import { FilterMenu, SortMenu } from "./PolicyFilters";
+import { useState, useEffect } from "react";
 
-interface Props {
+interface PolicyListProps {
   policies: PolicyView[];
-  onCreate: () => void;
-  onRun: (p: PolicyView) => void;
-  onStop: (p: PolicyView) => void;
-  onEdit: (p: PolicyView) => void;
-  onDelete: (p: PolicyView) => void;
-  onHistory: (p: PolicyView) => void;
-  onOpenActiveRun: (p: PolicyView) => void;
 }
 
-export function PolicyList({
-  policies,
-  onCreate,
-  onRun,
-  onStop,
-  onEdit,
-  onDelete,
-  onHistory,
-  onOpenActiveRun,
-}: Props) {
+export const PolicyList = ({ policies }: PolicyListProps) => {
+  const [filteredPolicies, setFilteredPolicies] =
+    useState<PolicyView[]>(policies);
+  const [selectedUsernames, setSelectedUsernames] = useState<string[]>(["All"]);
+  const [sortConfig, setSortConfig] = useState<{
+    field: "none" | "name" | "username" | "status";
+    direction: "asc" | "desc";
+  }>({ field: "none", direction: "asc" });
+
+  const uniqueUsernames = Array.from(new Set(policies.map((p) => p.username)));
+
+  const getStatusOrder = (policy: PolicyView) => {
+    if (policy.is_running) return 1;
+    const status = policy.last_run?.status;
+    if (status === "failed") return 0;
+    if (status === "awaiting_mfa") return 1;
+    if (status === "stopped") return 2;
+    if (status === "success") return 3;
+    return 4;
+  };
+
+  useEffect(() => {
+    let result = [...policies];
+
+    if (!selectedUsernames.includes("All")) {
+      result = result.filter((p) => selectedUsernames.includes(p.username));
+    }
+
+    if (sortConfig.field !== "none") {
+      result.sort((a, b) => {
+        let comparison = 0;
+        switch (sortConfig.field) {
+          case "name":
+            comparison = a.name.localeCompare(b.name);
+            break;
+          case "username":
+            comparison = a.username.localeCompare(b.username);
+            break;
+          case "status":
+            comparison = getStatusOrder(a) - getStatusOrder(b);
+            break;
+        }
+        return sortConfig.direction === "asc" ? comparison : -comparison;
+      });
+    }
+
+    setFilteredPolicies(result);
+  }, [policies, selectedUsernames, sortConfig]);
+
   return (
-    <section className="bg-white rounded-lg shadow-sm">
-      <header className="flex items-center justify-between p-4 border-b">
-        <h2 className="text-lg font-semibold">Policies</h2>
-        <Button onClick={onCreate}>New policy</Button>
-      </header>
-      {policies.length === 0 ? (
-        <div className="p-6 text-center text-slate-500">
-          No policies yet. Click <strong>New policy</strong> to get started.
-        </div>
+    <VStack spacing={2} width="100%" align="stretch">
+      <Flex justify="flex-end" gap={2}>
+        <Flex gap={2}>
+          <FilterMenu
+            selectedUsernames={selectedUsernames}
+            setSelectedUsernames={setSelectedUsernames}
+            uniqueUsernames={uniqueUsernames}
+          />
+          <SortMenu setSortConfig={setSortConfig} />
+        </Flex>
+      </Flex>
+
+      {filteredPolicies.length > 0 ? (
+        filteredPolicies.map((policy) => (
+          <PolicyRow key={policy.name} policy={policy} />
+        ))
       ) : (
-        <table className="w-full">
-          <thead className="text-left text-xs uppercase text-slate-500">
-            <tr>
-              <th className="px-3 py-2">Name</th>
-              <th className="px-3 py-2">Status</th>
-              <th className="px-3 py-2">Next run</th>
-              <th className="px-3 py-2">Last run</th>
-              <th className="px-3 py-2 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {policies.map((p) => (
-              <PolicyRow
-                key={p.name}
-                policy={p}
-                onRun={() => onRun(p)}
-                onStop={() => onStop(p)}
-                onEdit={() => onEdit(p)}
-                onDelete={() => onDelete(p)}
-                onHistory={() => onHistory(p)}
-                onOpenActiveRun={() => onOpenActiveRun(p)}
-              />
-            ))}
-          </tbody>
-        </table>
+        <Box height="100px" display="grid" placeItems="center">
+          <Text
+            color="gray.500"
+            textAlign="center"
+            fontFamily="Inter, sans-serif"
+            fontSize="14px"
+          >
+            Create a new policy to get started.
+          </Text>
+        </Box>
       )}
-    </section>
+    </VStack>
   );
-}
+};
