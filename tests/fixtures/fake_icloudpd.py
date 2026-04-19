@@ -16,13 +16,6 @@ import time
 
 
 def main() -> int:
-    # Skip --config-file argument if provided (used by the test harness)
-    if "--config-file" in sys.argv:
-        idx = sys.argv.index("--config-file")
-        sys.argv.pop(idx)  # remove flag
-        if idx < len(sys.argv):
-            sys.argv.pop(idx)  # remove value
-
     mode = os.environ.get("FAKE_ICLOUDPD_MODE", "success")
     total = int(os.environ.get("FAKE_ICLOUDPD_TOTAL", "5"))
     sleep = float(os.environ.get("FAKE_ICLOUDPD_SLEEP", "0.01"))
