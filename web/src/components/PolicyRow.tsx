@@ -100,10 +100,34 @@ export const PolicyRow = ({ policy }: PolicyRowProps) => {
     return { progressPct: pct, downloaded: down, total: tot };
   }, [runState?.downloaded, runState?.total, policy.last_run?.downloaded, policy.last_run?.total]);
 
-  const logText = useMemo(() => {
+  const liveLogText = useMemo(() => {
     if (!runState || runState.logs.length === 0) return "";
     return runState.logs.map((l) => l.line).join("\n");
   }, [runState]);
+
+  // When the row is expanded and we have no live logs, fetch the persisted log
+  // for the last completed run.
+  const [historicalLog, setHistoricalLog] = useState<string>("");
+  useEffect(() => {
+    const runId = policy.last_run?.run_id;
+    if (!isOpen || liveLogText || !runId || policy.is_running) {
+      return;
+    }
+    let aborted = false;
+    fetch(runsApi.logUrl(runId), { credentials: "include" })
+      .then((r) => (r.ok ? r.text() : ""))
+      .then((text) => {
+        if (!aborted) setHistoricalLog(text);
+      })
+      .catch(() => {
+        /* silent; row just shows "No logs available" */
+      });
+    return () => {
+      aborted = true;
+    };
+  }, [isOpen, liveLogText, policy.last_run?.run_id, policy.is_running]);
+
+  const logText = liveLogText || historicalLog;
 
   const handleRun = async (e: React.MouseEvent) => {
     e.stopPropagation();

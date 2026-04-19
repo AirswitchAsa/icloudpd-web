@@ -1,8 +1,14 @@
+import { lazy, Suspense } from "react";
 import type { PolicyView } from "@/types/api";
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
 import { InterruptConfirmationDialog } from "./InterruptConfirmationDialog";
-import { MFAModal } from "./MFAModal";
-import { EditPolicyModal } from "./EditPolicyModal";
+
+const MFAModal = lazy(() =>
+  import("./MfaModal").then((m) => ({ default: m.MFAModal }))
+);
+const EditPolicyModal = lazy(() =>
+  import("./EditPolicyModal").then((m) => ({ default: m.EditPolicyModal }))
+);
 
 interface PolicyDialogsProps {
   policy: PolicyView;
@@ -43,22 +49,24 @@ export function PolicyDialogs({
         />
       )}
 
-      {dialogs.mfa.isOpen && (
-        <MFAModal
-          isOpen={dialogs.mfa.isOpen}
-          onClose={dialogs.mfa.onClose}
-          policyName={policy.name}
-        />
-      )}
+      <Suspense fallback={null}>
+        {dialogs.mfa.isOpen && (
+          <MFAModal
+            isOpen={dialogs.mfa.isOpen}
+            onClose={dialogs.mfa.onClose}
+            policyName={policy.name}
+          />
+        )}
 
-      {dialogs.edit.isOpen && (
-        <EditPolicyModal
-          isOpen={dialogs.edit.isOpen}
-          onClose={dialogs.edit.onClose}
-          isEditing={true}
-          policy={policy}
-        />
-      )}
+        {dialogs.edit.isOpen && (
+          <EditPolicyModal
+            isOpen={dialogs.edit.isOpen}
+            onClose={dialogs.edit.onClose}
+            isEditing={true}
+            policy={policy}
+          />
+        )}
+      </Suspense>
     </>
   );
 }

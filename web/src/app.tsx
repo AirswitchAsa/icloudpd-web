@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import {
   Box,
   Button,
@@ -8,12 +9,17 @@ import {
 import { Banner } from "./components/Banner";
 import { Panel } from "./components/Panel";
 import { PolicyList } from "./components/PolicyList";
-import { EditPolicyModal } from "./components/EditPolicyModal";
-import { SettingsModal } from "./components/SettingsModal";
 import { ServerAuthenticationModal } from "./components/ServerAuthenticationModal";
 import { ToastBridge } from "./components/ToastBridge";
 import { useAuthStatus, useLogout } from "./hooks/useAuth";
 import { usePolicies, usePoliciesLiveUpdate } from "./hooks/usePolicies";
+
+const EditPolicyModal = lazy(() =>
+  import("./components/EditPolicyModal").then((m) => ({ default: m.EditPolicyModal }))
+);
+const SettingsModal = lazy(() =>
+  import("./components/SettingsModal").then((m) => ({ default: m.SettingsModal }))
+);
 
 export function App() {
   const { data: auth, isLoading: authLoading } = useAuthStatus();
@@ -79,17 +85,19 @@ export function App() {
           </Box>
         </VStack>
 
-        {isEditOpen && (
-          <EditPolicyModal
-            isOpen
-            onClose={onEditClose}
-            isEditing={false}
-            policy={undefined}
-          />
-        )}
-        {isSettingsOpen && (
-          <SettingsModal isOpen onClose={onSettingsClose} />
-        )}
+        <Suspense fallback={null}>
+          {isEditOpen && (
+            <EditPolicyModal
+              isOpen
+              onClose={onEditClose}
+              isEditing={false}
+              policy={undefined}
+            />
+          )}
+          {isSettingsOpen && (
+            <SettingsModal isOpen onClose={onSettingsClose} />
+          )}
+        </Suspense>
       </Container>
     </Box>
   );
