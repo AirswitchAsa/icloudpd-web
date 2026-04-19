@@ -99,6 +99,9 @@ class Run:
             max_replayed = replay[-1].seq if replay else (since or 0)
             for ev in replay:
                 yield ev
+            # If the run already finished before we subscribed, no new events are coming.
+            if self._done.is_set():
+                return
             while True:
                 ev = await q.get()
                 if ev is None:

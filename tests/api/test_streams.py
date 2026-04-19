@@ -26,22 +26,22 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
         session_secret="s" * 32,
         icloudpd_argv=_argv,
     )
-    c = TestClient(app)
-    c.post("/auth/login", json={"password": "pw"})
-    c.put(
-        "/policies/p",
-        json={
-            "name": "p",
-            "username": "u@icloud.com",
-            "directory": "/tmp/p",
-            "cron": "0 * * * *",
-            "enabled": True,
-            "icloudpd": {},
-            "notifications": {"on_start": False, "on_success": True, "on_failure": True},
-            "aws": None,
-        },
-    )
-    return c
+    with TestClient(app) as c:
+        c.post("/auth/login", json={"password": "pw"})
+        c.put(
+            "/policies/p",
+            json={
+                "name": "p",
+                "username": "u@icloud.com",
+                "directory": "/tmp/p",
+                "cron": "0 * * * *",
+                "enabled": True,
+                "icloudpd": {},
+                "notifications": {"on_start": False, "on_success": True, "on_failure": True},
+                "aws": None,
+            },
+        )
+        yield c
 
 
 def _parse_sse(text: str) -> list[dict]:
