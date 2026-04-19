@@ -82,3 +82,45 @@ def test_wf3_failure_path(
         assert mine.get("status") == "failed"
         log = c.get(f"/runs/{run_id}/log").text
         assert "something went wrong" in log
+
+
+def test_wf4_interrupt_midrun(
+    app_factory: Callable[..., FastAPI], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("FAKE_ICLOUDPD_MODE", "slow")
+    monkeypatch.setenv("FAKE_ICLOUDPD_TOTAL", "100")
+    monkeypatch.setenv("FAKE_ICLOUDPD_SLEEP", "0.2")
+    app = app_factory()
+    with TestClient(app) as c:
+        c.post("/auth/login", json={"password": "pw"})
+        c.put(
+            "/policies/p",
+            json={
+                "name": "p",
+                "username": "u@icloud.com",
+                "directory": "/tmp/p",
+                "cron": "0 * * * *",
+                "enabled": True,
+                "timezone": None,
+                "icloudpd": {},
+                "notifications": {"on_start": False, "on_success": True, "on_failure": True},
+                "aws": None,
+            },
+        )
+        run_id = c.post("/policies/p/runs").json()["run_id"]
+
+        # Give ~400ms to start and emit at least one progress line
+        time.sleep(0.4)
+
+        r = c.delete(f"/runs/{run_id}")
+        assert r.status_code in (200, 204)
+
+        # Wait for runner to observe termination
+        for _ in range(100):
+            if not c.get("/policies/p").json()["is_running"]:
+                break
+            time.sleep(0.05)
+
+        runs = c.get("/policies/p/runs").json()
+        mine = next(r for r in runs if r["run_id"] == run_id)
+        assert mine.get("status") in ("stopped", "failed")
