@@ -1,4 +1,5 @@
 import type React from "react";
+import { useState } from "react";
 import {
   FormControl,
   Input,
@@ -16,6 +17,9 @@ import {
   Text,
   Spacer,
   Switch,
+  VStack,
+  Alert,
+  AlertIcon,
 } from "@chakra-ui/react";
 import { ChevronDownIcon, ChevronUpIcon } from "@chakra-ui/icons";
 
@@ -95,6 +99,84 @@ export function AlbumField({ value, onChange }: AlbumFieldProps) {
           placeholder="Enter album name"
         />
       </FieldWithInfo>
+    </FormControl>
+  );
+}
+
+interface ChipInputFieldProps {
+  label: string;
+  info?: string;
+  value: string[];
+  onChange: (value: string[]) => void;
+  placeholder?: string;
+}
+
+export function ChipInputField({
+  label,
+  info,
+  value,
+  onChange,
+  placeholder,
+}: ChipInputFieldProps) {
+  const [inputValue, setInputValue] = useState("");
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      const trimmed = inputValue.trim().replace(/,$/, "");
+      if (trimmed && !value.includes(trimmed)) {
+        onChange([...value, trimmed]);
+      }
+      setInputValue("");
+    } else if (e.key === "Backspace" && inputValue === "" && value.length > 0) {
+      onChange(value.slice(0, -1));
+    }
+  };
+
+  const handleRemove = (chip: string) => {
+    onChange(value.filter((v) => v !== chip));
+  };
+
+  return (
+    <FormControl>
+      <FieldWithInfo label={label} info={info}>
+        <Box w="100%" />
+      </FieldWithInfo>
+      <Box
+        borderWidth="1px"
+        borderRadius="md"
+        p={2}
+        minH="40px"
+        cursor="text"
+        onClick={() => {
+          const el = document.getElementById(`chip-input-${label}`);
+          if (el) el.focus();
+        }}
+      >
+        <Wrap spacing={1} align="center">
+          {value.map((chip) => (
+            <WrapItem key={chip}>
+              <Tag size="sm" colorScheme="blue" borderRadius="full">
+                <TagLabel>{chip}</TagLabel>
+                <TagCloseButton onClick={() => handleRemove(chip)} />
+              </Tag>
+            </WrapItem>
+          ))}
+          <WrapItem>
+            <Input
+              id={`chip-input-${label}`}
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              variant="unstyled"
+              size="sm"
+              placeholder={value.length === 0 ? placeholder : ""}
+              minW="120px"
+              w="auto"
+            />
+          </WrapItem>
+        </Wrap>
+      </Box>
     </FormControl>
   );
 }
@@ -179,5 +261,64 @@ export function DownloadSizesField({
         </Box>
       </Collapse>
     </FormControl>
+  );
+}
+
+export interface PostDownloadFilterValues {
+  filter_file_suffixes: string[];
+  filter_match_patterns: string[];
+  filter_device_makes: string[];
+  filter_device_models: string[];
+}
+
+interface PostDownloadFiltersSectionProps {
+  values: PostDownloadFilterValues;
+  onChange: <K extends keyof PostDownloadFilterValues>(
+    key: K,
+    value: PostDownloadFilterValues[K]
+  ) => void;
+}
+
+export function PostDownloadFiltersSection({
+  values,
+  onChange,
+}: PostDownloadFiltersSectionProps) {
+  return (
+    <VStack spacing={4} align="stretch">
+      <Alert status="warning" borderRadius="md" fontSize="sm">
+        <AlertIcon />
+        These filters run <strong>&nbsp;AFTER&nbsp;</strong> icloudpd finishes.
+        Files are downloaded first, then deleted if they don&apos;t match.
+        Bandwidth is <strong>&nbsp;NOT&nbsp;</strong> saved.
+      </Alert>
+      <ChipInputField
+        label="File Extensions"
+        info="Keep only files with these extensions (case-insensitive). E.g. .heic, .jpg — press Enter or comma to add."
+        value={values.filter_file_suffixes}
+        onChange={(v) => onChange("filter_file_suffixes", v)}
+        placeholder=".heic, .jpg ..."
+      />
+      <ChipInputField
+        label="Filename Patterns (regex)"
+        info="Keep files whose basename matches any of these regular expressions. Press Enter or comma to add."
+        value={values.filter_match_patterns}
+        onChange={(v) => onChange("filter_match_patterns", v)}
+        placeholder="^IMG_, \.RAW$ ..."
+      />
+      <ChipInputField
+        label="Device Makes (EXIF)"
+        info="Keep only files with this camera make in EXIF metadata (case-insensitive). E.g. Apple, Samsung. Non-image files (videos) are not filtered by make. Press Enter or comma to add."
+        value={values.filter_device_makes}
+        onChange={(v) => onChange("filter_device_makes", v)}
+        placeholder="Apple, Samsung ..."
+      />
+      <ChipInputField
+        label="Device Models (EXIF)"
+        info="Keep only files with this camera model in EXIF metadata (case-insensitive). E.g. iPhone 15 Pro. Non-image files (videos) are not filtered by model. Press Enter or comma to add."
+        value={values.filter_device_models}
+        onChange={(v) => onChange("filter_device_models", v)}
+        placeholder="iPhone 15 Pro ..."
+      />
+    </VStack>
   );
 }

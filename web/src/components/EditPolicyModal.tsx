@@ -40,6 +40,7 @@ import {
   AlbumField,
   DownloadSizesField,
   IntegrationField,
+  PostDownloadFiltersSection,
 } from "@/components/EditModalFields";
 
 interface EditPolicyModalProps {
@@ -630,6 +631,22 @@ export function EditPolicyModal({
                   </FieldWithInfo>
                 </FormControl>
               </VStack>
+            </Box>
+
+            {/* Post-download Filters */}
+            <Box>
+              <Text fontSize="lg" fontWeight="semibold" mb={4}>
+                Post-download Filters
+              </Text>
+              <PostDownloadFiltersSection
+                values={{
+                  filter_file_suffixes: formData.filter_file_suffixes,
+                  filter_match_patterns: formData.filter_match_patterns,
+                  filter_device_makes: formData.filter_device_makes,
+                  filter_device_models: formData.filter_device_models,
+                }}
+                onChange={(key, value) => update(key, value)}
+              />
             </Box>
 
             {/* Server Options */}

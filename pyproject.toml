@@ -12,6 +12,7 @@ dependencies = [
   "croniter>=2.0",
   "apprise>=1.8",
   "icloudpd==1.32.2",
+  "Pillow>=10.0",
   "python-multipart>=0.0.9",
   "itsdangerous>=2.2",
   "tomli-w>=1.0",

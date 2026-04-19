@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import time
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from fastapi import FastAPI
@@ -219,7 +219,7 @@ def test_wf7_scheduler_cron_tick(
         set_policy_password(c)
 
         scheduler = app.state.scheduler
-        scheduler.tick(datetime.now(timezone.utc))
+        scheduler.tick(datetime.now(UTC))
 
         # TestClient owns the app's event loop via an anyio blocking portal.
         # Use c.portal.call() to run _drain_pending on the *same* loop so that
@@ -232,7 +232,7 @@ def test_wf7_scheduler_cron_tick(
         assert runs[0]["status"] == "success"
 
         # Second tick in same minute must not re-enqueue
-        scheduler.tick(datetime.now(timezone.utc))
+        scheduler.tick(datetime.now(UTC))
         assert scheduler._pending == []
 
 
@@ -322,3 +322,61 @@ def test_wf9_aws_sync_invoked_on_success(
     cfg, src = invocations[0]
     assert cfg.bucket == "b"
     assert str(src) == "/tmp/p"
+
+
+def test_wf10_filter_lines_in_log(
+    app_factory: Callable[..., FastAPI],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: pytest.TempPathFactory,
+) -> None:
+    """WF-10: Policy with filters → filter keep/delete lines appear in run log."""
+    import sys
+    from pathlib import Path
+
+    target_dir = Path(str(tmp_path)) / "photos"
+    target_dir.mkdir()
+
+    fake_bin = Path(__file__).resolve().parent.parent / "fixtures" / "fake_icloudpd.py"
+
+    def fake_argv(argv_tail: list[str]) -> list[str]:
+        return [sys.executable, str(fake_bin), *argv_tail]
+
+    monkeypatch.setenv("FAKE_ICLOUDPD_MODE", "filter_demo")
+    monkeypatch.setenv("FAKE_ICLOUDPD_DIR", str(target_dir))
+
+    app = app_factory(icloudpd_argv=fake_argv)
+    with TestClient(app) as c:
+        c.post("/auth/login", json={"password": "pw"})
+        c.put(
+            "/policies/p",
+            json={
+                "name": "p",
+                "username": "u@icloud.com",
+                "directory": str(target_dir),
+                "cron": "0 * * * *",
+                "enabled": True,
+                "timezone": None,
+                "icloudpd": {},
+                "notifications": {"on_start": False, "on_success": True, "on_failure": True},
+                "aws": None,
+                "filters": {
+                    "file_suffixes": [".heic"],
+                    "match_patterns": [],
+                    "device_makes": ["Apple"],
+                    "device_models": [],
+                },
+            },
+        )
+        set_policy_password(c)
+        run_id = c.post("/policies/p/runs").json()["run_id"]
+        wait_until_idle(c)
+
+        log = c.get(f"/runs/{run_id}/log").text
+        assert "Filter: kept" in log, f"Expected 'Filter: kept' in log, got:\n{log}"
+        assert "Filter: deleted" in log, f"Expected 'Filter: deleted' in log, got:\n{log}"
+        assert "Filter summary:" in log, f"Expected 'Filter summary:' in log, got:\n{log}"
+
+    # Confirm the apple heic is kept and others deleted.
+    assert (target_dir / "img_apple.heic").exists()
+    assert not (target_dir / "img_samsung.jpg").exists()
+    assert not (target_dir / "other.png").exists()

@@ -17,6 +17,12 @@ const baseView: PolicyView = {
   icloudpd: {},
   notifications: { on_start: false, on_success: true, on_failure: true },
   aws: null,
+  filters: {
+    file_suffixes: [],
+    match_patterns: [],
+    device_makes: [],
+    device_models: [],
+  },
   has_password: false,
   is_running: false,
   last_run: null,
@@ -176,5 +182,46 @@ describe("toBackendPolicy", () => {
     expect(out.name).toBe(view.name);
     expect(out.cron).toBe(view.cron);
     expect(out.icloudpd).toMatchObject(view.icloudpd);
+  });
+
+  it("roundtrip: filters block preserved through fromPolicyView → toBackendPolicy", () => {
+    const view: PolicyView = {
+      ...baseView,
+      filters: {
+        file_suffixes: [".heic", ".jpg"],
+        match_patterns: ["^IMG_"],
+        device_makes: ["Apple"],
+        device_models: ["iPhone 15 Pro"],
+      },
+    };
+    const out = toBackendPolicy(fromPolicyView(view));
+    expect(out.filters).toMatchObject({
+      file_suffixes: [".heic", ".jpg"],
+      match_patterns: ["^IMG_"],
+      device_makes: ["Apple"],
+      device_models: ["iPhone 15 Pro"],
+    });
+    // Filters must NOT appear in icloudpd block.
+    expect("filter_file_suffixes" in out.icloudpd).toBe(false);
+    expect("filter_match_patterns" in out.icloudpd).toBe(false);
+    expect("filter_device_makes" in out.icloudpd).toBe(false);
+    expect("filter_device_models" in out.icloudpd).toBe(false);
+    expect("filters" in out.icloudpd).toBe(false);
+  });
+
+  it("empty filters round-trip stays empty", () => {
+    const form: FormPolicy = {
+      ...defaultFormPolicy(),
+      name: "p",
+      username: "u@example.com",
+      directory: "/tmp/p",
+    };
+    const out = toBackendPolicy(form);
+    expect(out.filters).toMatchObject({
+      file_suffixes: [],
+      match_patterns: [],
+      device_makes: [],
+      device_models: [],
+    });
   });
 });

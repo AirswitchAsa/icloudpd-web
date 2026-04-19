@@ -82,6 +82,31 @@ def test_build_argv_emits_only_real_flags(real_icloudpd_flags: set[str]) -> None
     )
 
 
+def test_filters_do_not_leak_into_build_argv() -> None:
+    """Confirm that policy.filters fields are NOT emitted as CLI flags."""
+    from icloudpd_web.store.models import Filters
+
+    policy = Policy(
+        name="p",
+        username="u@icloud.com",
+        directory="/tmp/p",
+        cron="0 * * * *",
+        enabled=True,
+        icloudpd=REPRESENTATIVE_ICLOUDPD_CONFIG,
+        filters=Filters(
+            file_suffixes=[".heic"],
+            match_patterns=["^IMG_"],
+            device_makes=["Apple"],
+            device_models=["iPhone 15 Pro"],
+        ),
+    )
+    argv = build_argv(policy)
+    filter_keys = {"file_suffixes", "match_patterns", "device_makes", "device_models", "filters"}
+    emitted_flags = {a[2:].replace("-", "_") for a in argv if a.startswith("--")}
+    leaked = emitted_flags & filter_keys
+    assert not leaked, f"Filter fields leaked into build_argv: {sorted(leaked)}"
+
+
 def test_representative_config_is_comprehensive() -> None:
     """Drift tripwire: if defaultFormPolicy in web/src/lib/policyMapping.ts adds
     a new icloudpd-bound field, add it to REPRESENTATIVE_ICLOUDPD_CONFIG above.

@@ -13,6 +13,28 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 SLUG_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$")
 
 
+class Filters(BaseModel):
+    file_suffixes: list[str] = Field(default_factory=list)
+    match_patterns: list[str] = Field(default_factory=list)
+    device_makes: list[str] = Field(default_factory=list)
+    device_models: list[str] = Field(default_factory=list)
+
+    @field_validator("match_patterns")
+    @classmethod
+    def _compile_patterns(cls, v: list[str]) -> list[str]:
+        for p in v:
+            try:
+                re.compile(p)
+            except re.error as e:
+                raise ValueError(f"invalid regex {p!r}: {e}") from None
+        return v
+
+    def is_empty(self) -> bool:
+        return not (
+            self.file_suffixes or self.match_patterns or self.device_makes or self.device_models
+        )
+
+
 class NotificationConfig(BaseModel):
     on_start: bool = False
     on_success: bool = True
@@ -51,6 +73,7 @@ class Policy(BaseModel):
     icloudpd: dict[str, Any] = Field(default_factory=dict)
     notifications: NotificationConfig = Field(default_factory=NotificationConfig)
     aws: AwsConfig | None = None
+    filters: Filters = Field(default_factory=Filters)
 
     # Derived / runtime; not on disk.
     next_run_at: datetime | None = None

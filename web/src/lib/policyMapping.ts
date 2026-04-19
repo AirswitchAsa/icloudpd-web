@@ -31,6 +31,10 @@ const NEW_BACKEND_EXTRAS = new Set([
   "aws_access_key_id",
   "aws_secret_access_key",
   "has_password",
+  "filter_file_suffixes",
+  "filter_match_patterns",
+  "filter_device_makes",
+  "filter_device_models",
 ]);
 
 export interface FormPolicy extends OldPolicy {
@@ -48,6 +52,11 @@ export interface FormPolicy extends OldPolicy {
   aws_secret_access_key: string;
   // has_password is read from PolicyView when editing
   has_password?: boolean;
+  // Post-download filter fields
+  filter_file_suffixes: string[];
+  filter_match_patterns: string[];
+  filter_device_makes: string[];
+  filter_device_models: string[];
 }
 
 export function defaultFormPolicy(): FormPolicy {
@@ -100,6 +109,11 @@ export function defaultFormPolicy(): FormPolicy {
     aws_region: "",
     aws_access_key_id: "",
     aws_secret_access_key: "",
+    // post-download filter fields:
+    filter_file_suffixes: [],
+    filter_match_patterns: [],
+    filter_device_makes: [],
+    filter_device_models: [],
   };
 }
 
@@ -128,6 +142,10 @@ export function fromPolicyView(view: PolicyView): FormPolicy {
     aws_access_key_id: view.aws?.access_key_id ?? "",
     aws_secret_access_key: view.aws?.secret_access_key ?? "",
     has_password: view.has_password,
+    filter_file_suffixes: view.filters?.file_suffixes ?? [],
+    filter_match_patterns: view.filters?.match_patterns ?? [],
+    filter_device_makes: view.filters?.device_makes ?? [],
+    filter_device_models: view.filters?.device_models ?? [],
   };
 }
 
@@ -162,5 +180,11 @@ export function toBackendPolicy(form: FormPolicy): BackendPolicy {
           secret_access_key: form.aws_secret_access_key || undefined,
         }
       : null,
+    filters: {
+      file_suffixes: form.filter_file_suffixes,
+      match_patterns: form.filter_match_patterns,
+      device_makes: form.filter_device_makes,
+      device_models: form.filter_device_models,
+    },
   };
 }

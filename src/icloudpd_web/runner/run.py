@@ -10,13 +10,18 @@ import signal
 import time
 from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Literal  # noqa: UP035
+from typing import TYPE_CHECKING, Any, Literal  # noqa: UP035
+
+
+if TYPE_CHECKING:
+    from icloudpd_web.store.models import Filters
 
 
 PROGRESS_RE = re.compile(r"Downloading\s+(\d+)\s+of\s+(\d+)", re.IGNORECASE)
 MFA_PROMPT_RE = re.compile(r"Two-step|two.?factor", re.IGNORECASE)
+DOWNLOADED_RE = re.compile(r"^INFO\s+Downloaded (.+)$")
 
 RunStatus = Literal["pending", "running", "success", "failed", "stopped", "awaiting_mfa"]
 RunEventKind = Literal["log", "progress", "status"]
@@ -43,6 +48,7 @@ class Run:
         password: str | None = None,
         env: dict[str, str] | None = None,
         on_mfa_needed: Callable[[str], Path] | None = None,
+        filters: Filters | None = None,
     ) -> None:
         self.run_id = run_id
         self.policy_name = policy_name
@@ -50,6 +56,7 @@ class Run:
         self._password = password
         self._env = env
         self._on_mfa_needed = on_mfa_needed
+        self._filters = filters
         self.log_dir = log_dir
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.log_path = self.log_dir / f"{run_id}.log"
@@ -69,9 +76,10 @@ class Run:
         self._done = asyncio.Event()
         self._stopping = False
         self._mfa_poll_task: asyncio.Task[None] | None = None
+        self._downloaded_paths: list[Path] = []
 
     async def start(self) -> None:
-        self.started_at = datetime.now(timezone.utc)
+        self.started_at = datetime.now(UTC)
         self.status = "running"
         self._log_fh = open(self.log_path, "w", encoding="utf-8", buffering=1)  # noqa: SIM115, ASYNC230
         env = {**os.environ, **(self._env or {})}
@@ -133,8 +141,15 @@ class Run:
             text = line.decode("utf-8", errors="replace").rstrip("\n")
             self._emit_log(text)
             self._maybe_progress(text)
-            if kind == "stdout" and self._on_mfa_needed and MFA_PROMPT_RE.search(text):
-                self._trigger_mfa()
+            if kind == "stdout":
+                self._maybe_collect_downloaded(text)
+                if self._on_mfa_needed and MFA_PROMPT_RE.search(text):
+                    self._trigger_mfa()
+
+    def _maybe_collect_downloaded(self, text: str) -> None:
+        m = DOWNLOADED_RE.match(text)
+        if m:
+            self._downloaded_paths.append(Path(m.group(1).strip()))
 
     def _emit_log(self, text: str) -> None:
         if self._log_fh is not None:
@@ -194,14 +209,23 @@ class Run:
             with contextlib.suppress(asyncio.CancelledError):
                 await self._mfa_poll_task
         self.exit_code = code
-        self.ended_at = datetime.now(timezone.utc)
+        self.ended_at = datetime.now(UTC)
         if self._stopping and code != 0:
-            self.status = "stopped"
+            final_status: RunStatus = "stopped"
         elif code == 0:
-            self.status = "success"
+            final_status = "success"
         else:
-            self.status = "failed"
+            final_status = "failed"
             self.error_id = self.run_id
+
+        # Apply post-download filters only on successful runs with a non-empty filter.
+        # Keep status as "running" during filter execution so is_running() stays True
+        # until filter decisions and log lines are fully written.
+        if final_status == "success" and self._filters is not None and not self._filters.is_empty():
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(None, self._apply_filters)
+
+        self.status = final_status
         self._publish(
             "status",
             {"status": self.status, "exit_code": code, "error_id": self.error_id},
@@ -213,6 +237,26 @@ class Run:
         for q in list(self._subscribers):
             q.put_nowait(None)
         self._done.set()
+
+    def _apply_filters(self) -> None:
+        """Run post_filter on collected downloaded paths. Blocking; call in executor."""
+        from icloudpd_web.runner.post_filter import evaluate_all
+
+        decisions = evaluate_all(self._downloaded_paths, self._filters)  # type: ignore[arg-type]
+        kept = 0
+        deleted = 0
+        for decision in decisions:
+            if decision.kept:
+                kept += 1
+                self._emit_log(f"INFO     Filter: kept {decision.path} ({decision.reason})")
+            else:
+                try:
+                    os.unlink(decision.path)
+                    deleted += 1
+                    self._emit_log(f"INFO     Filter: deleted {decision.path} ({decision.reason})")
+                except OSError as exc:
+                    self._emit_log(f"WARNING  Filter: could not delete {decision.path}: {exc}")
+        self._emit_log(f"INFO     Filter summary: kept {kept}, deleted {deleted}")
 
     def _write_sidecar(self) -> None:
         """Atomically write a .meta.json sidecar next to the log file."""

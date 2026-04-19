@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest  # noqa: F401
@@ -92,11 +92,10 @@ def test_next_run_at() -> None:
 
 def test_localize_with_named_timezone() -> None:
     """_localize converts a UTC-aware datetime into the policy's timezone."""
-    from datetime import timezone as _tz
 
     s = Scheduler(store=FakeStore([]), runner=FakeRunner(), password_lookup=_passwords)
     p = _p("a", "0 * * * *", tz="America/New_York")
-    now_utc = datetime(2026, 1, 1, 20, 0, 0, tzinfo=_tz.utc)
+    now_utc = datetime(2026, 1, 1, 20, 0, 0, tzinfo=UTC)
     localized = s._localize(now_utc, p)
     # America/New_York is UTC-5 in January, so 20:00 UTC → 15:00 EST
     assert localized.hour == 15

@@ -5,15 +5,17 @@ Parses flags with argparse so that unknown flags cause a non-zero exit,
 catching flag-name drift between our config_builder and the real binary.
 
 Behavior driven by env vars:
-  FAKE_ICLOUDPD_MODE: one of 'success', 'fail', 'slow', 'mfa'
+  FAKE_ICLOUDPD_MODE: one of 'success', 'fail', 'slow', 'mfa', 'filter_demo'
   FAKE_ICLOUDPD_TOTAL: default 5
   FAKE_ICLOUDPD_SLEEP: seconds between progress lines (default 0.01)
+  FAKE_ICLOUDPD_DIR: target directory for filter_demo mode
 """
 
 from __future__ import annotations
 
 import argparse
 import os
+import struct
 import sys
 import time
 
@@ -99,6 +101,9 @@ def main() -> int:
         print("ERROR    something went wrong", file=sys.stderr, flush=True)
         return 2
 
+    if mode == "filter_demo":
+        return _run_filter_demo()
+
     for i in range(1, total + 1):
         print(f"INFO     Downloading {i} of {total}", flush=True)
         time.sleep(sleep)
@@ -107,6 +112,61 @@ def main() -> int:
 
     print("INFO     done", flush=True)
     return 0
+
+
+def _write_minimal_jpeg_with_exif(path: str, make: str, model: str) -> None:
+    """Write a minimal JPEG with Make and Model EXIF tags using Pillow."""
+    from PIL import Image
+
+    img = Image.new("RGB", (1, 1), color=(128, 128, 128))
+    exif = img.getexif()
+    # EXIF tag IDs: Make=271, Model=272
+    exif[271] = make
+    exif[272] = model
+    img.save(path, format="JPEG", exif=exif.tobytes())
+
+
+def _write_minimal_heic(path: str, make: str, model: str) -> None:
+    """Write a minimal JPEG saved with .heic extension (for testing suffix filtering).
+
+    Note: Pillow cannot write real HEIC files. We write a JPEG but name it .heic.
+    The post_filter EXIF reader (via PIL) will still be able to read it.
+    """
+    _write_minimal_jpeg_with_exif(path, make, model)
+
+
+def _write_minimal_png(path: str) -> None:
+    """Write a minimal 1x1 PNG file without EXIF data."""
+    from PIL import Image
+
+    img = Image.new("RGB", (1, 1), color=(64, 64, 64))
+    img.save(path, format="PNG")
+
+
+def _run_filter_demo() -> int:
+    """Create test image files in FAKE_ICLOUDPD_DIR and print Downloaded lines."""
+    target_dir = os.environ.get("FAKE_ICLOUDPD_DIR", "/tmp")
+    os.makedirs(target_dir, exist_ok=True)
+
+    files = [
+        (os.path.join(target_dir, "img_apple.heic"), "heic", "Apple", "iPhone 15 Pro"),
+        (os.path.join(target_dir, "img_samsung.jpg"), "jpg", "Samsung", "Galaxy S24"),
+        (os.path.join(target_dir, "other.png"), "png", None, None),
+    ]
+
+    for file_path, kind, make, model in files:
+        if kind in ("heic", "jpg") and make and model:
+            _write_minimal_jpeg_with_exif(file_path, make, model)
+        else:
+            _write_minimal_png(file_path)
+        print(f"INFO     Downloaded {file_path}", flush=True)
+
+    print("INFO     done", flush=True)
+    return 0
+
+
+# Keep struct import for potential future use
+_ = struct
 
 
 if __name__ == "__main__":

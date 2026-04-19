@@ -34,6 +34,12 @@ describe("policiesApi", () => {
       icloudpd: {},
       notifications: { on_start: false, on_success: true, on_failure: true },
       aws: null,
+      filters: {
+        file_suffixes: [],
+        match_patterns: [],
+        device_makes: [],
+        device_models: [],
+      },
     };
     await policiesApi.upsert("p", policy);
     expect(globalThis.fetch).toHaveBeenCalledWith(

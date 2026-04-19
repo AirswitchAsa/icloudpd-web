@@ -12,6 +12,13 @@ export interface PolicyAwsConfig {
   secret_access_key?: string;
 }
 
+export interface Filters {
+  file_suffixes: string[];
+  match_patterns: string[];
+  device_makes: string[];
+  device_models: string[];
+}
+
 export interface Policy {
   name: string;
   username: string;
@@ -22,6 +29,7 @@ export interface Policy {
   icloudpd: Record<string, unknown>;
   notifications: PolicyNotifications;
   aws: PolicyAwsConfig | null;
+  filters: Filters;
 }
 
 export type RunStatus =

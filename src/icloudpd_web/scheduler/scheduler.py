@@ -4,7 +4,7 @@ import asyncio
 import logging
 import zoneinfo
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Protocol
 
 from croniter import croniter
@@ -64,7 +64,7 @@ class Scheduler:
         while not self._stop.is_set():
             await asyncio.sleep(1)
             try:
-                self.tick(datetime.now(timezone.utc))
+                self.tick(datetime.now(UTC))
                 await self._drain_pending()
             except Exception:
                 log.exception("scheduler tick failed")
@@ -91,5 +91,5 @@ class Scheduler:
         tz = zoneinfo.ZoneInfo(policy.timezone)
         if now.tzinfo is None:
             # Treat naive as UTC for localization consistency.
-            return now.replace(tzinfo=timezone.utc).astimezone(tz)
+            return now.replace(tzinfo=UTC).astimezone(tz)
         return now.astimezone(tz)

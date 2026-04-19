@@ -10,7 +10,7 @@ from typing import Any
 import tomli_w
 import tomllib
 
-from .models import AwsConfig, NotificationConfig, Policy
+from .models import AwsConfig, Filters, NotificationConfig, Policy
 
 
 log = logging.getLogger(__name__)
@@ -96,4 +96,5 @@ class PolicyStore:
             icloudpd=data.get("icloudpd", {}),
             notifications=NotificationConfig(**data.get("notifications", {})),
             aws=AwsConfig(**data["aws"]) if "aws" in data else None,
+            filters=Filters(**data["filters"]) if "filters" in data else Filters(),
         )

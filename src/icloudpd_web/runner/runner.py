@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -83,6 +83,7 @@ class Runner:
                 log_dir=log_dir,
                 password=password,
                 on_mfa_needed=on_mfa_needed,
+                filters=policy.filters if not policy.filters.is_empty() else None,
             )
             self._active[policy.name] = run
             self._by_id[run_id] = run
@@ -108,5 +109,5 @@ class Runner:
 
 
 def _mk_run_id(policy_name: str) -> str:
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S_%fZ")
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S_%fZ")
     return f"{policy_name}-{stamp}"
