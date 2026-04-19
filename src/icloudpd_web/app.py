@@ -6,6 +6,7 @@ from pathlib import Path
 from fastapi import FastAPI
 
 from icloudpd_web.api import auth as auth_router
+from icloudpd_web.api import policies as policies_router
 from icloudpd_web.auth import Authenticator, install_session_middleware
 from icloudpd_web.config import SettingsStore
 from icloudpd_web.errors import install_handlers
@@ -84,6 +85,7 @@ def create_app(
     app.state.scheduler = scheduler
 
     app.include_router(auth_router.router)
+    app.include_router(policies_router.router)
     return app
 
 
