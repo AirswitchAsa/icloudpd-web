@@ -4,9 +4,18 @@ import argparse
 import os
 import secrets
 import sys
+from importlib.resources import files
 from pathlib import Path
 
 from icloudpd_web.auth import Authenticator
+
+
+def _default_static_dir() -> Path | None:
+    try:
+        p = Path(str(files("icloudpd_web").joinpath("web_dist")))
+    except (ModuleNotFoundError, FileNotFoundError):
+        return None
+    return p if p.exists() else None
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -29,10 +38,11 @@ def main(argv: list[str] | None = None) -> int:
 
     if not args.password_hash:
         print(
-            "error: provide --password-hash or set ICLOUDPD_WEB_PASSWORD_HASH",
+            "WARNING: no password configured - server running in passwordless mode. "
+            "Run `icloudpd-web init-password <password>` and set "
+            "ICLOUDPD_WEB_PASSWORD_HASH (or pass --password-hash) to enable authentication.",
             file=sys.stderr,
         )
-        return 2
 
     session_secret = args.session_secret or secrets.token_urlsafe(32)
 
@@ -42,8 +52,9 @@ def main(argv: list[str] | None = None) -> int:
 
     app = create_app(
         data_dir=Path(args.data_dir),
-        authenticator=Authenticator(password_hash=args.password_hash),
+        authenticator=Authenticator(password_hash=args.password_hash or None),
         session_secret=session_secret,
+        static_dir=_default_static_dir(),
     )
     uvicorn.run(app, host=args.host, port=args.port)
     return 0

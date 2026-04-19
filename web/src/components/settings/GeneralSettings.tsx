@@ -1,262 +1,203 @@
-import { useState, useEffect } from "react";
+import { useRef, useState } from "react";
 import {
   Box,
   Text,
   VStack,
   FormControl,
-  Select,
-  Switch,
+  FormLabel,
+  Input,
+  Button,
+  Image,
+  HStack,
+  Alert,
+  AlertIcon,
   useToast,
 } from "@chakra-ui/react";
-import { FieldWithInfo } from "@/components/EditModalFields";
-import { Policy } from "@/types";
-import { Socket } from "socket.io-client";
+import { AttachmentIcon } from "@chakra-ui/icons";
 
-interface GeneralSettings {
-  file_match_policy: "name-size-dedup-with-suffix" | "name-id7";
-  live_photo_size: "original" | "medium" | "thumb";
-  live_photo_mov_filename_policy: "original" | "suffix";
-  align_raw: "original" | "alternative" | "as-is";
-  force_size: boolean;
-  keep_unicode_in_filenames: boolean;
-  set_exif_datetime: boolean;
-  xmp_sidecar: boolean;
-  use_os_locale: boolean;
+function updateFavicon(dataUrl: string) {
+  let favicon = document.querySelector(
+    "link[rel*='icon']"
+  ) as HTMLLinkElement | null;
+  if (!favicon) {
+    favicon = document.createElement("link");
+    favicon.rel = "icon";
+    document.head.appendChild(favicon);
+  }
+  favicon.href = dataUrl;
 }
 
-interface GeneralSettingsProps {
-  socket: Socket | null;
-}
-
-export function GeneralSettings({ socket }: GeneralSettingsProps) {
+export function GeneralSettings() {
   const toast = useToast();
-  const [settings, setSettings] = useState<GeneralSettings>({
-    file_match_policy: "name-size-dedup-with-suffix",
-    live_photo_size: "original",
-    live_photo_mov_filename_policy: "suffix",
-    align_raw: "original",
-    force_size: false,
-    keep_unicode_in_filenames: false,
-    set_exif_datetime: false,
-    xmp_sidecar: false,
-    use_os_locale: false,
-  });
+  const [faviconFile, setFaviconFile] = useState<File | null>(null);
+  const [faviconPreview, setFaviconPreview] = useState<string | null>(null);
+  const [isUploadingFavicon, setIsUploadingFavicon] = useState(false);
+  const [faviconError, setFaviconError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (!socket) return;
-
-    socket.emit("get_policies");
-
-    socket.on("policies", (policies: Policy[]) => {
-      if (policies.length > 0) {
-        const firstPolicy = policies[0];
-        setSettings({
-          file_match_policy: firstPolicy.file_match_policy,
-          live_photo_size: firstPolicy.live_photo_size,
-          live_photo_mov_filename_policy:
-            firstPolicy.live_photo_mov_filename_policy,
-          align_raw: firstPolicy.align_raw,
-          force_size: firstPolicy.force_size,
-          keep_unicode_in_filenames: firstPolicy.keep_unicode_in_filenames,
-          set_exif_datetime: firstPolicy.set_exif_datetime,
-          xmp_sidecar: firstPolicy.xmp_sidecar,
-          use_os_locale: firstPolicy.use_os_locale,
-        });
-      }
-    });
-
-    return () => {
-      socket.off("policies");
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    setFaviconError(null);
+    if (!file) {
+      setFaviconFile(null);
+      setFaviconPreview(null);
+      return;
+    }
+    const allowedTypes = [
+      "image/png",
+      "image/jpeg",
+      "image/jpg",
+      "image/x-icon",
+      "image/vnd.microsoft.icon",
+    ];
+    if (!allowedTypes.includes(file.type)) {
+      setFaviconError("Please select a PNG, JPG, JPEG, or ICO file");
+      return;
+    }
+    if (file.size > 1024 * 1024) {
+      setFaviconError("File size must be less than 1MB");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setFaviconPreview(e.target?.result as string);
     };
-  }, [socket]);
+    reader.readAsDataURL(file);
+    setFaviconFile(file);
+  };
 
-  const handleSettingChange = (key: keyof GeneralSettings, value: string | boolean) => {
-    const newSettings = { ...settings, [key]: value };
-    setSettings(newSettings);
+  const handleFaviconUpload = () => {
+    if (!faviconFile || !faviconPreview) return;
+    setIsUploadingFavicon(true);
+    setFaviconError(null);
+    try {
+      localStorage.setItem("customFavicon", faviconPreview);
+      updateFavicon(faviconPreview);
+      setIsUploadingFavicon(false);
+      setFaviconFile(null);
+      setFaviconPreview(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      toast({
+        title: "Success",
+        description: "Favicon updated and saved to your browser.",
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+    } catch {
+      setIsUploadingFavicon(false);
+      setFaviconError("Failed to save favicon to browser storage");
+    }
+  };
 
-    socket?.once("saved_global_settings", (data) => {
-      if (data.success) {
-        toast({
-          title: "Success",
-          description: "Saved settings for all policies",
-          status: "success",
-          duration: 3000,
-          isClosable: true,
-        });
-      } else {
-        toast({
-          title: "Error",
-          description: `Failed to save global settings: ${data.error}`,
-          status: "error",
-          duration: 3000,
-          isClosable: true,
-        });
-      }
-    });
-
-    // Send update to server
-    socket?.emit("save_global_settings", newSettings);
+  const handleRemoveFavicon = () => {
+    setFaviconFile(null);
+    setFaviconPreview(null);
+    setFaviconError(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   return (
     <Box>
-      <VStack spacing={6} align="stretch">
-        <Text fontSize="lg" fontWeight="semibold" mb={4}>
-          Global Download Settings
-        </Text>
-        <Text color="gray.600" fontSize="sm" mb={4}>
-          These settings will be applied to all policies when changed.
-        </Text>
-
-        <FormControl>
-          <FieldWithInfo
-            label="File Match Policy"
-            info="The policy for matching files when downloading"
-          >
-            <Select
-              value={settings.file_match_policy}
-              onChange={(e) =>
-                handleSettingChange("file_match_policy", e.target.value)
-              }
-              maxW="200px"
-            >
-              <option value="name-size-dedup-with-suffix">
-                Name-Size-Dedup-With-Suffix
-              </option>
-              <option value="name-id7">Name-Id7</option>
-            </Select>
-          </FieldWithInfo>
-        </FormControl>
-
-        <FormControl>
-          <FieldWithInfo
-            label="Live Photo Size"
-            info="The size of live photos to download"
-          >
-            <Select
-              value={settings.live_photo_size}
-              onChange={(e) =>
-                handleSettingChange("live_photo_size", e.target.value)
-              }
-              maxW="150px"
-            >
-              <option value="original">Original</option>
-              <option value="medium">Medium</option>
-              <option value="thumb">Thumb</option>
-            </Select>
-          </FieldWithInfo>
-        </FormControl>
-
-        <FormControl>
-          <FieldWithInfo
-            label="Live Photo Video Filename Policy"
-            info="The policy for naming live photo videos"
-          >
-            <Select
-              value={settings.live_photo_mov_filename_policy}
-              onChange={(e) =>
-                handleSettingChange(
-                  "live_photo_mov_filename_policy",
-                  e.target.value,
-                )
-              }
-              maxW="150px"
-            >
-              <option value="original">Original</option>
-              <option value="suffix">Suffix</option>
-            </Select>
-          </FieldWithInfo>
-        </FormControl>
-
-        <FormControl>
-          <FieldWithInfo
-            label="Raw File Size"
-            info="Specify the size used for raw files. See RAW Assets of the icloudpd documentation for more details."
-          >
-            <Select
-              value={settings.align_raw}
-              onChange={(e) => handleSettingChange("align_raw", e.target.value)}
-              maxW="150px"
-            >
-              <option value="original">Original</option>
-              <option value="alternative">Alternative</option>
-              <option value="as-is">As-Is</option>
-            </Select>
-          </FieldWithInfo>
-        </FormControl>
-
-        <FormControl>
-          <FieldWithInfo
-            label="Force Sizes"
-            info="Force the use of the selected sizes during download"
-          >
-            <Switch
-              isChecked={settings.force_size}
-              onChange={(e) =>
-                handleSettingChange("force_size", e.target.checked)
-              }
-            />
-          </FieldWithInfo>
-        </FormControl>
-
-        <FormControl>
-          <FieldWithInfo
-            label="Keep Unicode in Filenames"
-            info="Preserve Unicode characters in filenames instead of converting them"
-          >
-            <Switch
-              isChecked={settings.keep_unicode_in_filenames}
-              onChange={(e) =>
-                handleSettingChange(
-                  "keep_unicode_in_filenames",
-                  e.target.checked,
-                )
-              }
-            />
-          </FieldWithInfo>
-        </FormControl>
-
-        <FormControl>
-          <FieldWithInfo
-            label="Set EXIF Datetime"
-            info="Set the EXIF datetime in the downloaded photos"
-          >
-            <Switch
-              isChecked={settings.set_exif_datetime}
-              onChange={(e) =>
-                handleSettingChange("set_exif_datetime", e.target.checked)
-              }
-            />
-          </FieldWithInfo>
-        </FormControl>
-
-        <FormControl>
-          <FieldWithInfo
-            label="XMP Sidecar"
-            info="Create XMP sidecar files for the downloaded photos"
-          >
-            <Switch
-              isChecked={settings.xmp_sidecar}
-              onChange={(e) =>
-                handleSettingChange("xmp_sidecar", e.target.checked)
-              }
-            />
-          </FieldWithInfo>
-        </FormControl>
-
-        <FormControl>
-          <FieldWithInfo
-            label="Use OS Locale"
-            info="Use the operating system's locale settings"
-          >
-            <Switch
-              isChecked={settings.use_os_locale}
-              onChange={(e) =>
-                handleSettingChange("use_os_locale", e.target.checked)
-              }
-            />
-          </FieldWithInfo>
-        </FormControl>
+      <VStack spacing={8} align="stretch">
+        <Box>
+          <Text fontWeight="bold" fontSize="lg" mb={4}>
+            Customization
+          </Text>
+          <VStack spacing={3} align="stretch" maxW="400px">
+            <FormControl>
+              <HStack spacing={3} align="center" mb={3}>
+                <FormLabel fontSize="sm" mb={0}>
+                  Upload Favicon
+                </FormLabel>
+                <Button
+                  leftIcon={<AttachmentIcon />}
+                  size="sm"
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  _hover={{ bg: "gray.50" }}
+                >
+                  Choose File
+                </Button>
+              </HStack>
+              <VStack spacing={3} align="stretch">
+                <Input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".png,.jpg,.jpeg,.ico"
+                  onChange={handleFileSelect}
+                  display="none"
+                />
+                <VStack spacing={1} align="stretch">
+                  <Text fontSize="xs" color="gray.500">
+                    Recommended: 32x32px PNG, JPG, JPEG, or ICO format.
+                  </Text>
+                  <Text fontSize="xs" color="gray.500">
+                    Max size 1MB. Favicon is saved locally in your browser and
+                    will be reset on clearing the browser cache.
+                  </Text>
+                </VStack>
+                {faviconFile && (
+                  <VStack spacing={0} align="start">
+                    <Text fontSize="xs" color="green.600" fontWeight="medium">
+                      Selected: {faviconFile.name}
+                    </Text>
+                    <Text fontSize="xs" color="gray.500">
+                      {(faviconFile.size / 1024).toFixed(1)} KB
+                    </Text>
+                  </VStack>
+                )}
+                {faviconError && (
+                  <Alert status="error" size="sm">
+                    <AlertIcon />
+                    {faviconError}
+                  </Alert>
+                )}
+                {faviconPreview && (
+                  <Box>
+                    <Text fontSize="sm" mb={2}>
+                      Preview:
+                    </Text>
+                    <HStack spacing={3} align="center">
+                      <Image
+                        src={faviconPreview}
+                        alt="Favicon preview"
+                        boxSize="32px"
+                        objectFit="contain"
+                        border="1px solid"
+                        borderColor="gray.200"
+                        borderRadius="md"
+                        bg="white"
+                      />
+                      <HStack spacing={2}>
+                        <Button
+                          size="sm"
+                          bg="black"
+                          color="white"
+                          _hover={{ bg: "gray.800" }}
+                          onClick={handleFaviconUpload}
+                          isLoading={isUploadingFavicon}
+                          isDisabled={!faviconFile}
+                          leftIcon={<AttachmentIcon />}
+                        >
+                          Upload
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={handleRemoveFavicon}
+                          isDisabled={isUploadingFavicon}
+                        >
+                          Cancel
+                        </Button>
+                      </HStack>
+                    </HStack>
+                  </Box>
+                )}
+              </VStack>
+            </FormControl>
+          </VStack>
+        </Box>
       </VStack>
     </Box>
   );

@@ -16,8 +16,14 @@ def _normalize(password: str) -> bytes:
 
 
 class Authenticator:
-    def __init__(self, password_hash: str) -> None:
+    def __init__(self, password_hash: str | None) -> None:
+        if password_hash is not None and password_hash.strip() == "":
+            password_hash = None
         self._hash = password_hash
+
+    @property
+    def auth_required(self) -> bool:
+        return self._hash is not None
 
     @staticmethod
     def hash(password: str) -> str:
@@ -26,6 +32,8 @@ class Authenticator:
         return f"scrypt${salt}${h}"
 
     def verify(self, password: str) -> bool:
+        if self._hash is None:
+            return True
         try:
             scheme, salt, h = self._hash.split("$")
             assert scheme == "scrypt"
@@ -47,6 +55,9 @@ def install_session_middleware(app: FastAPI, *, secret: str) -> None:
 
 
 def require_auth(request: Request) -> bool:
+    a: Authenticator = request.app.state.authenticator
+    if not a.auth_required:
+        return True
     if not request.session.get("authed"):
         raise ApiError("Not authenticated", status_code=401)
     return True

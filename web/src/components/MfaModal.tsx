@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Socket } from "socket.io-client";
 import {
   Modal,
   ModalOverlay,
@@ -14,89 +13,40 @@ import {
   Text,
   VStack,
   Flex,
-  UseToastOptions,
 } from "@chakra-ui/react";
-import { Policy } from "@/types";
+import { ApiError } from "@/api/client";
+import { mfaApi } from "@/api/mfa";
+import { pushError, pushSuccess } from "@/store/toastStore";
 
 interface MFAModalProps {
   isOpen: boolean;
   onClose: () => void;
-  error?: string;
-  socket: Socket | null;
-  toast: (options: UseToastOptions) => void;
-  setMfaError: (error?: string) => void;
-  policy_name: string;
-  setPolicies: (policies: Policy[]) => void;
+  policyName: string;
 }
 
-export function MFAModal({
-  isOpen,
-  onClose,
-  error,
-  socket,
-  toast,
-  setMfaError,
-  policy_name,
-  setPolicies,
-}: MFAModalProps) {
+export function MFAModal({ isOpen, onClose, policyName }: MFAModalProps) {
   const [code, setCode] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
+  const [error, setError] = useState<string | undefined>();
 
-  const handleSubmit = () => {
-    if (!socket) return;
+  const handleSubmit = async () => {
     setIsVerifying(true);
-    // Remove existing listeners
-    socket.off("authenticated");
-    socket.off("authentication_failed");
-    socket.off("mfa_required");
-
-    socket.once(
-      "authenticated",
-      (data: { msg: string; policies: Policy[] }) => {
-        setIsVerifying(false);
-        toast({
-          title: "Success",
-          description: `MFA code verified successfully`,
-          status: "success",
-          duration: 3000,
-          isClosable: true,
-        });
-        setMfaError(undefined);
-        setPolicies(data.policies);
-        onClose();
-      },
-    );
-    socket.once(
-      "authentication_failed",
-      (data: { error: string; policy_name: string }) => {
-        toast({
-          title: "Error",
-          description: `Failed to authenticate policy "${data.policy_name}": ${data.error}`,
-          status: "error",
-          duration: 3000,
-          isClosable: true,
-        });
-        setMfaError(data.error);
-        setIsVerifying(false);
-      },
-    );
-    socket.once(
-      "mfa_required",
-      (data: { error: string; policy_name: string }) => {
-        toast({
-          title: "MFA Required",
-          description: `MFA verification failed: ${data.error}`,
-          status: "info",
-          duration: 3000,
-          isClosable: true,
-        });
-        setMfaError(data.error);
-        setIsVerifying(false);
-      },
-    );
-
-    socket.emit("provide_mfa", policy_name, code);
-    setCode("");
+    setError(undefined);
+    try {
+      await mfaApi.submit(policyName, code);
+      pushSuccess("MFA code submitted");
+      setCode("");
+      onClose();
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+        pushError(err.message, err.errorId);
+      } else {
+        setError("Failed to submit MFA code");
+      }
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
   return (

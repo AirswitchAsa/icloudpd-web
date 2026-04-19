@@ -1,406 +1,234 @@
+import { useEffect, useState } from "react";
 import {
   Box,
   Text,
   VStack,
-  Collapse,
   Button,
   FormControl,
   FormLabel,
   Input,
-  useDisclosure,
-  IconButton,
   HStack,
-  InputGroup,
-  InputRightElement,
-  useToast,
-  Link,
   Wrap,
   WrapItem,
   Badge,
+  Link,
+  Switch,
+  NumberInput,
+  NumberInputField,
+  useToast,
 } from "@chakra-ui/react";
-import { useEffect, useState } from "react";
-import { Socket } from "socket.io-client";
-import {
-  ChevronDownIcon,
-  ChevronUpIcon,
-  ViewIcon,
-  ViewOffIcon,
-} from "@chakra-ui/icons";
+import { ApiError } from "@/api/client";
+import { useSettings, useUpdateSettings } from "@/hooks/useSettings";
+import type { AppSettings } from "@/types/api";
 
-interface IntegrationSettingsProps {
-  socket: Socket | null;
-}
-
-export function IntegrationSettings({ socket }: IntegrationSettingsProps) {
-  const {
-    isOpen: isAwsOpen,
-    onToggle: onAwsToggle,
-    onOpen: onAwsOpen,
-  } = useDisclosure();
-  const {
-    isOpen: isAppriseOpen,
-    onToggle: onAppriseToggle,
-    onOpen: onAppriseOpen,
-  } = useDisclosure();
-  useEffect(() => {
-    onAwsOpen();
-    onAppriseOpen();
-  }, [onAwsOpen, onAppriseOpen]);
-
-  const [awsAccessKeyId, setAwsAccessKeyId] = useState("");
-  const [awsSecretAccessKey, setAwsSecretAccessKey] = useState("");
-  const [awsSessionToken, setAwsSessionToken] = useState("");
-  const [awsBucketName, setAwsBucketName] = useState("");
-  const [showAwsSecret, setShowAwsSecret] = useState(false);
-  const [showAwsSessionToken, setShowAwsSessionToken] = useState(false);
-  const [isAwsClientReady, setIsAwsClientReady] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [appriseServices, setAppriseServices] = useState<string[]>([]);
-  const [newAppriseConfig, setNewAppriseConfig] = useState("");
-  const [isAddingApprise, setIsAddingApprise] = useState(false);
-  const [isResettingApprise, setIsResettingApprise] = useState(false);
+export function IntegrationSettings() {
+  const { data: settings } = useSettings();
+  const updateSettings = useUpdateSettings();
   const toast = useToast();
 
+  const [local, setLocal] = useState<AppSettings | null>(null);
+  const [newUrl, setNewUrl] = useState("");
+
   useEffect(() => {
-    if (!socket) return;
+    if (settings) setLocal(settings);
+  }, [settings]);
 
-    // Fetch current AWS config
-    socket.emit("get_aws_config");
-    socket.emit("get_apprise_config");
-
-    socket.on(
-      "aws_config",
-      (config: {
-        aws_access_key_id: string;
-        aws_secret_access_key: string;
-        aws_bucket_name: string;
-        aws_session_token: string;
-        aws_client_ready: boolean;
-      }) => {
-        setAwsAccessKeyId(config.aws_access_key_id ?? "");
-        setAwsBucketName(config.aws_bucket_name ?? "");
-        setIsAwsClientReady(config.aws_client_ready);
-      },
+  if (!local) {
+    return (
+      <Box>
+        <Text color="gray.500">Loading…</Text>
+      </Box>
     );
+  }
 
-    socket.on("error_getting_aws_config", (data: { error: string }) => {
+  const commit = async (next: AppSettings) => {
+    setLocal(next);
+    try {
+      await updateSettings.mutateAsync(next);
       toast({
-        title: "Error",
-        description: "Failed to get AWS S3 client: " + data.error,
-        status: "error",
-        duration: 3000,
+        title: "Saved",
+        description: "Settings updated",
+        status: "success",
+        duration: 2000,
         isClosable: true,
       });
-    });
-
-    socket.on("apprise_config", (services: string[]) => {
-      setAppriseServices(services);
-    });
-
-    socket.on("error_getting_apprise_config", (data: { error: string }) => {
-      toast({
-        title: "Error",
-        description: "Failed to get Apprise services: " + data.error,
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
-    });
-
-    return () => {
-      socket.off("aws_configs");
-      socket.off("apprise_config");
-      socket.off("apprise_config_added");
-      socket.off("apprise_config_reset");
-    };
-  }, [socket]);
-
-  const handleSaveAws = () => {
-    if (!socket) return;
-    socket.off("aws_config_saved");
-    setIsSaving(true);
-
-    const awsConfigUpdate = {
-      aws_access_key_id: awsAccessKeyId,
-      aws_secret_access_key: awsSecretAccessKey,
-      aws_session_token: awsSessionToken,
-      aws_bucket_name: awsBucketName,
-    };
-
-    socket.once("aws_config_saved", (data) => {
-      setIsSaving(false);
-      if (data.success) {
-        setIsAwsClientReady(true);
-        setAwsSecretAccessKey("");
-        setAwsSessionToken("");
-        toast({
-          title: "Success",
-          description: "AWS S3 client is created with bucket " + awsBucketName,
-          status: "success",
-          duration: 3000,
-          isClosable: true,
-        });
-      } else {
+    } catch (err) {
+      if (err instanceof ApiError) {
         toast({
           title: "Error",
-          description: "Failed to create AWS S3 client: " + data.error,
+          description: err.message,
           status: "error",
-          duration: 3000,
+          duration: 5000,
           isClosable: true,
         });
       }
-    });
-    socket.emit("save_aws_config", awsConfigUpdate);
+    }
   };
 
-  const handleAddApprise = () => {
-    if (!socket || !newAppriseConfig.trim()) return;
-    setIsAddingApprise(true);
-    socket.once("apprise_config_added", (data) => {
-      setIsAddingApprise(false);
-      if (data.success) {
-        setAppriseServices(data.services);
-        setNewAppriseConfig("");
-      }
+  const handleAddUrl = () => {
+    const url = newUrl.trim();
+    if (!url) return;
+    if (local.apprise.urls.includes(url)) {
+      setNewUrl("");
+      return;
+    }
+    commit({
+      ...local,
+      apprise: { ...local.apprise, urls: [...local.apprise.urls, url] },
     });
-    socket.once("error_adding_apprise_config", (data) => {
-      setIsAddingApprise(false);
-      toast({
-        title: "Error",
-        description: data.error,
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
-    });
-    socket.emit("add_apprise_config", newAppriseConfig.trim());
+    setNewUrl("");
   };
 
-  const handleResetApprise = () => {
-    if (!socket) return;
-    setIsResettingApprise(true);
-    socket.once("apprise_config_reset", (data) => {
-      setIsResettingApprise(false);
-      if (data.success) {
-        setAppriseServices([]);
-        toast({
-          title: "Success",
-          description: "Apprise configuration reset",
-          status: "success",
-          duration: 3000,
-          isClosable: true,
-        });
-      }
+  const handleRemoveUrl = (url: string) => {
+    commit({
+      ...local,
+      apprise: {
+        ...local.apprise,
+        urls: local.apprise.urls.filter((u) => u !== url),
+      },
     });
-    socket.once("error_resetting_apprise_config", (data) => {
-      setIsResettingApprise(false);
-      toast({
-        title: "Error",
-        description: data.error,
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
-    });
-    socket.emit("reset_apprise_config");
   };
 
   return (
     <Box>
       <VStack spacing={6} align="stretch">
-        {/* Apprise Section */}
         <Box>
-          <HStack>
-            <IconButton
-              aria-label="Toggle info"
-              icon={isAppriseOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
-              size="sm"
-              variant="ghost"
-              onClick={onAppriseToggle}
-            />
-            <Text fontSize="lg" fontWeight="semibold">
-              Apprise Notifications
+          <Text fontSize="lg" fontWeight="semibold" mb={2}>
+            Apprise Notifications
+          </Text>
+          <VStack spacing={3} align="stretch" maxW="500px" mt={2}>
+            <Text fontSize="sm" color="gray.500">
+              Configure icloudpd-web to send notifications via Apprise. See{" "}
+              <Link href="https://github.com/caronc/apprise" target="_blank">
+                Apprise on Github
+              </Link>{" "}
+              for more information.
             </Text>
-          </HStack>
-          <Collapse in={isAppriseOpen}>
-            <VStack spacing={3} align="stretch" maxW="400px" mt={4} ml={2}>
-              <Text fontSize="sm" fontWeight="semibold" color="gray.500">
-                Configure icloudpd-web to send notifications via Apprise.
-                {" See "}
-                <Link
-                  href="https://github.com/caronc/apprise"
-                  target="_blank"
-                >
-                  {"Apprise on Github"}
-                </Link>
-                {" for more information."}
+
+            <HStack justify="space-between">
+              <Text fontSize="sm" fontWeight="semibold">
+                Configured URLs
               </Text>
-              <HStack justify="space-between">
-                <Text fontSize="sm" fontWeight="semibold">
-                  Added Services
+            </HStack>
+            <Wrap spacing={2}>
+              {local.apprise.urls.length === 0 ? (
+                <Text fontSize="sm" color="gray.500">
+                  None configured
                 </Text>
-                <Button
-                  size="sm"
-                  colorScheme="red"
-                  variant="outline"
-                  onClick={handleResetApprise}
-                  isDisabled={appriseServices.length === 0}
-                  isLoading={isResettingApprise}
-                >
-                  Reset
-                </Button>
-              </HStack>
-              <Wrap spacing={2}>
-                {appriseServices.map((service, index) => (
-                  <WrapItem key={index}>
-                    <Badge colorScheme="gray" p={1}>
-                      {service}
+              ) : (
+                local.apprise.urls.map((url) => (
+                  <WrapItem key={url}>
+                    <Badge
+                      colorScheme="gray"
+                      p={1}
+                      cursor="pointer"
+                      onClick={() => handleRemoveUrl(url)}
+                      title="Click to remove"
+                    >
+                      {url} ✕
                     </Badge>
                   </WrapItem>
-                ))}
-              </Wrap>
-              <HStack>
-                <Input
-                  size="sm"
-                  placeholder="Enter Apprise config string"
-                  value={newAppriseConfig}
-                  onChange={(e) => setNewAppriseConfig(e.target.value)}
-                />
-                <Button
-                  size="sm"
-                  colorScheme="teal"
-                  onClick={handleAddApprise}
-                  isLoading={isAddingApprise}
-                  isDisabled={!newAppriseConfig.trim()}
-                >
-                  Add
-                </Button>
-              </HStack>
-            </VStack>
-          </Collapse>
+                ))
+              )}
+            </Wrap>
+            <HStack>
+              <Input
+                size="sm"
+                placeholder="Enter Apprise URL (e.g. mailto://...)"
+                value={newUrl}
+                onChange={(e) => setNewUrl(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleAddUrl();
+                }}
+              />
+              <Button
+                size="sm"
+                colorScheme="teal"
+                onClick={handleAddUrl}
+                isDisabled={!newUrl.trim()}
+              >
+                Add
+              </Button>
+            </HStack>
+
+            <FormControl display="flex" alignItems="center" mt={4}>
+              <FormLabel fontSize="sm" mb={0} flex={1}>
+                Notify on Start (global default)
+              </FormLabel>
+              <Switch
+                isChecked={local.apprise.on_start}
+                onChange={(e) =>
+                  commit({
+                    ...local,
+                    apprise: { ...local.apprise, on_start: e.target.checked },
+                  })
+                }
+              />
+            </FormControl>
+            <FormControl display="flex" alignItems="center">
+              <FormLabel fontSize="sm" mb={0} flex={1}>
+                Notify on Success (global default)
+              </FormLabel>
+              <Switch
+                isChecked={local.apprise.on_success}
+                onChange={(e) =>
+                  commit({
+                    ...local,
+                    apprise: { ...local.apprise, on_success: e.target.checked },
+                  })
+                }
+              />
+            </FormControl>
+            <FormControl display="flex" alignItems="center">
+              <FormLabel fontSize="sm" mb={0} flex={1}>
+                Notify on Failure (global default)
+              </FormLabel>
+              <Switch
+                isChecked={local.apprise.on_failure}
+                onChange={(e) =>
+                  commit({
+                    ...local,
+                    apprise: { ...local.apprise, on_failure: e.target.checked },
+                  })
+                }
+              />
+            </FormControl>
+          </VStack>
         </Box>
 
-        {/* AWS S3 Section */}
         <Box>
-          <HStack>
-            <IconButton
-              aria-label="Toggle info"
-              icon={isAwsOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
-              size="sm"
-              variant="ghost"
-              onClick={onAwsToggle}
-            />
-            <Text fontSize="lg" fontWeight="semibold">
-              AWS S3
-            </Text>
-            <Text
-              fontSize="sm"
-              fontWeight="semibold"
-              color={isAwsClientReady ? "green.500" : "gray.500"}
-              ml={2}
-            >
-              {isAwsClientReady ? "Connected" : "Not connected"}
-            </Text>
-          </HStack>
-          <Collapse in={isAwsOpen}>
-            <VStack spacing={3} align="stretch" maxW="400px" mt={4} ml={2}>
-              <Text fontSize="sm" fontWeight="semibold" color="gray.500">
-                Connect to your AWS S3 bucket using Access Key ID and Secret.
-                {" See "}
-                <Link
-                  href="https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html?icmpid=docs_iam_console#Using_CreateAccessKey"
-                  target="_blank"
-                >
-                  {"Manage access keys for IAM users"}
-                </Link>
-                {" for more information."}
-              </Text>
-              <FormControl>
-                <FormLabel fontSize="sm">S3 Bucket Name</FormLabel>
-                <Input
-                  size="sm"
-                  value={awsBucketName}
-                  onChange={(e) => setAwsBucketName(e.target.value)}
-                />
-              </FormControl>
-              <FormControl>
-                <FormLabel fontSize="sm">AWS Access Key ID</FormLabel>
-                <Input
-                  size="sm"
-                  value={awsAccessKeyId}
-                  onChange={(e) => setAwsAccessKeyId(e.target.value)}
-                />
-              </FormControl>
-              <FormControl>
-                <FormLabel fontSize="sm">AWS Secret Access Key</FormLabel>
-                <InputGroup size="sm">
-                  <Input
-                    type={showAwsSecret ? "text" : "password"}
-                    value={awsSecretAccessKey}
-                    onChange={(e) => setAwsSecretAccessKey(e.target.value)}
-                  />
-                  <InputRightElement>
-                    <IconButton
-                      aria-label={
-                        showAwsSecret
-                          ? "Hide AWS Secret Access Key"
-                          : "Show AWS Secret Access Key"
-                      }
-                      icon={showAwsSecret ? <ViewOffIcon /> : <ViewIcon />}
-                      variant="ghost"
-                      onClick={() => setShowAwsSecret(!showAwsSecret)}
-                      size="sm"
-                    />
-                  </InputRightElement>
-                </InputGroup>
-              </FormControl>
-              <FormControl>
-                <FormLabel fontSize="sm">
-                  AWS Session Token (Optional)
-                </FormLabel>
-                <InputGroup size="sm">
-                  <Input
-                    type={showAwsSessionToken ? "text" : "password"}
-                    value={awsSessionToken}
-                    onChange={(e) => setAwsSessionToken(e.target.value)}
-                  />
-                  <InputRightElement>
-                    <IconButton
-                      aria-label={
-                        showAwsSessionToken
-                          ? "Hide AWS Session Token"
-                          : "Show AWS Session Token"
-                      }
-                      icon={
-                        showAwsSessionToken ? <ViewOffIcon /> : <ViewIcon />
-                      }
-                      variant="ghost"
-                      onClick={() =>
-                        setShowAwsSessionToken(!showAwsSessionToken)
-                      }
-                      size="sm"
-                    />
-                  </InputRightElement>
-                </InputGroup>
-              </FormControl>
-            </VStack>
-            <Button
-              mt={4}
-              colorScheme="teal"
-              onClick={handleSaveAws}
-              size="sm"
-              ml={2}
-              isDisabled={
-                isSaving ||
-                !awsBucketName ||
-                !awsAccessKeyId ||
-                !awsSecretAccessKey
-              }
-              isLoading={isSaving}
-            >
-              Save AWS Settings
-            </Button>
-          </Collapse>
+          <Text fontSize="lg" fontWeight="semibold" mb={2}>
+            Run History
+          </Text>
+          <VStack spacing={3} align="stretch" maxW="400px">
+            <FormControl>
+              <FormLabel fontSize="sm">Runs to retain per policy</FormLabel>
+              <NumberInput
+                size="sm"
+                min={1}
+                max={10000}
+                value={local.retention_runs}
+                onChange={(valueString) => {
+                  const n = parseInt(valueString, 10);
+                  if (Number.isFinite(n) && n > 0) {
+                    setLocal({ ...local, retention_runs: n });
+                  }
+                }}
+              >
+                <NumberInputField />
+              </NumberInput>
+              <Button
+                size="sm"
+                mt={2}
+                onClick={() => commit(local)}
+                isDisabled={
+                  !settings || settings.retention_runs === local.retention_runs
+                }
+              >
+                Save
+              </Button>
+            </FormControl>
+          </VStack>
         </Box>
       </VStack>
     </Box>

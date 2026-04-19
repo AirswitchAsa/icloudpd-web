@@ -5,6 +5,8 @@ __pycache__
 out
 web/.env.local
 src/icloudpd_web/webapp
+src/icloudpd_web/web_dist/*
+!src/icloudpd_web/web_dist/.gitkeep
 tsconfig.tsbuildinfo
 logs
 .claude

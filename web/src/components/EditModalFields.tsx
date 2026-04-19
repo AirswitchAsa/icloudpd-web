@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   FormControl,
-  Select,
   Input,
   Collapse,
   Box,
@@ -19,7 +18,6 @@ import {
   Switch,
 } from "@chakra-ui/react";
 import { ChevronDownIcon, ChevronUpIcon } from "@chakra-ui/icons";
-import { Policy } from "@/types";
 
 interface FieldWithInfoProps {
   label: string;
@@ -67,7 +65,7 @@ export function IntegrationField({ value, onChange }: IntegrationFieldProps) {
     <FormControl>
       <FieldWithInfo
         label="Upload to AWS S3"
-        info="Enable to upload a copy to AWS S3 Bucket specified in My App - Settings - Integration."
+        info="Enable to upload a copy to AWS S3. Configure the bucket and credentials below."
       >
         <Switch
           isChecked={value}
@@ -79,54 +77,23 @@ export function IntegrationField({ value, onChange }: IntegrationFieldProps) {
 }
 
 interface AlbumFieldProps {
-  policy: Policy | undefined;
   value: string;
   onChange: (value: string) => void;
 }
 
-export function AlbumField({ policy, value, onChange }: AlbumFieldProps) {
-  const [availableAlbums, setAvailableAlbums] = useState<string[]>([]);
-  const isInvalid =
-    value === "__invalid__" ||
-    (availableAlbums.length > 0 && !availableAlbums.includes(value));
-
-  useEffect(() => {
-    if (policy?.authenticated && policy.albums) {
-      setAvailableAlbums(policy.albums);
-    }
-  }, [policy?.authenticated, policy?.albums]);
-
+export function AlbumField({ value, onChange }: AlbumFieldProps) {
   return (
-    <FormControl isInvalid={isInvalid}>
+    <FormControl>
       <FieldWithInfo
         label="Album"
-        info="The album to download from. Choose from a list of albums when the policy is authenticated. Note that user-created albums only exist in Personal Library and trying to download them from a Shared Library will result in an error. Default: All Photos"
+        info="The album to download from. Leave blank for All Photos. Note that user-created albums only exist in Personal Library and trying to download them from a Shared Library will result in an error."
       >
-        {policy?.authenticated && availableAlbums.length > 0 ? (
-          <Select
-            value={availableAlbums.includes(value) ? value : ""}
-            onChange={(e) => onChange(e.target.value)}
-            maxW="200px"
-            placeholder="Select an album"
-            borderColor={isInvalid ? "red.300" : undefined}
-            _hover={{ borderColor: isInvalid ? "red.400" : undefined }}
-          >
-            {availableAlbums.map((album) => (
-              <option key={album} value={album}>
-                {album}
-              </option>
-            ))}
-          </Select>
-        ) : (
-          <Input
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            maxW="200px"
-            placeholder="Enter album name"
-            borderColor={isInvalid ? "red.300" : undefined}
-            _hover={{ borderColor: isInvalid ? "red.400" : undefined }}
-          />
-        )}
+        <Input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          maxW="200px"
+          placeholder="Enter album name"
+        />
       </FieldWithInfo>
     </FormControl>
   );

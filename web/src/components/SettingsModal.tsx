@@ -12,7 +12,6 @@ import {
   VStack,
   Text,
 } from "@chakra-ui/react";
-import { Socket } from "socket.io-client";
 import { GeneralSettings } from "./settings/GeneralSettings";
 import { IntegrationSettings } from "./settings/IntegrationSettings";
 import { UserSettings } from "./settings/UserSettings";
@@ -20,8 +19,6 @@ import { UserSettings } from "./settings/UserSettings";
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  socket: Socket | null;
-  isGuest: boolean;
 }
 
 type TabType = "general" | "integration" | "user";
@@ -29,25 +26,16 @@ type TabType = "general" | "integration" | "user";
 interface TabConfig {
   id: TabType;
   label: string;
-  component?: React.ComponentType<{ socket: Socket | null }>;
 }
 
 const TABS: TabConfig[] = [
-  { id: "general", label: "General", component: GeneralSettings },
-  { id: "integration", label: "Integration", component: IntegrationSettings },
+  { id: "general", label: "General" },
+  { id: "integration", label: "Notifications" },
   { id: "user", label: "User" },
 ];
 
-export function SettingsModal({
-  isOpen,
-  onClose,
-  socket,
-  isGuest,
-}: SettingsModalProps) {
+export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<TabType>("general");
-
-  const ActiveComponent =
-    TABS.find((tab) => tab.id === activeTab)?.component || GeneralSettings;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="4xl" isCentered>
@@ -56,7 +44,6 @@ export function SettingsModal({
         <ModalHeader borderBottomWidth="1px">Settings</ModalHeader>
         <ModalBody p={0}>
           <Flex h="600px">
-            {/* Left sidebar */}
             <Box w="240px" borderRightWidth="1px" p={6}>
               <VStack spacing={2} align="stretch">
                 {TABS.map((tab) => (
@@ -84,13 +71,10 @@ export function SettingsModal({
               </VStack>
             </Box>
 
-            {/* Right content area */}
             <Box flex={1} p={8} overflowY="auto">
-              {activeTab === "user" ? (
-                <UserSettings socket={socket} isGuest={isGuest} />
-              ) : (
-                <ActiveComponent socket={socket} />
-              )}
+              {activeTab === "general" && <GeneralSettings />}
+              {activeTab === "integration" && <IntegrationSettings />}
+              {activeTab === "user" && <UserSettings />}
             </Box>
           </Flex>
         </ModalBody>

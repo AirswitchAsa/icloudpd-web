@@ -8,19 +8,33 @@ import {
   ModalCloseButton,
   FormControl,
   Input,
+  InputGroup,
+  InputRightElement,
+  IconButton,
   VStack,
   Select,
   Button,
   ModalFooter,
-  useToast,
   Switch,
   NumberInput,
   NumberInputField,
   Box,
   Text,
 } from "@chakra-ui/react";
-import { Policy } from "@/types";
-import { Socket } from "socket.io-client";
+import { ViewIcon, ViewOffIcon } from "@chakra-ui/icons";
+import type { PolicyView } from "@/types/api";
+import { ApiError } from "@/api/client";
+import {
+  useUpsertPolicy,
+  useSetPolicyPassword,
+} from "@/hooks/usePolicies";
+import { pushError, pushSuccess } from "@/store/toastStore";
+import {
+  FormPolicy,
+  defaultFormPolicy,
+  fromPolicyView,
+  toBackendPolicy,
+} from "@/lib/policyMapping";
 import {
   FieldWithInfo,
   AlbumField,
@@ -36,153 +50,54 @@ import {
 interface EditPolicyModalProps {
   isOpen: boolean;
   onClose: () => void;
-  setPolicies: (policies: Policy[]) => void;
   isEditing?: boolean;
-  policy?: Policy;
-  socket: Socket | null;
+  policy?: PolicyView;
 }
 
 export function EditPolicyModal({
   isOpen,
   onClose,
-  setPolicies,
   isEditing = false,
   policy,
-  socket,
 }: EditPolicyModalProps) {
-  const toast = useToast();
-  const [formData, setFormData] = useState<
-    Omit<Policy, "status" | "progress" | "logs">
-  >({
-    name: policy?.name || "",
-    username: policy?.username || "",
-    directory: policy?.directory || "",
-    download_via_browser: policy?.download_via_browser || false,
-    domain: policy?.domain || "com",
-    folder_structure: policy?.folder_structure || "{:%Y/%m/%d}",
-    size: policy?.size || ["original"],
-    live_photo_size: policy?.live_photo_size || "original",
-    force_size: policy?.force_size || false,
-    align_raw: policy?.align_raw || "original",
-    keep_unicode_in_filenames: policy?.keep_unicode_in_filenames || false,
-    set_exif_datetime: policy?.set_exif_datetime || false,
-    live_photo_mov_filename_policy:
-      policy?.live_photo_mov_filename_policy || "suffix",
-    file_match_policy:
-      policy?.file_match_policy || "name-size-dedup-with-suffix",
-    xmp_sidecar: policy?.xmp_sidecar || false,
-    use_os_locale: policy?.use_os_locale || false,
-    album: policy?.album || "All Photos",
-    library: policy?.library || "Personal Library",
-    recent: policy?.recent || null,
-    until_found: policy?.until_found || null,
-    skip_videos: policy?.skip_videos || false,
-    skip_photos: policy?.skip_photos || false,
-    skip_live_photos: policy?.skip_live_photos || false,
-    auto_delete: policy?.auto_delete || false,
-    keep_icloud_recent_days: policy?.keep_icloud_recent_days ?? null,
-    dry_run: policy?.dry_run || false,
-    interval: policy?.interval || (null as string | null),
-    log_level: policy?.log_level || "info",
-    file_suffixes: policy?.file_suffixes || null,
-    match_pattern: policy?.match_pattern || null,
-    created_after: policy?.created_after || null,
-    created_before: policy?.created_before || null,
-    added_after: policy?.added_after || null,
-    added_before: policy?.added_before || null,
-    upload_to_aws_s3: policy?.upload_to_aws_s3 || false,
-    scheduled: policy?.scheduled || false,
-    authenticated: policy?.authenticated || false,
-    waiting_mfa: policy?.waiting_mfa || false,
-    device_make: policy?.device_make || null,
-    device_model: policy?.device_model || null,
-  });
+  const upsert = useUpsertPolicy();
+  const setPolicyPassword = useSetPolicyPassword();
 
-  const handleSave = () => {
-    if (!socket) return;
+  const [formData, setFormData] = useState<FormPolicy>(() =>
+    policy ? fromPolicyView(policy) : defaultFormPolicy()
+  );
 
-    // Remove any existing listeners first
-    socket.off("policies_after_save");
-    socket.off("policies_after_create");
-    socket.off("error_saving_policy");
-    socket.off("error_creating_policy");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
-    // Add new listeners
-    socket.once("policies_after_save", (policies: Policy[]) => {
-      toast({
-        title: "Success",
-        description: `Policy: "${formData.name}" saved successfully`,
-        status: "success",
-        duration: 3000,
-        isClosable: true,
-      });
-      setPolicies(policies);
+  const update = <K extends keyof FormPolicy>(key: K, value: FormPolicy[K]) =>
+    setFormData((prev) => ({ ...prev, [key]: value }));
+
+  const handleSave = async () => {
+    try {
+      const payload = toBackendPolicy(formData);
+      await upsert.mutateAsync({ name: formData.name, policy: payload });
+      if (password) {
+        try {
+          await setPolicyPassword.mutateAsync({
+            name: formData.name,
+            password,
+          });
+        } catch (err) {
+          if (err instanceof ApiError) pushError(err.message, err.errorId);
+        }
+      }
+      pushSuccess(
+        isEditing
+          ? `Policy "${formData.name}" saved`
+          : `Policy "${formData.name}" created`
+      );
       onClose();
-    });
-
-    socket.once("policies_after_create", (policies: Policy[]) => {
-      toast({
-        title: "Success",
-        description: `Policy: "${formData.name}" created successfully`,
-        status: "success",
-        duration: 3000,
-        isClosable: true,
-      });
-      setPolicies(policies);
-      onClose();
-    });
-
-    socket.once("error_saving_policy", (data: { error: string }) => {
-      toast({
-        title: "Error",
-        description: `Policy: "${formData.name}" failed to save. Error: ${data.error}`,
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
-    });
-
-    socket.once("error_creating_policy", (data: { error: string }) => {
-      toast({
-        title: "Error",
-        description: `Policy: "${formData.name}" failed to create. Error: ${data.error}`,
-        status: "error",
-        duration: 3000,
-        isClosable: true,
-      });
-    });
-
-    // Send the request
-    if (isEditing) {
-      socket.emit("save_policy", policy?.name, formData);
-    } else {
-      socket.emit("create_policy", formData);
+    } catch (err) {
+      if (err instanceof ApiError) pushError(err.message, err.errorId);
     }
   };
 
-  const handleSaveLibrary = (value: "Personal Library" | "Shared Library") => {
-    if (!isEditing || !socket || !policy) return;
-    const newFormData = { ...formData, library: value };
-    setFormData(newFormData);
-
-    // Remove existing listener first
-    socket.off("policies_after_save");
-
-    socket.once("policies_after_save", (policies: Policy[]) => {
-      toast({
-        title: "Success",
-        description: `Library is set to ${value}. You may now select an album.`,
-        status: "success",
-        duration: 3000,
-        isClosable: true,
-      });
-      // set albums to the new values and update the policy
-      const newAlbums = policies.find((p) => p.name === policy?.name)?.albums;
-      policy.albums = newAlbums;
-      setFormData({ ...newFormData, albums: newAlbums });
-    });
-    socket.emit("save_policy", policy?.name, newFormData);
-  };
   return (
     <Modal
       isOpen={isOpen}
@@ -223,9 +138,8 @@ export function EditPolicyModal({
                   >
                     <Input
                       value={formData.name}
-                      onChange={(e) =>
-                        setFormData({ ...formData, name: e.target.value })
-                      }
+                      onChange={(e) => update("name", e.target.value)}
+                      isDisabled={isEditing}
                       maxW="300px"
                     />
                   </FieldWithInfo>
@@ -238,9 +152,7 @@ export function EditPolicyModal({
                   >
                     <Input
                       value={formData.username}
-                      onChange={(e) =>
-                        setFormData({ ...formData, username: e.target.value })
-                      }
+                      onChange={(e) => update("username", e.target.value)}
                       maxW="300px"
                     />
                   </FieldWithInfo>
@@ -253,9 +165,7 @@ export function EditPolicyModal({
                   >
                     <Input
                       value={formData.directory}
-                      onChange={(e) =>
-                        setFormData({ ...formData, directory: e.target.value })
-                      }
+                      onChange={(e) => update("directory", e.target.value)}
                       maxW="300px"
                     />
                   </FieldWithInfo>
@@ -263,27 +173,161 @@ export function EditPolicyModal({
 
                 <FormControl>
                   <FieldWithInfo
-                    label="Download via Browser "
-                    info="Download photos via browser to local directory."
+                    label="iCloud Password"
+                    info={
+                      formData.has_password
+                        ? "A password is already stored. Entering a new one will overwrite it."
+                        : "Stored password for the iCloud account. Leave blank to skip."
+                    }
+                  >
+                    <InputGroup maxW="300px">
+                      <Input
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder={
+                          formData.has_password ? "(stored)" : "Enter password"
+                        }
+                      />
+                      <InputRightElement>
+                        <IconButton
+                          aria-label={
+                            showPassword ? "Hide password" : "Show password"
+                          }
+                          icon={showPassword ? <ViewOffIcon /> : <ViewIcon />}
+                          variant="ghost"
+                          onClick={() => setShowPassword(!showPassword)}
+                          size="sm"
+                        />
+                      </InputRightElement>
+                    </InputGroup>
+                  </FieldWithInfo>
+                </FormControl>
+
+                <FormControl>
+                  <FieldWithInfo
+                    label="Enabled"
+                    info="Whether the policy is enabled for scheduled runs."
                   >
                     <Switch
-                      isChecked={formData.download_via_browser}
+                      isChecked={formData.enabled}
+                      onChange={(e) => update("enabled", e.target.checked)}
+                    />
+                  </FieldWithInfo>
+                </FormControl>
+
+                <FormControl isRequired>
+                  <FieldWithInfo
+                    label="Cron Schedule"
+                    info="Cron expression for when the policy should run (e.g. '0 * * * *' for hourly)."
+                  >
+                    <Input
+                      value={formData.cron}
+                      onChange={(e) => update("cron", e.target.value)}
+                      maxW="200px"
+                      placeholder="0 * * * *"
+                    />
+                  </FieldWithInfo>
+                </FormControl>
+
+                <FormControl>
+                  <FieldWithInfo
+                    label="Timezone"
+                    info="IANA timezone name used to interpret the cron schedule (e.g. 'America/Los_Angeles'). Leave blank for server default."
+                  >
+                    <Input
+                      value={formData.timezone ?? ""}
                       onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          download_via_browser: e.target.checked,
-                        })
+                        update("timezone", e.target.value || null)
                       }
+                      maxW="200px"
+                      placeholder="UTC"
                     />
                   </FieldWithInfo>
                 </FormControl>
 
                 <IntegrationField
                   value={formData.upload_to_aws_s3}
-                  onChange={(value) =>
-                    setFormData({ ...formData, upload_to_aws_s3: value })
-                  }
+                  onChange={(value) => update("upload_to_aws_s3", value)}
                 />
+
+                {formData.upload_to_aws_s3 && (
+                  <Box pl={10}>
+                    <VStack spacing={3} align="stretch">
+                      <FormControl isRequired>
+                        <FieldWithInfo
+                          label="S3 Bucket"
+                          info="Name of the S3 bucket to upload to."
+                        >
+                          <Input
+                            value={formData.aws_bucket}
+                            onChange={(e) =>
+                              update("aws_bucket", e.target.value)
+                            }
+                            maxW="300px"
+                          />
+                        </FieldWithInfo>
+                      </FormControl>
+                      <FormControl>
+                        <FieldWithInfo
+                          label="S3 Prefix"
+                          info="Optional key prefix within the bucket."
+                        >
+                          <Input
+                            value={formData.aws_prefix}
+                            onChange={(e) =>
+                              update("aws_prefix", e.target.value)
+                            }
+                            maxW="300px"
+                          />
+                        </FieldWithInfo>
+                      </FormControl>
+                      <FormControl>
+                        <FieldWithInfo
+                          label="AWS Region"
+                          info="Optional AWS region (e.g. 'us-east-1')."
+                        >
+                          <Input
+                            value={formData.aws_region}
+                            onChange={(e) =>
+                              update("aws_region", e.target.value)
+                            }
+                            maxW="200px"
+                          />
+                        </FieldWithInfo>
+                      </FormControl>
+                      <FormControl>
+                        <FieldWithInfo
+                          label="AWS Access Key ID"
+                          info="Optional — leave blank to use server default credentials."
+                        >
+                          <Input
+                            value={formData.aws_access_key_id}
+                            onChange={(e) =>
+                              update("aws_access_key_id", e.target.value)
+                            }
+                            maxW="300px"
+                          />
+                        </FieldWithInfo>
+                      </FormControl>
+                      <FormControl>
+                        <FieldWithInfo
+                          label="AWS Secret Access Key"
+                          info="Optional — leave blank to use server default credentials."
+                        >
+                          <Input
+                            type="password"
+                            value={formData.aws_secret_access_key}
+                            onChange={(e) =>
+                              update("aws_secret_access_key", e.target.value)
+                            }
+                            maxW="300px"
+                          />
+                        </FieldWithInfo>
+                      </FormControl>
+                    </VStack>
+                  </Box>
+                )}
 
                 <FormControl>
                   <FieldWithInfo
@@ -293,16 +337,61 @@ export function EditPolicyModal({
                     <Select
                       value={formData.domain}
                       onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          domain: e.target.value as "com" | "cn",
-                        })
+                        update("domain", e.target.value as "com" | "cn")
                       }
                       maxW="100px"
                     >
                       <option value="com">com</option>
                       <option value="cn">cn</option>
                     </Select>
+                  </FieldWithInfo>
+                </FormControl>
+              </VStack>
+            </Box>
+
+            {/* Notifications */}
+            <Box>
+              <Text fontSize="lg" fontWeight="semibold" mb={4}>
+                Notifications
+              </Text>
+              <VStack spacing={4} align="stretch">
+                <FormControl>
+                  <FieldWithInfo
+                    label="Notify on Start"
+                    info="Send a notification when a run starts."
+                  >
+                    <Switch
+                      isChecked={formData.on_start_notify}
+                      onChange={(e) =>
+                        update("on_start_notify", e.target.checked)
+                      }
+                    />
+                  </FieldWithInfo>
+                </FormControl>
+                <FormControl>
+                  <FieldWithInfo
+                    label="Notify on Success"
+                    info="Send a notification when a run succeeds."
+                  >
+                    <Switch
+                      isChecked={formData.on_success_notify}
+                      onChange={(e) =>
+                        update("on_success_notify", e.target.checked)
+                      }
+                    />
+                  </FieldWithInfo>
+                </FormControl>
+                <FormControl>
+                  <FieldWithInfo
+                    label="Notify on Failure"
+                    info="Send a notification when a run fails."
+                  >
+                    <Switch
+                      isChecked={formData.on_failure_notify}
+                      onChange={(e) =>
+                        update("on_failure_notify", e.target.checked)
+                      }
+                    />
                   </FieldWithInfo>
                 </FormControl>
               </VStack>
@@ -315,11 +404,8 @@ export function EditPolicyModal({
               </Text>
               <VStack spacing={4} align="stretch">
                 <AlbumField
-                  policy={policy}
                   value={formData.album}
-                  onChange={(value) =>
-                    setFormData({ ...formData, album: value })
-                  }
+                  onChange={(value) => update("album", value)}
                 />
                 <FormControl>
                   <FieldWithInfo
@@ -329,10 +415,11 @@ export function EditPolicyModal({
                     <Select
                       value={formData.library}
                       onChange={(e) =>
-                        handleSaveLibrary(
+                        update(
+                          "library",
                           e.target.value as
                             | "Personal Library"
-                            | "Shared Library",
+                            | "Shared Library"
                         )
                       }
                       maxW="200px"
@@ -351,10 +438,7 @@ export function EditPolicyModal({
                     <Input
                       value={formData.folder_structure}
                       onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          folder_structure: e.target.value,
-                        })
+                        update("folder_structure", e.target.value)
                       }
                       maxW="200px"
                     />
@@ -364,70 +448,62 @@ export function EditPolicyModal({
                 <DownloadSizesField
                   value={formData.size}
                   onChange={(value) =>
-                    setFormData({
-                      ...formData,
-                      size: value as (
+                    update(
+                      "size",
+                      value as (
                         | "original"
                         | "medium"
                         | "thumb"
                         | "adjusted"
                         | "alternative"
-                      )[],
-                    })
+                      )[]
+                    )
                   }
                 />
 
                 <SuffixField
                   value={formData.file_suffixes}
-                  onChange={(value) =>
-                    setFormData({ ...formData, file_suffixes: value })
-                  }
+                  onChange={(value) => update("file_suffixes", value)}
                 />
 
                 <MakeField
                   value={formData.device_make}
-                  onChange={(value) =>
-                    setFormData({ ...formData, device_make: value })
-                  }
+                  onChange={(value) => update("device_make", value)}
                 />
                 <ModelField
                   value={formData.device_model}
-                  onChange={(value) =>
-                    setFormData({ ...formData, device_model: value })
-                  }
+                  onChange={(value) => update("device_model", value)}
                 />
 
                 <PatternMatchField
                   value={formData.match_pattern}
-                  onChange={(value) =>
-                    setFormData({ ...formData, match_pattern: value })
-                  }
+                  onChange={(value) => update("match_pattern", value)}
                 />
                 <DateRangeField
                   label="Created Date Range"
                   info="Filter files by creation date."
                   startDate={formData.created_after}
                   endDate={formData.created_before}
-                  onChange={(start, end) =>
-                    setFormData({
-                      ...formData,
+                  onChange={(start, end) => {
+                    setFormData((prev) => ({
+                      ...prev,
                       created_after: start,
                       created_before: end,
-                    })
-                  }
+                    }));
+                  }}
                 />
                 <DateRangeField
                   label="Added Date Range"
                   info="Filter files by the date they were added to iCloud."
                   startDate={formData.added_after}
                   endDate={formData.added_before}
-                  onChange={(start, end) =>
-                    setFormData({
-                      ...formData,
+                  onChange={(start, end) => {
+                    setFormData((prev) => ({
+                      ...prev,
                       added_after: start,
                       added_before: end,
-                    })
-                  }
+                    }));
+                  }}
                 />
 
                 <FormControl>
@@ -438,11 +514,10 @@ export function EditPolicyModal({
                     <NumberInput
                       value={formData.recent || ""}
                       onChange={(valueString) =>
-                        setFormData({
-                          ...formData,
-                          recent:
-                            valueString === "" ? null : parseInt(valueString),
-                        })
+                        update(
+                          "recent",
+                          valueString === "" ? null : parseInt(valueString)
+                        )
                       }
                       min={0}
                       maxW="100px"
@@ -460,11 +535,10 @@ export function EditPolicyModal({
                     <NumberInput
                       value={formData.until_found || ""}
                       onChange={(valueString) =>
-                        setFormData({
-                          ...formData,
-                          until_found:
-                            valueString === "" ? null : parseInt(valueString),
-                        })
+                        update(
+                          "until_found",
+                          valueString === "" ? null : parseInt(valueString)
+                        )
                       }
                       min={0}
                       maxW="100px"
@@ -481,12 +555,7 @@ export function EditPolicyModal({
                   >
                     <Switch
                       isChecked={formData.skip_videos}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          skip_videos: e.target.checked,
-                        })
-                      }
+                      onChange={(e) => update("skip_videos", e.target.checked)}
                     />
                   </FieldWithInfo>
                 </FormControl>
@@ -499,10 +568,7 @@ export function EditPolicyModal({
                     <Switch
                       isChecked={formData.skip_live_photos}
                       onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          skip_live_photos: e.target.checked,
-                        })
+                        update("skip_live_photos", e.target.checked)
                       }
                     />
                   </FieldWithInfo>
@@ -515,12 +581,7 @@ export function EditPolicyModal({
                   >
                     <Switch
                       isChecked={formData.skip_photos}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          skip_photos: e.target.checked,
-                        })
-                      }
+                      onChange={(e) => update("skip_photos", e.target.checked)}
                     />
                   </FieldWithInfo>
                 </FormControl>
@@ -536,16 +597,11 @@ export function EditPolicyModal({
                 <FormControl>
                   <FieldWithInfo
                     label="Auto Delete"
-                    info="When enabled, any photos you delete in iCloud (moved to 'Recently Deleted') will also be removed from your local download directory. This mirrors your iCloud deletions locally."
+                    info="When enabled, any photos you delete in iCloud (moved to 'Recently Deleted') will also be removed from your local download directory."
                   >
                     <Switch
                       isChecked={formData.auto_delete}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          auto_delete: e.target.checked,
-                        })
-                      }
+                      onChange={(e) => update("auto_delete", e.target.checked)}
                     />
                   </FieldWithInfo>
                 </FormControl>
@@ -553,16 +609,15 @@ export function EditPolicyModal({
                 <FormControl>
                   <FieldWithInfo
                     label="Delete from iCloud After Download (keep N days)"
-                    info="After downloading, delete photos from iCloud that are older than the specified number of days. Set to 0 to delete all downloaded photos from iCloud regardless of age. Leave empty to never delete from iCloud."
+                    info="After downloading, delete photos from iCloud that are older than the specified number of days. Set to 0 to delete all. Leave empty to never delete from iCloud."
                   >
                     <NumberInput
                       value={formData.keep_icloud_recent_days ?? ""}
                       onChange={(valueString) =>
-                        setFormData({
-                          ...formData,
-                          keep_icloud_recent_days:
-                            valueString === "" ? null : parseInt(valueString),
-                        })
+                        update(
+                          "keep_icloud_recent_days",
+                          valueString === "" ? null : parseInt(valueString)
+                        )
                       }
                       min={0}
                       maxW="100px"
@@ -574,7 +629,7 @@ export function EditPolicyModal({
               </VStack>
             </Box>
 
-            {/* UI Options */}
+            {/* Server Options */}
             <Box>
               <Text fontSize="lg" fontWeight="semibold" mb={4}>
                 Server Options
@@ -587,24 +642,7 @@ export function EditPolicyModal({
                   >
                     <Switch
                       isChecked={formData.dry_run}
-                      onChange={(e) =>
-                        setFormData({ ...formData, dry_run: e.target.checked })
-                      }
-                    />
-                  </FieldWithInfo>
-                </FormControl>
-
-                <FormControl>
-                  <FieldWithInfo
-                    label="Schedule Interval"
-                    info="The schedule to run the policy as a cron job (leave empty to keep it manual)."
-                  >
-                    <Input
-                      value={formData.interval || ""}
-                      onChange={(e) =>
-                        setFormData({ ...formData, interval: e.target.value })
-                      }
-                      maxW="200px"
+                      onChange={(e) => update("dry_run", e.target.checked)}
                     />
                   </FieldWithInfo>
                 </FormControl>
@@ -612,18 +650,15 @@ export function EditPolicyModal({
                 <FormControl>
                   <FieldWithInfo
                     label="Log Level"
-                    info="The level of detail for the download log messages. Server logs are configured when starting."
+                    info="The level of detail for the download log messages."
                   >
                     <Select
                       value={formData.log_level}
                       onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          log_level: e.target.value as
-                            | "debug"
-                            | "info"
-                            | "error",
-                        })
+                        update(
+                          "log_level",
+                          e.target.value as "debug" | "info" | "error"
+                        )
                       }
                       maxW="200px"
                     >
@@ -646,6 +681,7 @@ export function EditPolicyModal({
             borderRadius="xl"
             fontFamily="Inter, sans-serif"
             onClick={handleSave}
+            isLoading={upsert.isPending || setPolicyPassword.isPending}
           >
             Save
           </Button>

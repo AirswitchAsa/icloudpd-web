@@ -6,41 +6,26 @@ import {
   AlertDialogContent,
   AlertDialogOverlay,
   Button,
-  UseToastOptions,
 } from "@chakra-ui/react";
 import { useRef } from "react";
-import { Socket } from "socket.io-client";
 
 interface InterruptConfirmationDialogProps {
   isOpen: boolean;
   onClose: () => void;
   policyName: string;
-  socket: Socket | null;
-  toast: (options: UseToastOptions) => void;
+  onConfirm: () => void;
 }
 
 export const InterruptConfirmationDialog = ({
   isOpen,
   onClose,
   policyName,
-  socket,
-  toast,
+  onConfirm,
 }: InterruptConfirmationDialogProps) => {
   const cancelRef = useRef<HTMLButtonElement>(null);
 
-  const handleConfirmInterrupt = () => {
-    if (!socket) return;
-    socket.off("error_interrupting_download");
-    socket.once("error_interrupting_download", (policy_name, error) => {
-      toast({
-        title: "Error",
-        description: `Failed to interrupt download for ${policy_name}: ${error}`,
-        status: "error",
-        duration: 5000,
-        isClosable: true,
-      });
-    });
-    socket.emit("interrupt", policyName);
+  const handleConfirm = () => {
+    onConfirm();
     onClose();
   };
 
@@ -65,7 +50,7 @@ export const InterruptConfirmationDialog = ({
             <Button ref={cancelRef} onClick={onClose}>
               Cancel
             </Button>
-            <Button colorScheme="red" onClick={handleConfirmInterrupt} ml={3}>
+            <Button colorScheme="red" onClick={handleConfirm} ml={3}>
               Confirm
             </Button>
           </AlertDialogFooter>
