@@ -5,7 +5,6 @@ Behavior driven by env vars:
   FAKE_ICLOUDPD_MODE: one of 'success', 'fail', 'slow', 'mfa'
   FAKE_ICLOUDPD_TOTAL: default 5
   FAKE_ICLOUDPD_SLEEP: seconds between progress lines (default 0.01)
-  FAKE_ICLOUDPD_MFA_CALLBACK: path to a file; when present its first line is the code
 """
 
 from __future__ import annotations
@@ -23,16 +22,10 @@ def main() -> int:
     print("INFO     starting", flush=True)
 
     if mode == "mfa":
-        cb = os.environ.get("FAKE_ICLOUDPD_MFA_CALLBACK", "")
         print("INFO     Two-step authentication required.", flush=True)
-        while True:
-            if cb and os.path.isfile(cb):
-                with open(cb) as f:
-                    code = f.read().strip()
-                if code:
-                    print(f"INFO     Received MFA code of length {len(code)}", flush=True)
-                    break
-            time.sleep(0.05)
+        code = sys.stdin.readline().strip()
+        if code:
+            print(f"INFO     Received MFA code of length {len(code)}", flush=True)
 
     if mode == "fail":
         print("ERROR    something went wrong", file=sys.stderr, flush=True)

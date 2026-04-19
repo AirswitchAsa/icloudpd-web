@@ -16,5 +16,6 @@ def build_config(policy: Policy, *, password: str | None) -> dict[str, Any]:
     cfg["directory"] = str(policy.directory)
     if password is not None:
         cfg["password"] = password
+    cfg["mfa_provider"] = "console"
     cfg.update(policy.icloudpd)
     return cfg

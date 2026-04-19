@@ -86,6 +86,7 @@ def create_app(
         icloudpd_argv=icloudpd_argv,
         retention=settings.retention_runs,
         on_run_event=_on_run_event,
+        mfa_registry=mfa_registry,
     )
 
     scheduler = Scheduler(

@@ -5,6 +5,7 @@ import contextlib
 from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import tomli_w
 
@@ -15,6 +16,10 @@ from .log_retention import prune_logs
 from .run import Run
 
 
+if TYPE_CHECKING:
+    from .mfa import MfaRegistry
+
+
 class Runner:
     def __init__(
         self,
@@ -23,11 +28,13 @@ class Runner:
         icloudpd_argv: Callable[[Path], list[str]],
         retention: int = 10,
         on_run_event: Callable[[Run, str], None] | None = None,
+        mfa_registry: MfaRegistry | None = None,
     ) -> None:
         self._runs_base = runs_base
         self._argv_fn = icloudpd_argv
         self._retention = retention
         self._on_event = on_run_event or (lambda r, ev: None)
+        self._mfa_registry = mfa_registry
         self._active: dict[str, Run] = {}
         self._by_id: dict[str, Run] = {}
         self._lock = asyncio.Lock()
@@ -64,11 +71,20 @@ class Runner:
             cfg_path = log_dir / f"{run_id}.cfg.toml"
             cfg_path.write_bytes(tomli_w.dumps(cfg).encode("utf-8"))
             argv = self._argv_fn(cfg_path)
+
+            on_mfa_needed = None
+            if self._mfa_registry is not None:
+                reg = self._mfa_registry
+
+                def on_mfa_needed(pname: str) -> Path:  # noqa: E306
+                    return reg.register(pname).path
+
             run = Run(
                 run_id=run_id,
                 policy_name=policy.name,
                 argv=argv,
                 log_dir=log_dir,
+                on_mfa_needed=on_mfa_needed,
             )
             self._active[policy.name] = run
             self._by_id[run_id] = run
@@ -93,6 +109,9 @@ class Runner:
 
     async def _on_complete(self, run: Run) -> None:
         await run.wait()
+        if self._mfa_registry is not None:
+            with contextlib.suppress(Exception):
+                self._mfa_registry.cleanup(run.policy_name)
         prune_logs(run.log_dir, keep=self._retention)
         self._on_event(run, "completed")
 
