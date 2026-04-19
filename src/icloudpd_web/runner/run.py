@@ -40,12 +40,14 @@ class Run:
         policy_name: str,
         argv: list[str],
         log_dir: Path,
+        password: str | None = None,
         env: dict[str, str] | None = None,
         on_mfa_needed: Callable[[str], Path] | None = None,
     ) -> None:
         self.run_id = run_id
         self.policy_name = policy_name
         self._argv = argv
+        self._password = password
         self._env = env
         self._on_mfa_needed = on_mfa_needed
         self.log_dir = log_dir
@@ -73,16 +75,20 @@ class Run:
         self.status = "running"
         self._log_fh = open(self.log_path, "w", encoding="utf-8", buffering=1)  # noqa: SIM115, ASYNC230
         env = {**os.environ, **(self._env or {})}
-        stdin_mode = asyncio.subprocess.PIPE if self._on_mfa_needed else asyncio.subprocess.DEVNULL
         self._proc = await asyncio.create_subprocess_exec(
             *self._argv,
-            stdin=stdin_mode,
+            stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             env=env,
         )
         assert self._proc.stdout is not None
         assert self._proc.stderr is not None
+        assert self._proc.stdin is not None
+        # Deliver the password immediately via stdin (--password-provider console).
+        if self._password is not None:
+            self._proc.stdin.write((self._password + "\n").encode("utf-8"))
+            await self._proc.stdin.drain()
         asyncio.create_task(self._drain(self._proc.stdout, "stdout"))
         asyncio.create_task(self._drain(self._proc.stderr, "stderr"))
         asyncio.create_task(self._wait_exit())

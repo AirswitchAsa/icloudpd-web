@@ -9,7 +9,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from .conftest import make_policy_body, wait_until_idle
+from .conftest import make_policy_body, set_policy_password, wait_until_idle
 
 
 def _poll_mfa_awaiting(client: TestClient, name: str = "p", *, attempts: int = 100) -> None:
@@ -34,6 +34,7 @@ def test_mfa_workflow_end_to_end(
     with TestClient(app) as client:
         client.post("/auth/login", json={"password": "pw"})
         client.put("/policies/p", json=make_policy_body("p"))
+        set_policy_password(client)
 
         # Start the run.
         start = client.post("/policies/p/runs")

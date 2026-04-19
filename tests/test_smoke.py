@@ -12,8 +12,8 @@ from icloudpd_web.auth import Authenticator
 FIXTURE = Path(__file__).resolve().parent / "fixtures" / "fake_icloudpd.py"
 
 
-def _argv(cfg_path: Path) -> list[str]:
-    return [sys.executable, str(FIXTURE), "--config-file", str(cfg_path)]
+def _argv(argv_tail: list[str]) -> list[str]:
+    return [sys.executable, str(FIXTURE), *argv_tail]
 
 
 @pytest.mark.smoke
@@ -42,6 +42,8 @@ def test_end_to_end(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
                 "aws": None,
             },
         )
+        # Set a policy password; required since icloudpd reads it via stdin.
+        c.post("/policies/p/password", json={"password": "testpw"})
         rid = c.post("/policies/p/runs").json()["run_id"]
         for _ in range(100):
             if c.get("/policies/p").json()["is_running"] is False:

@@ -6,6 +6,19 @@ import pytest
 from icloudpd_web.runner.run import Run, RunEvent
 
 
+def _argv(fake_icloudpd_cmd: list[str]) -> list[str]:
+    """Minimal valid argv for the fake binary (satisfies argparse requirements)."""
+    return [
+        *fake_icloudpd_cmd,
+        "--username",
+        "u@icloud.com",
+        "--directory",
+        "/tmp/test",
+        "--password-provider",
+        "console",
+    ]
+
+
 @pytest.mark.asyncio
 async def test_success_run(
     tmp_path: Path, fake_icloudpd_cmd: list[str], monkeypatch: pytest.MonkeyPatch
@@ -16,8 +29,9 @@ async def test_success_run(
     run = Run(
         run_id="policy-A",
         policy_name="policy",
-        argv=fake_icloudpd_cmd,
+        argv=_argv(fake_icloudpd_cmd),
         log_dir=tmp_path,
+        password="pw",
     )
     await run.start()
     await run.wait()
@@ -37,8 +51,9 @@ async def test_fail_run(
     run = Run(
         run_id="policy-B",
         policy_name="policy",
-        argv=fake_icloudpd_cmd,
+        argv=_argv(fake_icloudpd_cmd),
         log_dir=tmp_path,
+        password="pw",
     )
     await run.start()
     await run.wait()
@@ -57,8 +72,9 @@ async def test_ring_buffer_and_broadcast(
     run = Run(
         run_id="policy-C",
         policy_name="policy",
-        argv=fake_icloudpd_cmd,
+        argv=_argv(fake_icloudpd_cmd),
         log_dir=tmp_path,
+        password="pw",
     )
     await run.start()
 
@@ -88,8 +104,9 @@ async def test_progress_parse(
     run = Run(
         run_id="policy-D",
         policy_name="policy",
-        argv=fake_icloudpd_cmd,
+        argv=_argv(fake_icloudpd_cmd),
         log_dir=tmp_path,
+        password="pw",
     )
     await run.start()
     await run.wait()
@@ -107,8 +124,9 @@ async def test_stop_run(
     run = Run(
         run_id="policy-E",
         policy_name="policy",
-        argv=fake_icloudpd_cmd,
+        argv=_argv(fake_icloudpd_cmd),
         log_dir=tmp_path,
+        password="pw",
     )
     await run.start()
     await asyncio.sleep(0.3)
@@ -127,8 +145,9 @@ async def test_sse_resume_from_seq(
     run = Run(
         run_id="policy-F",
         policy_name="policy",
-        argv=fake_icloudpd_cmd,
+        argv=_argv(fake_icloudpd_cmd),
         log_dir=tmp_path,
+        password="pw",
     )
     await run.start()
     await run.wait()

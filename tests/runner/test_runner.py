@@ -29,9 +29,9 @@ async def test_start_returns_run(
 
     r = Runner(
         runs_base=tmp_path,
-        icloudpd_argv=lambda cfg_path: [*fake_icloudpd_cmd, "--config-file", str(cfg_path)],
+        icloudpd_argv=lambda argv_tail: [*fake_icloudpd_cmd, *argv_tail],
     )
-    run = await r.start(_policy(), password=None, trigger="manual")
+    run = await r.start(_policy(), password="pw", trigger="manual")
     await run.wait()
     assert run.status == "success"
     assert r.is_running("p") is False
@@ -46,12 +46,12 @@ async def test_is_running_blocks_duplicate(
 
     r = Runner(
         runs_base=tmp_path,
-        icloudpd_argv=lambda cfg_path: [*fake_icloudpd_cmd, "--config-file", str(cfg_path)],
+        icloudpd_argv=lambda argv_tail: [*fake_icloudpd_cmd, *argv_tail],
     )
-    run = await r.start(_policy(), password=None, trigger="manual")
+    run = await r.start(_policy(), password="pw", trigger="manual")
     assert r.is_running("p") is True
     with pytest.raises(RuntimeError):
-        await r.start(_policy(), password=None, trigger="manual")
+        await r.start(_policy(), password="pw", trigger="manual")
     await run.stop()
     await run.wait()
 
@@ -65,11 +65,11 @@ async def test_prunes_logs_after_completion(
 
     r = Runner(
         runs_base=tmp_path,
-        icloudpd_argv=lambda cfg_path: [*fake_icloudpd_cmd, "--config-file", str(cfg_path)],
+        icloudpd_argv=lambda argv_tail: [*fake_icloudpd_cmd, *argv_tail],
         retention=2,
     )
     for _ in range(4):
-        run = await r.start(_policy(), password=None, trigger="manual")
+        run = await r.start(_policy(), password="pw", trigger="manual")
         await run.wait()
         # Brief pause so file mtimes differ.
         await asyncio.sleep(0.01)
@@ -77,3 +77,13 @@ async def test_prunes_logs_after_completion(
     await asyncio.sleep(0.1)
     log_files = list((tmp_path / "p").glob("*.log"))
     assert len(log_files) == 2
+
+
+@pytest.mark.asyncio
+async def test_start_raises_without_password(tmp_path: Path, fake_icloudpd_cmd: list[str]) -> None:
+    r = Runner(
+        runs_base=tmp_path,
+        icloudpd_argv=lambda argv_tail: [*fake_icloudpd_cmd, *argv_tail],
+    )
+    with pytest.raises(ValueError, match="password is required"):
+        await r.start(_policy(), password=None, trigger="manual")

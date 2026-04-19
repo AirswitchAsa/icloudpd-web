@@ -7,11 +7,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import tomli_w
-
 from icloudpd_web.store.models import Policy
 
-from .config_builder import build_config
+from .config_builder import build_argv
 from .log_retention import prune_logs
 from .run import Run
 
@@ -25,7 +23,7 @@ class Runner:
         self,
         *,
         runs_base: Path,
-        icloudpd_argv: Callable[[Path], list[str]],
+        icloudpd_argv: Callable[[list[str]], list[str]],
         retention: int = 10,
         on_run_event: Callable[[Run, str], None] | None = None,
         mfa_registry: MfaRegistry | None = None,
@@ -38,11 +36,6 @@ class Runner:
         self._active: dict[str, Run] = {}
         self._by_id: dict[str, Run] = {}
         self._lock = asyncio.Lock()
-        # Remove any stale cfg.toml files left over from a prior crashed run.
-        if self._runs_base.exists():
-            for stale in self._runs_base.glob("*/*.cfg.toml"):
-                with contextlib.suppress(OSError):
-                    stale.unlink()
 
     def is_running(self, name: str) -> bool:
         run = self._active.get(name)
@@ -61,16 +54,20 @@ class Runner:
         password: str | None,
         trigger: str,
     ) -> Run:
+        if password is None:
+            raise ValueError(
+                f"password is required to start policy {policy.name!r}; "
+                "set a password via the secrets API first"
+            )
         async with self._lock:
             if self.is_running(policy.name):
                 raise RuntimeError(f"policy {policy.name} already running")
             run_id = _mk_run_id(policy.name)
             log_dir = self._runs_base / policy.name
             log_dir.mkdir(parents=True, exist_ok=True)
-            cfg = build_config(policy, password=password)
-            cfg_path = log_dir / f"{run_id}.cfg.toml"
-            cfg_path.write_bytes(tomli_w.dumps(cfg).encode("utf-8"))
-            argv = self._argv_fn(cfg_path)
+
+            argv_tail = build_argv(policy)
+            argv = self._argv_fn(argv_tail)
 
             on_mfa_needed = None
             if self._mfa_registry is not None:
@@ -84,18 +81,12 @@ class Runner:
                 policy_name=policy.name,
                 argv=argv,
                 log_dir=log_dir,
+                password=password,
                 on_mfa_needed=on_mfa_needed,
             )
             self._active[policy.name] = run
             self._by_id[run_id] = run
-            try:
-                await run.start()
-            finally:
-                # Config contains the password; unlink immediately after the subprocess
-                # has been spawned. icloudpd loads --config-file at startup so removing
-                # the path now is safe.
-                with contextlib.suppress(FileNotFoundError, OSError):
-                    cfg_path.unlink()
+            await run.start()
             asyncio.create_task(self._on_complete(run))
             self._on_event(run, "started")
             return run

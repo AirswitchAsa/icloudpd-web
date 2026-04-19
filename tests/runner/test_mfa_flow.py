@@ -10,6 +10,21 @@ import pytest
 from icloudpd_web.runner.run import Run
 
 
+def _argv(fake_icloudpd_cmd: list[str]) -> list[str]:
+    """Minimal valid argv for the fake binary (satisfies argparse requirements)."""
+    return [
+        *fake_icloudpd_cmd,
+        "--username",
+        "u@icloud.com",
+        "--directory",
+        "/tmp/test",
+        "--password-provider",
+        "console",
+        "--mfa-provider",
+        "console",
+    ]
+
+
 @pytest.mark.asyncio
 async def test_mfa_flow_delivers_code_via_stdin(
     tmp_path: Path,
@@ -31,8 +46,9 @@ async def test_mfa_flow_delivers_code_via_stdin(
     run = Run(
         run_id="test-mfa",
         policy_name="p",
-        argv=fake_icloudpd_cmd,
+        argv=_argv(fake_icloudpd_cmd),
         log_dir=tmp_path,
+        password="pw",
         on_mfa_needed=on_mfa_needed,
     )
     await run.start()
@@ -76,8 +92,9 @@ async def test_mfa_flow_awaiting_mfa_status_event(
     run = Run(
         run_id="test-mfa-evt",
         policy_name="p",
-        argv=fake_icloudpd_cmd,
+        argv=_argv(fake_icloudpd_cmd),
         log_dir=tmp_path,
+        password="pw",
         on_mfa_needed=on_mfa_needed,
     )
 

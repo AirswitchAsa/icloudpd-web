@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 
 from icloudpd_web.integrations.aws_sync import AwsSyncResult
 
-from .conftest import parse_sse, wait_until_idle
+from .conftest import parse_sse, set_policy_password, wait_until_idle
 
 
 def test_wf1_happy_path(client: TestClient) -> None:
@@ -71,6 +71,7 @@ def test_wf3_failure_path(
                 "aws": None,
             },
         )
+        set_policy_password(c)
         run_id = c.post("/policies/p/runs").json()["run_id"]
 
         # Wait for completion
@@ -110,6 +111,7 @@ def test_wf4_interrupt_midrun(
                 "aws": None,
             },
         )
+        set_policy_password(c)
         run_id = c.post("/policies/p/runs").json()["run_id"]
 
         # Give ~400ms to start and emit at least one progress line
@@ -152,6 +154,7 @@ def test_wf5_sse_resume(
                 "aws": None,
             },
         )
+        set_policy_password(c)
         run_id = c.post("/policies/p/runs").json()["run_id"]
         wait_until_idle(c)
 
@@ -213,6 +216,7 @@ def test_wf7_scheduler_cron_tick(
                 "aws": None,
             },
         )
+        set_policy_password(c)
 
         scheduler = app.state.scheduler
         scheduler.tick(datetime.now(timezone.utc))
@@ -262,6 +266,7 @@ def test_wf8_apprise_emitted_on_completion(
                 "aws": None,
             },
         )
+        set_policy_password(c)
         c.post("/policies/p/runs")
         wait_until_idle(c)
 
@@ -308,6 +313,7 @@ def test_wf9_aws_sync_invoked_on_success(
                 },
             },
         )
+        set_policy_password(c)
         c.post("/policies/p/runs")
         wait_until_idle(c)
         time.sleep(0.2)  # Allow the background AWS task to run

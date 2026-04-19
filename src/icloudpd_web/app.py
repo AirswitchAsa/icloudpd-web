@@ -42,8 +42,8 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
             await app.state.scheduler_task
 
 
-def _default_icloudpd_argv(cfg_path: Path) -> list[str]:
-    return [ICLOUDPD_BINARY, "--config-file", str(cfg_path)]
+def _default_icloudpd_argv(argv_tail: list[str]) -> list[str]:
+    return [ICLOUDPD_BINARY, *argv_tail]
 
 
 def create_app(
@@ -51,7 +51,7 @@ def create_app(
     data_dir: Path,
     authenticator: Authenticator,
     session_secret: str,
-    icloudpd_argv: Callable[[Path], list[str]] = _default_icloudpd_argv,
+    icloudpd_argv: Callable[[list[str]], list[str]] = _default_icloudpd_argv,
     static_dir: Path | None = None,
 ) -> FastAPI:
     app = FastAPI(title="icloudpd-web", lifespan=_lifespan)

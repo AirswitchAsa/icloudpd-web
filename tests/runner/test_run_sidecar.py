@@ -2,12 +2,26 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
 
 import pytest
 
 from icloudpd_web.runner.run import Run
+
+
+def _argv(fake_icloudpd_cmd: list[str]) -> list[str]:
+    """Minimal valid argv for the fake binary (satisfies argparse requirements)."""
+    return [
+        *fake_icloudpd_cmd,
+        "--username",
+        "u@icloud.com",
+        "--directory",
+        "/tmp/test",
+        "--password-provider",
+        "console",
+    ]
 
 
 @pytest.mark.asyncio
@@ -20,8 +34,9 @@ async def test_sidecar_written_on_success(
     run = Run(
         run_id="policy-sid1",
         policy_name="policy",
-        argv=fake_icloudpd_cmd,
+        argv=_argv(fake_icloudpd_cmd),
         log_dir=tmp_path,
+        password="pw",
     )
     await run.start()
     await run.wait()
@@ -47,8 +62,9 @@ async def test_sidecar_written_on_failure(
     run = Run(
         run_id="policy-sid2",
         policy_name="policy",
-        argv=fake_icloudpd_cmd,
+        argv=_argv(fake_icloudpd_cmd),
         log_dir=tmp_path,
+        password="pw",
     )
     await run.start()
     await run.wait()
@@ -66,16 +82,15 @@ async def test_sidecar_written_on_failure(
 async def test_sidecar_written_on_stop(
     tmp_path: Path, fake_icloudpd_cmd: list[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import asyncio
-
     monkeypatch.setenv("FAKE_ICLOUDPD_MODE", "slow")
     monkeypatch.setenv("FAKE_ICLOUDPD_TOTAL", "100")
 
     run = Run(
         run_id="policy-sid3",
         policy_name="policy",
-        argv=fake_icloudpd_cmd,
+        argv=_argv(fake_icloudpd_cmd),
         log_dir=tmp_path,
+        password="pw",
     )
     await run.start()
     await asyncio.sleep(0.3)
@@ -99,8 +114,9 @@ async def test_sidecar_has_progress_fields(
     run = Run(
         run_id="policy-sid4",
         policy_name="policy",
-        argv=fake_icloudpd_cmd,
+        argv=_argv(fake_icloudpd_cmd),
         log_dir=tmp_path,
+        password="pw",
     )
     await run.start()
     await run.wait()

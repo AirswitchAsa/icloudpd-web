@@ -27,6 +27,8 @@ async def start_run(name: str, request: Request) -> dict:
         run = await runner.start(policy, password=password, trigger="manual")
     except RuntimeError as e:
         raise ApiError(str(e), status_code=409) from None
+    except ValueError as e:
+        raise ApiError(str(e), status_code=422) from None
     return {"run_id": run.run_id}
 
 
