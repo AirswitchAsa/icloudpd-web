@@ -38,7 +38,7 @@ export const FilterMenu = ({ selectedUsernames, setSelectedUsernames, uniqueUser
             onChange={(values) => setSelectedUsernames(values as string[])}
           >
             <Stack>
-              <Checkbox 
+              <Checkbox
                 value="All"
                 onChange={(e) => {
                   if (e.target.checked) {
@@ -110,7 +110,7 @@ export const SortMenu = ({ setSortConfig }: SortMenuProps) => {
         _hover={{ bg: 'transparent' }}
       />
       <MenuList fontSize="13px" color="gray.600" minW="150px">
-        <MenuItem 
+        <MenuItem
           onClick={() => {
             setCurrentField('none');
             setSortConfig({ field: 'none', direction: 'asc' });
