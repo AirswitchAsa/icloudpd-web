@@ -9,6 +9,8 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from icloudpd_web.integrations.aws_sync import AwsSyncResult
+
 from .conftest import parse_sse, wait_until_idle
 
 
@@ -264,3 +266,53 @@ def test_wf8_apprise_emitted_on_completion(
         wait_until_idle(c)
 
     assert any(ev == "success" and name == "p" for ev, name, _ in calls), calls
+
+
+def test_wf9_aws_sync_invoked_on_success(
+    app_factory: Callable[..., FastAPI], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from pathlib import Path
+
+    from icloudpd_web.store.models import AwsConfig
+
+    monkeypatch.setenv("FAKE_ICLOUDPD_MODE", "success")
+    monkeypatch.setenv("FAKE_ICLOUDPD_TOTAL", "1")
+    app = app_factory()
+
+    invocations: list[tuple[AwsConfig, Path]] = []
+
+    async def spy(cfg: AwsConfig, *, source: Path) -> AwsSyncResult:
+        invocations.append((cfg, source))
+        return AwsSyncResult(skipped=False, exit_code=0, output="ok")
+
+    app.state.aws_sync.run = spy  # type: ignore[method-assign]
+
+    with TestClient(app) as c:
+        c.post("/auth/login", json={"password": "pw"})
+        c.put(
+            "/policies/p",
+            json={
+                "name": "p",
+                "username": "u@icloud.com",
+                "directory": "/tmp/p",
+                "cron": "0 * * * *",
+                "enabled": True,
+                "timezone": None,
+                "icloudpd": {},
+                "notifications": {"on_start": False, "on_success": True, "on_failure": True},
+                "aws": {
+                    "enabled": True,
+                    "bucket": "b",
+                    "prefix": "x",
+                    "region": "us-east-1",
+                },
+            },
+        )
+        c.post("/policies/p/runs")
+        wait_until_idle(c)
+        time.sleep(0.2)  # Allow the background AWS task to run
+
+    assert len(invocations) == 1
+    cfg, src = invocations[0]
+    assert cfg.bucket == "b"
+    assert str(src) == "/tmp/p"
