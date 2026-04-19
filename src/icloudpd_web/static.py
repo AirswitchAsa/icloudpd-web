@@ -18,7 +18,7 @@ release that bundles <code>web_dist/</code>.</p>
 
 
 def install_static(app: FastAPI, static_dir: Path | None) -> None:
-    if static_dir is None or not static_dir.exists():
+    if static_dir is None or not (static_dir / "index.html").is_file():
 
         @app.get("/{full_path:path}", include_in_schema=False)
         def _placeholder(full_path: str) -> HTMLResponse:
@@ -37,7 +37,12 @@ def install_static(app: FastAPI, static_dir: Path | None) -> None:
 
     @app.get("/{full_path:path}", include_in_schema=False)
     def _spa(full_path: str) -> FileResponse:
-        candidate = static_dir / full_path
-        if full_path and candidate.is_file():
-            return FileResponse(candidate)
+        root = static_dir.resolve()
+        try:
+            resolved = (static_dir / full_path).resolve()
+            resolved.relative_to(root)
+        except (ValueError, OSError):
+            return FileResponse(index)
+        if full_path and resolved.is_file():
+            return FileResponse(resolved)
         return FileResponse(index)
