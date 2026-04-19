@@ -55,7 +55,7 @@ exclude = [
 asyncio_mode = "auto"
 testpaths = ["tests"]
 markers = ["smoke: end-to-end smoke tests"]
-addopts = "--cov=src/icloudpd_web --cov-report=term-missing --cov-report=xml --cov-branch"
+addopts = "--cov=src/icloudpd_web --cov-report=term-missing --cov-report=xml --cov-branch --cov-fail-under=90"
 
 [tool.coverage.run]
 branch = true

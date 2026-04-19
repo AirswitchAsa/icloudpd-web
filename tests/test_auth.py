@@ -56,3 +56,15 @@ def test_login_then_access() -> None:
     client = TestClient(_make_app())
     assert client.post("/fake-login").status_code == 200
     assert client.get("/secret").status_code == 200
+
+
+def test_verify_malformed_hash_returns_false() -> None:
+    """A hash that cannot be split into scheme$salt$h returns False."""
+    a = Authenticator(password_hash="not-a-valid-hash")
+    assert a.verify("anything") is False
+
+
+def test_verify_wrong_scheme_returns_false() -> None:
+    """A hash with the wrong scheme prefix returns False."""
+    a = Authenticator(password_hash="md5$somesalt$somehash")
+    assert a.verify("anything") is False

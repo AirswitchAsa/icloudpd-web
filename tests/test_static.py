@@ -104,6 +104,43 @@ def test_empty_static_dir_returns_placeholder(tmp_path: Path) -> None:
         assert "not built" in r.text.lower() or "web_dist" in r.text.lower()
 
 
+def test_spa_serves_existing_file_in_dist(tmp_path: Path) -> None:
+    """SPA route returns a resolved file when full_path resolves to an existing file."""
+    dist = tmp_path / "dist"
+    dist.mkdir()
+    (dist / "index.html").write_text("<!doctype html><html>app</html>")
+    # Place a file directly in dist (no assets/ dir), so it hits the _spa route's is_file() branch
+    (dist / "robots.txt").write_text("User-agent: *")
+    app = create_app(
+        data_dir=tmp_path / "data",
+        authenticator=Authenticator(password_hash=None),
+        session_secret="s" * 32,
+        static_dir=dist,
+    )
+    with TestClient(app) as c:
+        r = c.get("/robots.txt")
+        assert r.status_code == 200
+        assert "User-agent" in r.text
+
+
+def test_spa_no_assets_dir(tmp_path: Path) -> None:
+    """install_static works when there is no assets/ subdirectory."""
+    dist = tmp_path / "dist"
+    dist.mkdir()
+    (dist / "index.html").write_text("<!doctype html><html>app</html>")
+    # Deliberately no dist/assets/ directory
+    app = create_app(
+        data_dir=tmp_path / "data",
+        authenticator=Authenticator(password_hash=None),
+        session_secret="s" * 32,
+        static_dir=dist,
+    )
+    with TestClient(app) as c:
+        r = c.get("/")
+        assert r.status_code == 200
+        assert "<html>app</html>" in r.text
+
+
 def test_no_static_dir_returns_placeholder(tmp_path: Path) -> None:
     app = create_app(
         data_dir=tmp_path / "data",

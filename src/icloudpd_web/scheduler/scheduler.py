@@ -16,13 +16,15 @@ log = logging.getLogger(__name__)
 
 
 class _StoreProto(Protocol):
-    def all(self) -> list[Policy]: ...
+    def all(self) -> list[Policy]: ...  # pragma: no cover
 
 
 class _RunnerProto(Protocol):
-    def is_running(self, name: str) -> bool: ...
+    def is_running(self, name: str) -> bool: ...  # pragma: no cover
 
-    async def start(self, policy: Policy, *, password: str | None, trigger: str) -> object: ...
+    async def start(
+        self, policy: Policy, *, password: str | None, trigger: str
+    ) -> object: ...  # pragma: no cover
 
 
 class Scheduler:
