@@ -2,7 +2,6 @@ export interface Policy {
   name: string;
   username: string;
   directory: string;
-  download_via_browser: boolean;
   status: "running" | "stopped" | "errored";
   progress: number;
   logs?: string;
@@ -33,14 +32,6 @@ export interface Policy {
   skip_videos: boolean;
   skip_photos: boolean;
   skip_live_photos: boolean;
-  file_suffixes: string[] | null;
-  device_make: string[] | null;
-  device_model: string[] | null;
-  match_pattern: string | null;
-  created_after: string | null;
-  created_before: string | null;
-  added_after: string | null;
-  added_before: string | null;
 
   // Delete options
   auto_delete: boolean;
@@ -48,7 +39,6 @@ export interface Policy {
 
   // icloudpd-ui options
   dry_run: boolean;
-  interval: string | null;
   scheduled: boolean;
   waiting_mfa: boolean;
   log_level: "debug" | "info" | "error";

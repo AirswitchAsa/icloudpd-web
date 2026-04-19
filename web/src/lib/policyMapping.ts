@@ -16,8 +16,6 @@ const NON_ICLOUDPD_OLD_FIELDS = new Set([
   "scheduled",
   "waiting_mfa",
   "upload_to_aws_s3",
-  // Old scheduling; replaced by `cron` on the new shape
-  "interval",
 ]);
 
 const NEW_BACKEND_EXTRAS = new Set([
@@ -58,7 +56,6 @@ export function defaultFormPolicy(): FormPolicy {
     name: "",
     username: "",
     directory: "",
-    download_via_browser: false,
     status: "stopped",
     progress: 0,
     authenticated: false,
@@ -81,18 +78,9 @@ export function defaultFormPolicy(): FormPolicy {
     skip_videos: false,
     skip_photos: false,
     skip_live_photos: false,
-    file_suffixes: null,
-    device_make: null,
-    device_model: null,
-    match_pattern: null,
-    created_after: null,
-    created_before: null,
-    added_after: null,
-    added_before: null,
     auto_delete: false,
     keep_icloud_recent_days: null,
     dry_run: false,
-    interval: null,
     scheduled: false,
     waiting_mfa: false,
     log_level: "info",

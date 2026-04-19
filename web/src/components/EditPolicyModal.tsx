@@ -38,13 +38,8 @@ import {
 import {
   FieldWithInfo,
   AlbumField,
-  SuffixField,
-  PatternMatchField,
-  DateRangeField,
   DownloadSizesField,
   IntegrationField,
-  MakeField,
-  ModelField,
 } from "@/components/EditModalFields";
 
 interface EditPolicyModalProps {
@@ -459,51 +454,6 @@ export function EditPolicyModal({
                       )[]
                     )
                   }
-                />
-
-                <SuffixField
-                  value={formData.file_suffixes}
-                  onChange={(value) => update("file_suffixes", value)}
-                />
-
-                <MakeField
-                  value={formData.device_make}
-                  onChange={(value) => update("device_make", value)}
-                />
-                <ModelField
-                  value={formData.device_model}
-                  onChange={(value) => update("device_model", value)}
-                />
-
-                <PatternMatchField
-                  value={formData.match_pattern}
-                  onChange={(value) => update("match_pattern", value)}
-                />
-                <DateRangeField
-                  label="Created Date Range"
-                  info="Filter files by creation date."
-                  startDate={formData.created_after}
-                  endDate={formData.created_before}
-                  onChange={(start, end) => {
-                    setFormData((prev) => ({
-                      ...prev,
-                      created_after: start,
-                      created_before: end,
-                    }));
-                  }}
-                />
-                <DateRangeField
-                  label="Added Date Range"
-                  info="Filter files by the date they were added to iCloud."
-                  startDate={formData.added_after}
-                  endDate={formData.added_before}
-                  onChange={(start, end) => {
-                    setFormData((prev) => ({
-                      ...prev,
-                      added_after: start,
-                      added_before: end,
-                    }));
-                  }}
                 />
 
                 <FormControl>
