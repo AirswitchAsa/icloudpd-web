@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
+    "type-check": "tsc --noEmit",
     "lint": "eslint .",
     "format": "prettier --check .",
     "format:fix": "prettier --write ."
