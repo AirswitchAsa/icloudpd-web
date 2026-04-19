@@ -24,5 +24,18 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: "./tests/setup.ts",
     css: false,
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "html"],
+      include: ["src/lib/policyMapping.ts", "src/api/client.ts"],
+      thresholds: {
+        "src/lib/policyMapping.ts": {
+          lines: 95,
+          branches: 95,
+          functions: 95,
+          statements: 95,
+        },
+      },
+    },
   },
 });
