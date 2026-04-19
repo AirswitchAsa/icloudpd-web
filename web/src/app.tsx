@@ -11,6 +11,7 @@ import { PolicyList } from "./components/PolicyList";
 import { EditPolicyModal } from "./components/EditPolicyModal";
 import { SettingsModal } from "./components/SettingsModal";
 import { ServerAuthenticationModal } from "./components/ServerAuthenticationModal";
+import { ToastBridge } from "./components/ToastBridge";
 import { useAuthStatus, useLogout } from "./hooks/useAuth";
 import { usePolicies, usePoliciesLiveUpdate } from "./hooks/usePolicies";
 
@@ -42,6 +43,7 @@ export function App() {
 
   return (
     <Box bg="gray.200" minH="100vh">
+      <ToastBridge />
       <Banner
         onSettingsClick={onSettingsOpen}
         onLogoutClick={() => {
