@@ -37,8 +37,8 @@ class Runner:
                 with contextlib.suppress(OSError):
                     stale.unlink()
 
-    def is_running(self, policy_name: str) -> bool:
-        run = self._active.get(policy_name)
+    def is_running(self, name: str) -> bool:
+        run = self._active.get(name)
         return run is not None and run.status == "running"
 
     def get_run(self, run_id: str) -> Run | None:

@@ -8,6 +8,8 @@ from pydantic import ValidationError as PydanticValidationError
 
 from icloudpd_web.auth import require_auth
 from icloudpd_web.errors import ApiError, ValidationError
+from icloudpd_web.runner.runner import Runner
+from icloudpd_web.scheduler.scheduler import Scheduler
 from icloudpd_web.store.models import Policy
 
 
@@ -22,7 +24,7 @@ class PasswordBody(BaseModel):
     password: str
 
 
-def _summary(p: Policy, scheduler: object, runner: object) -> dict:
+def _summary(p: Policy, scheduler: Scheduler, runner: Runner) -> dict:
     data = p.model_dump(mode="json")
     if p.enabled:
         data["next_run_at"] = scheduler.next_run_at(p, after=datetime.now(UTC)).isoformat()
