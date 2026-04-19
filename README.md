@@ -8,6 +8,7 @@
 ## Overview
 
 - **Warning**: This is a public software from personal project that comes without any warranties. You may use it for personal usages at your own risk. You can contribute to the project by submitting a feature request or a bug report via Github issues.
+- **Note (2026-04):** This backend was rewritten from scratch. The bundled web UI is still the pre-rewrite version and is **not compatible** with the new REST+SSE API. The frontend rewrite is tracked as sub-project 2. If you use the package today, you'll need to use the REST API directly until the SPA is updated.
 - [icloud-photos-downloader](https://github.com/icloud-photos-downloader/icloud_photos_downloader) is a CLI tool for downloading iCloud photos and videos.
 - `icloudpd-web` is an application that provides a web UI wrapper around the icloudpd Python library.
 - The application allows managing multiple icloudpd settings ("policies" in `icloupd-web`) through the web UI and monitoring the progress of the downloads.
@@ -20,43 +21,56 @@
 
 ## Installation
 
-The application is available on pypi and requires python 3.12 or later.
-
-### Usage
+Requires Python 3.12+.
 
 ```bash
-pip install icloudpd-web
-icloudpd-web
+pipx install icloudpd-web
 ```
+
+## First run
+
+Generate a password hash, set the session secret, and start the server:
+
+```bash
+export ICLOUDPD_WEB_PASSWORD_HASH=$(icloudpd-web init-password yourpassword)
+export ICLOUDPD_WEB_SESSION_SECRET=$(openssl rand -hex 32)
+icloudpd-web --host 0.0.0.0 --port 8080
+```
+
+Data lives in `~/.icloudpd-web/` by default (override with `--data-dir`).
+
+## Usage
 
 run `icloudpd-web --help` to see the available options.
 
 ## User Flow
 
-- Log in with server password, reset it or continue as a guest.
-- View all loaded policies on landing. These policies are from the toml files provided when starting up the server.
-- Authenticate a policy with password or create a new one.
-- Handle 2FA when required.
-- Work with policies that are ready.
-- Monitor the status of a policies for download progress through logs.
+- Log in with the server password (set via `ICLOUDPD_WEB_PASSWORD_HASH`).
+- View all policies on landing. Policies are TOML files in `~/.icloudpd-web/policies/`.
+- Create, edit, duplicate, or delete policies through the REST API.
+- Authenticate a policy with iCloud credentials; handle 2FA when required.
+- Start or stop a policy run; stream live logs and progress via SSE.
+- Monitor run history; log files are stored at `~/.icloudpd-web/runs/{policy}/{run_id}.log`.
 
 ### Details
 
 - The user can add, edit, duplicate, delete, start and stop a policy.
-- Download progress of a policy can be viewed through the logs that can be downloaded when policy is not running.
-- On the Web UI, the user can upload a toml file to replace the currently loaded policies or download the currently loaded policies as a toml file.
-- The user can update the server settings or reset the server password through the settings page.
+- Download progress of a policy can be viewed through the SSE log stream or the stored log files.
 - Refer to the [example_policy/example.toml](example_policy/example.toml) for the policy format.
-- Refer to the [icloudpd docs](https://icloud-photos-downloader.github.io/icloud_photos_downloader/) for the policy options. Note that even though this app is built on top of icloudpd, the policy options are not exactly the same. More detailed documentation on this will be provided in the future.
+- Refer to the [icloudpd docs](https://icloud-photos-downloader.github.io/icloud_photos_downloader/) for the underlying CLI options.
 
 ## Technical Details
 
 ### Architecture
 
-- [ Next.js web ] <--Websocket--> [ FastAPI server ] <--wrapper--> [ icloudpd Python code ]
-- The next.js application provides a web UI and the python server handles the logic and interaction with icloudpd.
-- The user can manage the policy states on the web UI.
-- The server stores policy specs in toml files at designated path as well upon changes.
+- **Backend:** FastAPI (Python 3.12). REST for mutations + SSE for log/progress streaming.
+- **icloudpd integration:** icloudpd is run as a subprocess (not imported). One subprocess per run; logs captured to `~/.icloudpd-web/runs/{policy}/{run_id}.log`.
+- **Policies:** one TOML file per policy at `~/.icloudpd-web/policies/*.toml`, atomic writes.
+- **Scheduler:** 1 Hz asyncio tick. Cron expressions per policy; overlapping fires are skipped.
+- **Auth:** single-user server password (scrypt-hashed, set via env var); cookie session.
+- **Secrets:** iCloud passwords in `~/.icloudpd-web/secrets/*.password` (file mode 0600, never returned to clients).
+- **2FA:** handled via icloudpd's MFA provider mechanism plus a local file-backed callback.
+- **Integrations:** Apprise (server-wide notifications) and `aws s3 sync` (per-policy).
 
 ## Term of Use
 
