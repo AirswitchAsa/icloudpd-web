@@ -44,10 +44,9 @@ REPRESENTATIVE_ICLOUDPD_CONFIG: dict[str, object] = {
     "keep_icloud_recent_days": 30,
     "dry_run": True,
     "log_level": "info",
-    # Phase 2 additions (may or may not be present yet):
-    # "threads_num": 4,
-    # "skip_created_before": "2020-01-01",
-    # "skip_created_after": "2024-01-01",
+    "threads_num": 4,
+    "skip_created_before": "2020-01-01",
+    "skip_created_after": "2024-01-01",
 }
 
 

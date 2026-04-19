@@ -535,6 +535,59 @@ export function EditPolicyModal({
                     />
                   </FieldWithInfo>
                 </FormControl>
+
+                <FormControl>
+                  <FieldWithInfo
+                    label="Skip Created Before"
+                    info="Skip photos created before this date (ISO date, e.g. 2020-01-01). Leave blank to download all."
+                  >
+                    <Input
+                      type="date"
+                      value={formData.skip_created_before ?? ""}
+                      onChange={(e) =>
+                        update("skip_created_before", e.target.value || null)
+                      }
+                      maxW="160px"
+                    />
+                  </FieldWithInfo>
+                </FormControl>
+
+                <FormControl>
+                  <FieldWithInfo
+                    label="Skip Created After"
+                    info="Skip photos created after this date (ISO date, e.g. 2024-01-01). Leave blank to download all."
+                  >
+                    <Input
+                      type="date"
+                      value={formData.skip_created_after ?? ""}
+                      onChange={(e) =>
+                        update("skip_created_after", e.target.value || null)
+                      }
+                      maxW="160px"
+                    />
+                  </FieldWithInfo>
+                </FormControl>
+
+                <FormControl>
+                  <FieldWithInfo
+                    label="Threads"
+                    info="Number of download threads. Leave blank for default."
+                  >
+                    <NumberInput
+                      value={formData.threads_num ?? ""}
+                      onChange={(valueString) =>
+                        update(
+                          "threads_num",
+                          valueString === "" ? null : parseInt(valueString)
+                        )
+                      }
+                      min={1}
+                      maxW="100px"
+                    >
+                      <NumberInputField />
+                    </NumberInput>
+                  </FieldWithInfo>
+                </FormControl>
               </VStack>
             </Box>
 

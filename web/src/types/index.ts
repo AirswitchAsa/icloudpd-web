@@ -33,6 +33,13 @@ export interface Policy {
   skip_photos: boolean;
   skip_live_photos: boolean;
 
+  // Thread options
+  threads_num: number | null;
+
+  // Date filter options
+  skip_created_before: string | null;
+  skip_created_after: string | null;
+
   // Delete options
   auto_delete: boolean;
   keep_icloud_recent_days: number | null;
