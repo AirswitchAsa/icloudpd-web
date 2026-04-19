@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import time
 from collections.abc import Callable
+from datetime import datetime, timezone
 
 import pytest
 from fastapi import FastAPI
@@ -186,3 +187,44 @@ def test_wf6b_passwordless_mode(app_factory: Callable[..., FastAPI]) -> None:
         assert status["auth_required"] is False
         r = c.get("/policies")
         assert r.status_code == 200
+
+
+def test_wf7_scheduler_cron_tick(
+    app_factory: Callable[..., FastAPI], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("FAKE_ICLOUDPD_MODE", "success")
+    monkeypatch.setenv("FAKE_ICLOUDPD_TOTAL", "1")
+    app = app_factory()
+    with TestClient(app) as c:
+        c.post("/auth/login", json={"password": "pw"})
+        c.put(
+            "/policies/p",
+            json={
+                "name": "p",
+                "username": "u@icloud.com",
+                "directory": "/tmp/p",
+                "cron": "* * * * *",
+                "enabled": True,
+                "timezone": None,
+                "icloudpd": {},
+                "notifications": {"on_start": False, "on_success": True, "on_failure": True},
+                "aws": None,
+            },
+        )
+
+        scheduler = app.state.scheduler
+        scheduler.tick(datetime.now(timezone.utc))
+
+        # TestClient owns the app's event loop via an anyio blocking portal.
+        # Use c.portal.call() to run _drain_pending on the *same* loop so that
+        # runner tasks (start, drain, on_complete) all share a single event loop.
+        c.portal.call(scheduler._drain_pending)
+
+        wait_until_idle(c)
+        runs = c.get("/policies/p/runs").json()
+        assert len(runs) == 1
+        assert runs[0]["status"] == "success"
+
+        # Second tick in same minute must not re-enqueue
+        scheduler.tick(datetime.now(timezone.utc))
+        assert scheduler._pending == []
