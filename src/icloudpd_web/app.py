@@ -17,6 +17,7 @@ from icloudpd_web.auth import Authenticator, install_session_middleware
 from icloudpd_web.config import SettingsStore
 from icloudpd_web.errors import install_handlers
 from icloudpd_web.integrations.apprise_notifier import AppriseNotifier
+from icloudpd_web.integrations.aws_sync import AwsSync
 from icloudpd_web.runner.mfa import MfaRegistry
 from icloudpd_web.runner.run import Run
 from icloudpd_web.runner.runner import Runner
@@ -70,16 +71,21 @@ def create_app(
     settings = settings_store.load()
 
     notifier = AppriseNotifier(settings.apprise)
+    aws_sync = AwsSync()
     mfa_registry = MfaRegistry(mfa_dir)
 
     def _on_run_event(run: Run, event: str) -> None:
         policy_store.bump()
-        if event == "completed":
-            summary = _summarize(run)
-            if run.status == "success":
-                notifier.emit("success", policy_name=run.policy_name, summary=summary)
-            elif run.status == "failed":
-                notifier.emit("failure", policy_name=run.policy_name, summary=summary)
+        if event != "completed":
+            return
+        summary = _summarize(run)
+        policy = policy_store.get(run.policy_name)
+        if run.status == "success":
+            notifier.emit("success", policy_name=run.policy_name, summary=summary)
+            if policy is not None and policy.aws is not None and policy.aws.enabled:
+                asyncio.create_task(aws_sync.run(policy.aws, source=Path(policy.directory)))
+        elif run.status == "failed":
+            notifier.emit("failure", policy_name=run.policy_name, summary=summary)
 
     runner = Runner(
         runs_base=runs_dir,
@@ -101,6 +107,7 @@ def create_app(
     app.state.secret_store = secret_store
     app.state.settings_store = settings_store
     app.state.notifier = notifier
+    app.state.aws_sync = aws_sync
     app.state.mfa_registry = mfa_registry
     app.state.runner = runner
     app.state.scheduler = scheduler
