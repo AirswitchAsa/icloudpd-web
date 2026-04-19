@@ -34,9 +34,21 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/icloudpd_web"]
+exclude = [
+  "web",
+  "tests",
+  "docs",
+]
 
 [tool.hatch.build.targets.wheel.force-include]
 "src/icloudpd_web/web_dist" = "icloudpd_web/web_dist"
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+  "web/node_modules",
+  "web/dist",
+  ".dev-data",
+]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

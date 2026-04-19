@@ -8,7 +8,6 @@
 ## Overview
 
 - **Warning**: This is a public software from personal project that comes without any warranties. You may use it for personal usages at your own risk. You can contribute to the project by submitting a feature request or a bug report via Github issues.
-- **Note (2026-04):** This backend was rewritten from scratch. The bundled web UI is still the pre-rewrite version and is **not compatible** with the new REST+SSE API. The frontend rewrite is tracked as sub-project 2. If you use the package today, you'll need to use the REST API directly until the SPA is updated.
 - [icloud-photos-downloader](https://github.com/icloud-photos-downloader/icloud_photos_downloader) is a CLI tool for downloading iCloud photos and videos.
 - `icloudpd-web` is an application that provides a web UI wrapper around the icloudpd Python library.
 - The application allows managing multiple icloudpd settings ("policies" in `icloupd-web`) through the web UI and monitoring the progress of the downloads.
@@ -26,6 +25,30 @@ Requires Python 3.12+.
 ```bash
 pipx install icloudpd-web
 ```
+
+## Development
+
+Backend (Python, uv):
+
+```bash
+uv sync --dev
+make dev-backend    # http://127.0.0.1:8000
+```
+
+Frontend (Vite, in another terminal):
+
+```bash
+make install-web
+make dev-web        # http://127.0.0.1:5173 with proxy to :8000
+```
+
+Production build:
+
+```bash
+make build          # builds web into src/icloudpd_web/web_dist and uv-builds the wheel
+```
+
+Once built, `icloudpd-web` hosts both API and UI on a single port.
 
 ## First run
 
