@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+import asyncio
+from collections.abc import AsyncIterator, Callable
+from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -26,6 +28,18 @@ from icloudpd_web.store.secrets import SecretStore
 ICLOUDPD_BINARY = "icloudpd"
 
 
+@asynccontextmanager
+async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
+    app.state.scheduler_task = asyncio.create_task(app.state.scheduler.run_forever())
+    try:
+        yield
+    finally:
+        app.state.scheduler.stop()
+        app.state.scheduler_task.cancel()
+        with suppress(asyncio.CancelledError, Exception):
+            await app.state.scheduler_task
+
+
 def _default_icloudpd_argv(cfg_path: Path) -> list[str]:
     return [ICLOUDPD_BINARY, "--config-file", str(cfg_path)]
 
@@ -37,7 +51,7 @@ def create_app(
     session_secret: str,
     icloudpd_argv: Callable[[Path], list[str]] = _default_icloudpd_argv,
 ) -> FastAPI:
-    app = FastAPI(title="icloudpd-web")
+    app = FastAPI(title="icloudpd-web", lifespan=_lifespan)
     install_handlers(app)
     install_session_middleware(app, secret=session_secret)
 
