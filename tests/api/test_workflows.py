@@ -124,3 +124,45 @@ def test_wf4_interrupt_midrun(
         runs = c.get("/policies/p/runs").json()
         mine = next(r for r in runs if r["run_id"] == run_id)
         assert mine.get("status") in ("stopped", "failed")
+
+
+def test_wf5_sse_resume(
+    app_factory: Callable[..., FastAPI], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("FAKE_ICLOUDPD_MODE", "success")
+    monkeypatch.setenv("FAKE_ICLOUDPD_TOTAL", "5")
+    monkeypatch.setenv("FAKE_ICLOUDPD_SLEEP", "0.02")
+    app = app_factory()
+    with TestClient(app) as c:
+        c.post("/auth/login", json={"password": "pw"})
+        c.put(
+            "/policies/p",
+            json={
+                "name": "p",
+                "username": "u@icloud.com",
+                "directory": "/tmp/p",
+                "cron": "0 * * * *",
+                "enabled": True,
+                "timezone": None,
+                "icloudpd": {},
+                "notifications": {"on_start": False, "on_success": True, "on_failure": True},
+                "aws": None,
+            },
+        )
+        run_id = c.post("/policies/p/runs").json()["run_id"]
+        wait_until_idle(c)
+
+        all_events = parse_sse(c.get(f"/runs/{run_id}/events").text)
+        ids = [int(e["id"]) for e in all_events if "id" in e]
+        assert len(ids) >= 3, ids
+        cut = ids[len(ids) // 2]
+
+        resumed = parse_sse(
+            c.get(
+                f"/runs/{run_id}/events",
+                headers={"Last-Event-ID": str(cut)},
+            ).text
+        )
+        resumed_ids = [int(e["id"]) for e in resumed if "id" in e]
+        assert all(i > cut for i in resumed_ids), (cut, resumed_ids)
+        assert set(ids) == {i for i in ids if i <= cut} | set(resumed_ids)
