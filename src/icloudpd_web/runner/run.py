@@ -91,16 +91,19 @@ class Run:
 
     async def subscribe(self, *, since: int | None) -> AsyncIterator[RunEvent]:
         q: asyncio.Queue[RunEvent | None] = asyncio.Queue()
-        replay = [e for e in self._buffer if since is None or e.seq > since]
         self._subscribers.add(q)
         try:
+            # Snapshot the buffer *after* registering so any event fired between
+            # snapshot and yield is captured via the queue instead of lost.
+            replay = [e for e in self._buffer if since is None or e.seq > since]
+            max_replayed = replay[-1].seq if replay else (since or 0)
             for ev in replay:
                 yield ev
             while True:
                 ev = await q.get()
                 if ev is None:
                     return
-                if since is not None and ev.seq <= since:
+                if ev.seq <= max_replayed:
                     continue
                 yield ev
         finally:
@@ -134,15 +137,14 @@ class Run:
         ev = RunEvent(seq=self._seq, kind=kind, ts=time.time(), data=data)
         self._buffer.append(ev)
         for q in list(self._subscribers):
-            with contextlib.suppress(asyncio.QueueFull):
-                q.put_nowait(ev)
+            q.put_nowait(ev)
 
     async def _wait_exit(self) -> None:
         assert self._proc is not None
         code = await self._proc.wait()
         self.exit_code = code
         self.ended_at = datetime.now(timezone.utc)
-        if self._stopping:
+        if self._stopping and code != 0:
             self.status = "stopped"
         elif code == 0:
             self.status = "success"

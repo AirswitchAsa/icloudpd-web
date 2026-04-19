@@ -3,11 +3,16 @@ from __future__ import annotations
 import hashlib
 import hmac
 import secrets
+import unicodedata
 
 from fastapi import FastAPI, Request
 from starlette.middleware.sessions import SessionMiddleware
 
 from icloudpd_web.errors import ApiError
+
+
+def _normalize(password: str) -> bytes:
+    return unicodedata.normalize("NFKC", password).encode("utf-8")
 
 
 class Authenticator:
@@ -17,7 +22,7 @@ class Authenticator:
     @staticmethod
     def hash(password: str) -> str:
         salt = secrets.token_hex(16)
-        h = hashlib.scrypt(password.encode(), salt=salt.encode(), n=16384, r=8, p=1).hex()
+        h = hashlib.scrypt(_normalize(password), salt=salt.encode(), n=16384, r=8, p=1).hex()
         return f"scrypt${salt}${h}"
 
     def verify(self, password: str) -> bool:
@@ -26,7 +31,7 @@ class Authenticator:
             assert scheme == "scrypt"
         except Exception:
             return False
-        got = hashlib.scrypt(password.encode(), salt=salt.encode(), n=16384, r=8, p=1).hex()
+        got = hashlib.scrypt(_normalize(password), salt=salt.encode(), n=16384, r=8, p=1).hex()
         return hmac.compare_digest(got, h)
 
 
