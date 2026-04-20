@@ -124,3 +124,104 @@ async def test_mfa_flow_awaiting_mfa_status_event(
 
     assert "awaiting_mfa" in status_events, f"Expected awaiting_mfa in {status_events}"
     assert run.status == "success"
+
+
+@pytest.mark.asyncio
+async def test_mfa_flow_handles_reprompt_after_rejection(
+    tmp_path: Path,
+    fake_icloudpd_cmd: list[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """If icloudpd rejects the first code and re-prompts, Run must:
+
+    1. Call on_mfa_needed a second time (fresh slot).
+    2. Forward the second code via stdin.
+    3. Complete successfully.
+
+    This exercises the re-entrancy guard in _trigger_mfa.
+    """
+    monkeypatch.setenv("FAKE_ICLOUDPD_MODE", "mfa_reprompt")
+    monkeypatch.setenv("FAKE_ICLOUDPD_TOTAL", "1")
+
+    slots: list[Path] = []
+
+    def on_mfa_needed(policy_name: str) -> Path:
+        slot = tmp_path / f"code_{len(slots)}"
+        slots.append(slot)
+        return slot
+
+    run = Run(
+        run_id="test-mfa-reprompt",
+        policy_name="p",
+        argv=_argv(fake_icloudpd_cmd),
+        log_dir=tmp_path,
+        password="pw",
+        on_mfa_needed=on_mfa_needed,
+    )
+    await run.start()
+
+    async def provide_two_codes() -> None:
+        # Wait for first slot, write bad code.
+        for _ in range(100):
+            await asyncio.sleep(0.05)
+            if len(slots) >= 1:
+                slots[0].write_text("111111\n")
+                break
+        # Wait for second slot (triggered by the second prompt), write good code.
+        for _ in range(100):
+            await asyncio.sleep(0.05)
+            if len(slots) >= 2:
+                slots[1].write_text("222222\n")
+                break
+
+    await asyncio.wait_for(
+        asyncio.gather(run.wait(), provide_two_codes()),
+        timeout=15,
+    )
+
+    assert len(slots) == 2, f"Expected two on_mfa_needed calls, got {len(slots)}"
+    assert run.status == "success"
+    log_text = run.log_path.read_text()
+    assert "First code rejected" in log_text
+    assert "Received MFA code of length 6" in log_text
+
+
+@pytest.mark.asyncio
+async def test_mfa_flow_stop_during_awaiting_mfa(
+    tmp_path: Path,
+    fake_icloudpd_cmd: list[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """User-initiated cancel while awaiting MFA must terminate the run.
+
+    The MFA modal's Cancel button calls Runner.stop(); the run should
+    transition to 'stopped' without ever receiving an MFA code.
+    """
+    monkeypatch.setenv("FAKE_ICLOUDPD_MODE", "mfa")
+    monkeypatch.setenv("FAKE_ICLOUDPD_TOTAL", "1")
+
+    slot_path = tmp_path / "p.code"
+    slot_called = asyncio.Event()
+
+    def on_mfa_needed(policy_name: str) -> Path:
+        slot_called.set()
+        return slot_path
+
+    run = Run(
+        run_id="test-mfa-cancel",
+        policy_name="p",
+        argv=_argv(fake_icloudpd_cmd),
+        log_dir=tmp_path,
+        password="pw",
+        on_mfa_needed=on_mfa_needed,
+    )
+    await run.start()
+
+    # Wait until we're awaiting MFA, then stop without providing a code.
+    await asyncio.wait_for(slot_called.wait(), timeout=5)
+    await run.stop()
+    await asyncio.wait_for(run.wait(), timeout=5)
+
+    assert run.status == "stopped"
+    # Slot file must NOT have been written — user cancelled instead of submitting.
+    assert not slot_path.exists()

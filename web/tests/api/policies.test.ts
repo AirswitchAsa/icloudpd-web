@@ -17,7 +17,7 @@ describe("policiesApi", () => {
   });
 
   it("url-encodes policy names with special characters", async () => {
-    await policiesApi.get("has space");
+    await policiesApi.remove("has space");
     expect(globalThis.fetch).toHaveBeenCalledWith(
       "/policies/has%20space",
       expect.any(Object)
@@ -61,11 +61,4 @@ describe("policiesApi", () => {
     );
   });
 
-  it("uses DELETE for clearPassword", async () => {
-    await policiesApi.clearPassword("p");
-    expect(globalThis.fetch).toHaveBeenCalledWith(
-      "/policies/p/password",
-      expect.objectContaining({ method: "DELETE" })
-    );
-  });
 });

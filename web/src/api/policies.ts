@@ -3,7 +3,6 @@ import type { Policy, PolicyView } from "@/types/api";
 
 export const policiesApi = {
   list: () => apiFetch<PolicyView[]>("/policies"),
-  get: (name: string) => apiFetch<PolicyView>(`/policies/${encodeURIComponent(name)}`),
   upsert: (name: string, policy: Policy) =>
     apiFetch<PolicyView>(`/policies/${encodeURIComponent(name)}`, {
       method: "PUT",
@@ -16,8 +15,6 @@ export const policiesApi = {
       method: "POST",
       body: { password },
     }),
-  clearPassword: (name: string) =>
-    apiFetch<void>(`/policies/${encodeURIComponent(name)}/password`, { method: "DELETE" }),
   exportUrl: () => "/policies/export",
   importToml: async (
     toml: string

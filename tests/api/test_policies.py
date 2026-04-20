@@ -73,12 +73,10 @@ def test_delete(client: TestClient) -> None:
     assert client.get("/policies/a").status_code == 404
 
 
-def test_set_and_delete_password(client: TestClient) -> None:
+def test_set_password(client: TestClient) -> None:
     client.put("/policies/a", json=_policy_body())
     r = client.post("/policies/a/password", json={"password": "hunter2"})
     assert r.status_code == 204
-    r2 = client.delete("/policies/a/password")
-    assert r2.status_code == 204
 
 
 # ── export / import ──────────────────────────────────────────────────────
@@ -108,6 +106,61 @@ def test_import_single_policy(client: TestClient) -> None:
     assert r.status_code == 200
     assert r.json() == {"created": ["newp"], "errors": []}
     assert client.get("/policies/newp").status_code == 200
+
+
+def test_export_roundtrips_through_import(client: TestClient) -> None:
+    """Export → (delete all) → import must reproduce the same policies.
+
+    Guards against field renames or nesting changes in to_toml_dict that
+    would silently break user backups.
+    """
+    # Seed two policies with non-default shape (filters, library_kind,
+    # aws, icloudpd block) so we exercise all serialized fields.
+    p1 = _policy_body("alpha")
+    p1["library_kind"] = "personal"
+    p1["filters"] = {
+        "file_suffixes": [".jpg"],
+        "match_patterns": [r"IMG_.*"],
+        "device_makes": [],
+        "device_models": [],
+    }
+    p1["icloudpd"] = {"album": "Selfies", "size": ["original"]}
+    p2 = _policy_body("beta")
+    p2["aws"] = {
+        "enabled": True,
+        "bucket": "my-bucket",
+        "prefix": "photos",
+        "region": "us-west-2",
+    }
+    client.put("/policies/alpha", json=p1)
+    client.put("/policies/beta", json=p2)
+
+    # Export
+    exp = client.get("/policies/export")
+    assert exp.status_code == 200
+    assert exp.headers["content-type"].startswith("application/toml")
+    toml_body = exp.text
+
+    # Wipe state
+    client.delete("/policies/alpha")
+    client.delete("/policies/beta")
+    assert client.get("/policies").json() == []
+
+    # Import back
+    imp = client.post("/policies/import", content=toml_body)
+    assert imp.status_code == 200, imp.text
+    assert set(imp.json()["created"]) == {"alpha", "beta"}
+    assert imp.json()["errors"] == []
+
+    # Round-tripped content matches
+    got = {p["name"]: p for p in client.get("/policies").json()}
+    assert got["alpha"]["library_kind"] == "personal"
+    assert got["alpha"]["filters"]["file_suffixes"] == [".jpg"]
+    assert got["alpha"]["filters"]["match_patterns"] == [r"IMG_.*"]
+    assert got["alpha"]["icloudpd"]["album"] == "Selfies"
+    assert got["beta"]["aws"]["bucket"] == "my-bucket"
+    assert got["beta"]["aws"]["region"] == "us-west-2"
+    assert got["beta"]["aws"]["enabled"] is True
 
 
 def test_import_bundle(client: TestClient) -> None:

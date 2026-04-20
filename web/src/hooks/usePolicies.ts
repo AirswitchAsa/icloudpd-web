@@ -10,14 +10,6 @@ export function usePolicies() {
   return useQuery({ queryKey: LIST_KEY, queryFn: policiesApi.list });
 }
 
-export function usePolicy(name: string | null) {
-  return useQuery({
-    queryKey: ["policies", name],
-    queryFn: () => policiesApi.get(name!),
-    enabled: name !== null,
-  });
-}
-
 export function useUpsertPolicy() {
   const qc = useQueryClient();
   return useMutation({

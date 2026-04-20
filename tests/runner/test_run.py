@@ -160,3 +160,27 @@ async def test_sse_resume_from_seq(
 
     assert all(s > 2 for s in seen)
     assert seen == sorted(seen)
+
+
+def test_downloaded_re_matches_timestamp_prefixed_line() -> None:
+    """Real icloudpd emits download lines with a timestamp prefix.
+
+    If the regex ever stops matching the canonical format, per-file
+    filter deletion silently breaks — there's no other signal.
+    """
+    from icloudpd_web.runner.run import DOWNLOADED_RE
+
+    line = "2026-04-20 11:17:10 INFO     Downloaded /Volumes/photos/2026/04/20/IMG_1234.JPG"
+    m = DOWNLOADED_RE.search(line)
+    assert m is not None
+    assert m.group(1) == "/Volumes/photos/2026/04/20/IMG_1234.JPG"
+
+    # Handles trailing whitespace.
+    line2 = "2026-04-20 11:17:10 INFO     Downloaded /tmp/IMG.JPG   \n"
+    m2 = DOWNLOADED_RE.search(line2.rstrip("\n"))
+    assert m2 is not None
+    assert m2.group(1) == "/tmp/IMG.JPG"
+
+    # Doesn't match unrelated lines.
+    assert DOWNLOADED_RE.search("INFO     Skipping /foo.jpg") is None
+    assert DOWNLOADED_RE.search("ERROR    Download failed") is None

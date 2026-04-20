@@ -195,9 +195,3 @@ def set_password(name: str, body: PasswordBody, request: Request) -> Response:
         raise ApiError("Policy not found", status_code=404)
     request.app.state.secret_store.set(name, body.password)
     return Response(status_code=204)
-
-
-@router.delete("/{name}/password", status_code=204)
-def delete_password(name: str, request: Request) -> Response:
-    request.app.state.secret_store.delete(name)
-    return Response(status_code=204)

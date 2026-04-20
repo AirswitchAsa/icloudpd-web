@@ -77,7 +77,7 @@ def _build_parser() -> argparse.ArgumentParser:
     return p
 
 
-def main() -> int:
+def main() -> int:  # noqa: C901
     parser = _build_parser()
     args = parser.parse_args()
 
@@ -104,6 +104,18 @@ def main() -> int:
         code = sys.stdin.readline().strip()
         if code:
             print(f"INFO     Received MFA code of length {len(code)}", flush=True)
+
+    if mode == "mfa_reprompt":
+        # Simulate icloudpd rejecting the first code and re-prompting.
+        # The Run should detect the second "Two-step" line, call
+        # on_mfa_needed again, and forward the next code via stdin.
+        print("INFO     Two-step authentication required.", flush=True)
+        first = sys.stdin.readline().strip()
+        print(f"INFO     First code rejected (was {len(first)} chars)", flush=True)
+        print("INFO     Two-step authentication required.", flush=True)
+        second = sys.stdin.readline().strip()
+        if second:
+            print(f"INFO     Received MFA code of length {len(second)}", flush=True)
 
     if mode == "fail":
         print("ERROR    something went wrong", file=sys.stderr, flush=True)

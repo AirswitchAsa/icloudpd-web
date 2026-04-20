@@ -12,11 +12,11 @@ from fastapi.testclient import TestClient
 from .conftest import make_policy_body, set_policy_password, wait_until_idle
 
 
-def _poll_mfa_awaiting(client: TestClient, name: str = "p", *, attempts: int = 100) -> None:
-    """Poll until MFA status reports awaiting=true, or raise after `attempts`."""
+def _poll_mfa_awaiting(app: FastAPI, name: str = "p", *, attempts: int = 100) -> None:
+    """Poll the MFA registry until it reports awaiting for this policy."""
+    reg = app.state.mfa_registry
     for _ in range(attempts):
-        r = client.get(f"/policies/{name}/mfa/status")
-        if r.status_code == 200 and r.json().get("awaiting"):
+        if reg.awaiting(name):
             return
         time.sleep(0.05)
     raise AssertionError(f"MFA for policy {name} never entered awaiting state")
@@ -42,11 +42,7 @@ def test_mfa_workflow_end_to_end(
         run_id = start.json()["run_id"]
 
         # Wait until the run is awaiting MFA.
-        _poll_mfa_awaiting(client, "p")
-
-        # Verify the status endpoint reports awaiting=true.
-        status = client.get("/policies/p/mfa/status")
-        assert status.json()["awaiting"] is True
+        _poll_mfa_awaiting(app, "p")
 
         # Submit the MFA code.
         r = client.post("/policies/p/mfa", json={"code": "123456"})
@@ -63,5 +59,4 @@ def test_mfa_workflow_end_to_end(
         assert mine["status"] == "success", f"Expected success, got {mine['status']}"
 
         # MFA registry should be cleaned up after run completes.
-        post_status = client.get("/policies/p/mfa/status")
-        assert post_status.json()["awaiting"] is False
+        assert app.state.mfa_registry.awaiting("p") is False
