@@ -52,6 +52,11 @@ exclude = [
   ".dev-data",
 ]
 
+# The frontend bundle is git-ignored but must be included so the sdist
+# can produce a wheel. Built by `make build-web` before `uv build`.
+[tool.hatch.build.targets.sdist.force-include]
+"src/icloudpd_web/web_dist" = "src/icloudpd_web/web_dist"
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
