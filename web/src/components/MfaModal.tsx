@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Modal,
   ModalOverlay,
@@ -16,27 +16,46 @@ import {
 } from "@chakra-ui/react";
 import { ApiError } from "@/api/client";
 import { mfaApi } from "@/api/mfa";
-import { pushError, pushSuccess } from "@/store/toastStore";
+import { pushError } from "@/store/toastStore";
 
 interface MFAModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onCancel: () => Promise<void> | void;
   policyName: string;
+  /** True if the current awaiting_mfa is a re-prompt after a previous code
+   * was delivered (indicating Apple rejected it). */
+  rejectedPrevious: boolean;
 }
 
-export function MFAModal({ isOpen, onClose, policyName }: MFAModalProps) {
+export function MFAModal({
+  isOpen,
+  onClose,
+  onCancel,
+  policyName,
+  rejectedPrevious,
+}: MFAModalProps) {
   const [code, setCode] = useState("");
-  const [isVerifying, setIsVerifying] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
   const [error, setError] = useState<string | undefined>();
 
+  // Reset transient state each time the modal is re-opened for a new prompt.
+  useEffect(() => {
+    if (isOpen) {
+      setCode("");
+      setHasSubmitted(false);
+      setError(undefined);
+    }
+  }, [isOpen]);
+
   const handleSubmit = async () => {
-    setIsVerifying(true);
+    setIsSubmitting(true);
     setError(undefined);
     try {
       await mfaApi.submit(policyName, code);
-      pushSuccess("MFA code submitted");
-      setCode("");
-      onClose();
+      setHasSubmitted(true);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -45,25 +64,63 @@ export function MFAModal({ isOpen, onClose, policyName }: MFAModalProps) {
         setError("Failed to submit MFA code");
       }
     } finally {
-      setIsVerifying(false);
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    setIsCancelling(true);
+    try {
+      await onCancel();
+      setCode("");
+      onClose();
+    } finally {
+      setIsCancelling(false);
     }
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} isCentered>
+    <Modal
+      isOpen={isOpen}
+      onClose={handleCancel}
+      isCentered
+      closeOnOverlayClick={false}
+      closeOnEsc={false}
+    >
       <ModalOverlay backdropFilter="blur(4px)" />
       <ModalContent borderRadius="xl">
-        <ModalHeader>Two-Factor Authentication</ModalHeader>
+        <ModalHeader>Apple 2FA verification</ModalHeader>
         <ModalBody>
           <VStack spacing={4} align="stretch">
+            {hasSubmitted ? (
+              <Text fontSize="sm" color="gray.600">
+                Code submitted — waiting for icloudpd to verify with Apple.
+                This modal will close automatically on success. If Apple
+                rejects the code, we&apos;ll prompt you again.
+              </Text>
+            ) : (
+              <Text fontSize="sm" color="gray.600">
+                Apple should push a 6-digit code to your trusted devices. If
+                you don&apos;t receive one within a minute, Apple may be
+                rate-limiting after repeated attempts — wait and try again, or
+                click Cancel to abort this run.
+              </Text>
+            )}
+            {rejectedPrevious && !hasSubmitted && (
+              <Text fontSize="sm" color="red.600" fontWeight="semibold">
+                The previous code was rejected. Enter a new one.
+              </Text>
+            )}
             <FormControl>
               <FormLabel>
-                {isVerifying ? (
+                {isSubmitting ? (
                   <Flex gap={2} align="center">
-                    <Text>Verifying...</Text>
+                    <Text>Submitting...</Text>
                   </Flex>
+                ) : hasSubmitted ? (
+                  `Verifying with Apple...`
                 ) : (
-                  `Verification code is sent to your trusted devices`
+                  `Verification code`
                 )}
               </FormLabel>
               <Input
@@ -75,8 +132,8 @@ export function MFAModal({ isOpen, onClose, policyName }: MFAModalProps) {
                     handleSubmit();
                   }
                 }}
-                placeholder="Enter code"
-                isDisabled={isVerifying}
+                placeholder="6-digit code"
+                isDisabled={isSubmitting || isCancelling || hasSubmitted}
               />
             </FormControl>
             {error && (
@@ -90,16 +147,17 @@ export function MFAModal({ isOpen, onClose, policyName }: MFAModalProps) {
           <Button
             variant="ghost"
             mr={3}
-            onClick={onClose}
-            isDisabled={isVerifying}
+            onClick={handleCancel}
+            isDisabled={isSubmitting}
+            isLoading={isCancelling}
           >
-            Cancel
+            Cancel &amp; stop run
           </Button>
           <Button
             colorScheme="blue"
             onClick={handleSubmit}
-            isDisabled={!code || isVerifying}
-            isLoading={isVerifying}
+            isDisabled={!code || isSubmitting || isCancelling || hasSubmitted}
+            isLoading={isSubmitting}
           >
             Submit
           </Button>

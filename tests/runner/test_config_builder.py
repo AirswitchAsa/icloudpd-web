@@ -1,18 +1,18 @@
 from pathlib import Path
+from typing import Any
 
 from icloudpd_web.runner.config_builder import build_argv, build_config
-from icloudpd_web.store.models import NotificationConfig, Policy
+from icloudpd_web.store.models import Policy
 
 
-def _p() -> Policy:
+def _p(icloudpd: dict[str, Any] | None = None) -> Policy:
     return Policy(
         name="p",
         username="u@icloud.com",
         directory=Path("/data/p"),
         cron="0 * * * *",
         enabled=True,
-        icloudpd={"album": "All Photos", "size": ["original"]},
-        notifications=NotificationConfig(),
+        icloudpd=icloudpd if icloudpd is not None else {"album": "Selfies", "size": ["original"]},
         aws=None,
     )
 
@@ -29,13 +29,13 @@ def test_build_config_has_username_and_directory() -> None:
 
 def test_build_config_passthrough() -> None:
     cfg = build_config(_p(), password="pw")
-    assert cfg["album"] == "All Photos"
+    assert cfg["album"] == "Selfies"
     assert cfg["size"] == ["original"]
 
 
 def test_build_config_does_not_include_our_meta() -> None:
     cfg = build_config(_p(), password="pw")
-    for key in ("cron", "enabled", "notifications", "aws", "timezone", "icloudpd"):
+    for key in ("cron", "enabled", "aws", "timezone", "icloudpd"):
         assert key not in cfg
 
 
@@ -80,11 +80,10 @@ def test_build_argv_list_value_repeated() -> None:
 
 
 def test_build_argv_string_value() -> None:
-    argv = build_argv(_p())
-    # album = "All Photos" → --album "All Photos"
+    argv = build_argv(_p(icloudpd={"album": "Selfies"}))
     assert "--album" in argv
     idx = argv.index("--album")
-    assert argv[idx + 1] == "All Photos"
+    assert argv[idx + 1] == "Selfies"
 
 
 def test_build_argv_bool_true_emits_flag() -> None:
@@ -95,7 +94,6 @@ def test_build_argv_bool_true_emits_flag() -> None:
         cron="0 * * * *",
         enabled=True,
         icloudpd={"skip_videos": True},
-        notifications=NotificationConfig(),
         aws=None,
     )
     argv = build_argv(p)
@@ -110,7 +108,6 @@ def test_build_argv_bool_false_omits_flag() -> None:
         cron="0 * * * *",
         enabled=True,
         icloudpd={"skip_videos": False},
-        notifications=NotificationConfig(),
         aws=None,
     )
     argv = build_argv(p)
@@ -125,7 +122,6 @@ def test_build_argv_snake_case_to_kebab() -> None:
         cron="0 * * * *",
         enabled=True,
         icloudpd={"folder_structure": "{:%Y/%m/%d}"},
-        notifications=NotificationConfig(),
         aws=None,
     )
     argv = build_argv(p)
@@ -142,7 +138,6 @@ def test_build_argv_multi_size() -> None:
         cron="0 * * * *",
         enabled=True,
         icloudpd={"size": ["original", "medium"]},
-        notifications=NotificationConfig(),
         aws=None,
     )
     argv = build_argv(p)

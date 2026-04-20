@@ -8,7 +8,7 @@ from typing import NoReturn
 
 import pytest
 
-from icloudpd_web.store.models import NotificationConfig, Policy
+from icloudpd_web.store.models import Policy
 from icloudpd_web.store.policy_store import PolicyStore
 
 
@@ -20,7 +20,6 @@ def _policy(name: str = "p", **over) -> Policy:
         "cron": "0 */6 * * *",
         "enabled": True,
         "icloudpd": {"album": "All Photos"},
-        "notifications": NotificationConfig(),
         "aws": None,
     }
     base.update(over)

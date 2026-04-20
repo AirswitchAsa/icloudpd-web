@@ -26,7 +26,7 @@ export interface Policy {
 
   // Filter options
   album: string;
-  library: "Personal Library" | "Shared Library";
+  library: string;
   recent: number | null;
   until_found: number | null;
   skip_videos: boolean;

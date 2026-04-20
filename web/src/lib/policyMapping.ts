@@ -22,9 +22,7 @@ const NEW_BACKEND_EXTRAS = new Set([
   "cron",
   "enabled",
   "timezone",
-  "on_start_notify",
-  "on_success_notify",
-  "on_failure_notify",
+  "library_kind",
   "aws_bucket",
   "aws_prefix",
   "aws_region",
@@ -42,9 +40,7 @@ export interface FormPolicy extends OldPolicy {
   cron: string;
   enabled: boolean;
   timezone: string | null;
-  on_start_notify: boolean;
-  on_success_notify: boolean;
-  on_failure_notify: boolean;
+  library_kind: "personal" | "shared";
   aws_bucket: string;
   aws_prefix: string;
   aws_region: string;
@@ -81,7 +77,7 @@ export function defaultFormPolicy(): FormPolicy {
     xmp_sidecar: false,
     use_os_locale: false,
     album: "",
-    library: "Personal Library",
+    library: "",
     recent: null,
     until_found: null,
     skip_videos: false,
@@ -101,9 +97,7 @@ export function defaultFormPolicy(): FormPolicy {
     cron: "0 * * * *",
     enabled: true,
     timezone: null,
-    on_start_notify: false,
-    on_success_notify: true,
-    on_failure_notify: true,
+    library_kind: "personal",
     aws_bucket: "",
     aws_prefix: "",
     aws_region: "",
@@ -132,9 +126,7 @@ export function fromPolicyView(view: PolicyView): FormPolicy {
     cron: view.cron,
     enabled: view.enabled,
     timezone: view.timezone ?? null,
-    on_start_notify: view.notifications.on_start,
-    on_success_notify: view.notifications.on_success,
-    on_failure_notify: view.notifications.on_failure,
+    library_kind: view.library_kind ?? "personal",
     upload_to_aws_s3: view.aws !== null,
     aws_bucket: view.aws?.bucket ?? "",
     aws_prefix: view.aws?.prefix ?? "",
@@ -158,6 +150,10 @@ export function toBackendPolicy(form: FormPolicy): BackendPolicy {
     if (Array.isArray(v) && v.length === 0) continue;
     icloudpd[k] = v;
   }
+  // library_kind on the form is the user-facing choice; the backend resolves
+  // it to a real icloudpd identifier at run time. Never include `library` in
+  // the icloudpd dict — the backend validator strips it anyway.
+  delete icloudpd.library;
   return {
     name: form.name,
     username: form.username,
@@ -166,11 +162,7 @@ export function toBackendPolicy(form: FormPolicy): BackendPolicy {
     enabled: form.enabled,
     timezone: form.timezone,
     icloudpd,
-    notifications: {
-      on_start: form.on_start_notify,
-      on_success: form.on_success_notify,
-      on_failure: form.on_failure_notify,
-    },
+    library_kind: form.library_kind,
     aws: form.upload_to_aws_s3
       ? {
           bucket: form.aws_bucket,

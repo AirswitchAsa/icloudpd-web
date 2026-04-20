@@ -32,7 +32,6 @@ describe("policiesApi", () => {
       cron: "0 * * * *",
       enabled: true,
       icloudpd: {},
-      notifications: { on_start: false, on_success: true, on_failure: true },
       aws: null,
       filters: {
         file_suffixes: [],

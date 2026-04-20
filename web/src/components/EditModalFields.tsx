@@ -90,13 +90,13 @@ export function AlbumField({ value, onChange }: AlbumFieldProps) {
     <FormControl>
       <FieldWithInfo
         label="Album"
-        info="The album to download from. Leave blank for All Photos. Note that user-created albums only exist in Personal Library and trying to download them from a Shared Library will result in an error."
+        info="Leave blank to download the whole collection (icloudpd's default). Note that user-created albums only exist in Personal Library and trying to download them from a Shared Library will result in an error."
       >
         <Input
           value={value}
           onChange={(e) => onChange(e.target.value)}
           maxW="200px"
-          placeholder="Enter album name"
+          placeholder="All Photos (default)"
         />
       </FieldWithInfo>
     </FormControl>
@@ -137,11 +137,30 @@ export function ChipInputField({
     onChange(value.filter((v) => v !== chip));
   };
 
+  const { isOpen, onToggle } = useDisclosure();
   return (
     <FormControl>
-      <FieldWithInfo label={label} info={info}>
-        <Box w="100%" />
-      </FieldWithInfo>
+      <HStack spacing={2} align="center" h="32px" mb={1}>
+        <IconButton
+          aria-label="Toggle info"
+          icon={isOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
+          size="sm"
+          variant="ghost"
+          onClick={onToggle}
+          isDisabled={!info}
+          visibility={info ? "visible" : "hidden"}
+        />
+        <FormLabel mb="0">{label}</FormLabel>
+      </HStack>
+      {info && (
+        <Collapse in={isOpen}>
+          <Box pl={10} pr={4} py={2} mb={2} bg="gray.50" borderRadius="md">
+            <Text fontSize="sm" color="gray.600">
+              {info}
+            </Text>
+          </Box>
+        </Collapse>
+      )}
       <Box
         borderWidth="1px"
         borderRadius="md"
@@ -162,7 +181,7 @@ export function ChipInputField({
               </Tag>
             </WrapItem>
           ))}
-          <WrapItem>
+          <WrapItem flex="1">
             <Input
               id={`chip-input-${label}`}
               value={inputValue}
@@ -172,7 +191,7 @@ export function ChipInputField({
               size="sm"
               placeholder={value.length === 0 ? placeholder : ""}
               minW="120px"
-              w="auto"
+              w="100%"
             />
           </WrapItem>
         </Wrap>
@@ -287,9 +306,11 @@ export function PostDownloadFiltersSection({
     <VStack spacing={4} align="stretch">
       <Alert status="warning" borderRadius="md" fontSize="sm">
         <AlertIcon />
-        These filters run <strong>&nbsp;AFTER&nbsp;</strong> icloudpd finishes.
-        Files are downloaded first, then deleted if they don&apos;t match.
-        Bandwidth is <strong>&nbsp;NOT&nbsp;</strong> saved.
+        <Text>
+          These filters run <strong>AFTER</strong> icloudpd finishes. Files are
+          downloaded first, then deleted if they don&apos;t match. Bandwidth is{" "}
+          <strong>NOT</strong> saved.
+        </Text>
       </Alert>
       <ChipInputField
         label="File Extensions"

@@ -35,12 +35,6 @@ class Filters(BaseModel):
         )
 
 
-class NotificationConfig(BaseModel):
-    on_start: bool = False
-    on_success: bool = True
-    on_failure: bool = True
-
-
 class AwsConfig(BaseModel):
     enabled: bool = False
     bucket: str | None = None
@@ -71,7 +65,11 @@ class Policy(BaseModel):
     enabled: bool = True
     timezone: str | None = None
     icloudpd: dict[str, Any] = Field(default_factory=dict)
-    notifications: NotificationConfig = Field(default_factory=NotificationConfig)
+    # User-facing choice of library. Backend resolves to the actual icloudpd
+    # identifier at run time (personal → "PrimarySync"; shared → enumerated
+    # via --list-libraries). None means "don't override"; falls back to
+    # whatever is in `icloudpd.library` if anything.
+    library_kind: Literal["personal", "shared"] | None = None
     aws: AwsConfig | None = None
     filters: Filters = Field(default_factory=Filters)
 
@@ -105,6 +103,51 @@ class Policy(BaseModel):
         except Exception as e:
             raise ValueError(f"unknown timezone: {v}") from e
         return v
+
+    @field_validator("icloudpd")
+    @classmethod
+    def _strip_unknown_icloudpd_keys(cls, v: dict[str, Any]) -> dict[str, Any]:
+        """Drop keys that don't correspond to real icloudpd flags.
+
+        Stale keys here (e.g. from removed UI fields) would otherwise be
+        translated into `--foo` args and cause icloudpd to reject the whole
+        argv. Strip them silently on save/load so existing policies heal.
+
+        Also normalizes `album`: if the value is blank or literally "All
+        Photos", drop it — icloudpd has no album by that name (it means
+        "omit --album, download the whole collection").
+        """
+        from icloudpd_web.runner.config_builder import ALLOWED_ICLOUDPD_KEYS
+
+        cleaned = {k: val for k, val in v.items() if k in ALLOWED_ICLOUDPD_KEYS}
+        album = cleaned.get("album")
+        if isinstance(album, str) and album.strip().lower() in ("", "all photos"):
+            cleaned.pop("album", None)
+        return cleaned
+
+    @model_validator(mode="after")
+    def _migrate_library(self) -> Policy:
+        """Back-compat: map legacy icloudpd.library strings onto library_kind.
+
+        Before library_kind existed, the UI stored a raw string — some
+        friendly ("Personal Library" / "Shared Library") that icloudpd
+        rejected, some real ("PrimarySync" / "SharedSync-...") that worked.
+        Map the common cases onto library_kind and drop from icloudpd dict.
+        Unrecognized strings stay in icloudpd for expert users.
+        """
+        if self.library_kind is not None:
+            self.icloudpd.pop("library", None)
+            return self
+        legacy = self.icloudpd.get("library")
+        if not isinstance(legacy, str):
+            return self
+        if legacy in ("Personal Library", "PrimarySync"):
+            self.library_kind = "personal"
+            self.icloudpd.pop("library", None)
+        elif legacy == "Shared Library" or legacy.startswith("SharedSync-"):
+            self.library_kind = "shared"
+            self.icloudpd.pop("library", None)
+        return self
 
     def to_toml_dict(self) -> dict[str, Any]:
         """The subset of fields persisted to TOML (no derived state)."""

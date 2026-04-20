@@ -13,8 +13,6 @@ import {
   Badge,
   Link,
   Switch,
-  NumberInput,
-  NumberInputField,
   useToast,
 } from "@chakra-ui/react";
 import { ApiError } from "@/api/client";
@@ -196,40 +194,6 @@ export function IntegrationSettings() {
           </VStack>
         </Box>
 
-        <Box>
-          <Text fontSize="lg" fontWeight="semibold" mb={2}>
-            Run History
-          </Text>
-          <VStack spacing={3} align="stretch" maxW="400px">
-            <FormControl>
-              <FormLabel fontSize="sm">Runs to retain per policy</FormLabel>
-              <NumberInput
-                size="sm"
-                min={1}
-                max={10000}
-                value={local.retention_runs}
-                onChange={(valueString) => {
-                  const n = parseInt(valueString, 10);
-                  if (Number.isFinite(n) && n > 0) {
-                    setLocal({ ...local, retention_runs: n });
-                  }
-                }}
-              >
-                <NumberInputField />
-              </NumberInput>
-              <Button
-                size="sm"
-                mt={2}
-                onClick={() => commit(local)}
-                isDisabled={
-                  !settings || settings.retention_runs === local.retention_runs
-                }
-              >
-                Save
-              </Button>
-            </FormControl>
-          </VStack>
-        </Box>
       </VStack>
     </Box>
   );

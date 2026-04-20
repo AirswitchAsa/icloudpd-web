@@ -91,6 +91,14 @@ def main() -> int:
     if args.password_provider == "console":
         _password = sys.stdin.readline().strip()  # consume; fake doesn't authenticate
 
+    if getattr(args, "list_libraries", False):
+        # Mirror real icloudpd: print library names, one per line, then exit 0.
+        print("PrimarySync", flush=True)
+        extra = os.environ.get("FAKE_ICLOUDPD_SHARED_LIB")
+        if extra:
+            print(extra, flush=True)
+        return 0
+
     if mode == "mfa":
         print("INFO     Two-step authentication required.", flush=True)
         code = sys.stdin.readline().strip()

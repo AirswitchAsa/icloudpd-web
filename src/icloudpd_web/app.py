@@ -114,10 +114,12 @@ def create_app(
 
     app.include_router(auth_router.router)
     app.include_router(mfa_router.router)
+    # streams must register before policies/runs — GET /policies/stream
+    # would otherwise be captured by GET /policies/{name}.
+    app.include_router(streams_router.router)
     app.include_router(policies_router.router)
     app.include_router(runs_router.router)
     app.include_router(settings_router.router)
-    app.include_router(streams_router.router)
     install_static(app, static_dir)
     return app
 

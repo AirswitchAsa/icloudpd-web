@@ -27,7 +27,6 @@ def make_policy_body(
     cron: str = "0 * * * *",
     enabled: bool = True,
     aws: dict | None = None,
-    notifications: dict | None = None,
 ) -> dict[str, Any]:
     return {
         "name": name,
@@ -37,8 +36,6 @@ def make_policy_body(
         "enabled": enabled,
         "timezone": None,
         "icloudpd": {},
-        "notifications": notifications
-        or {"on_start": False, "on_success": True, "on_failure": True},
         "aws": aws,
     }
 

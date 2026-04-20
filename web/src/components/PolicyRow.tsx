@@ -18,7 +18,7 @@ import {
 } from "@chakra-ui/icons";
 import { FaPlay, FaPause, FaKey } from "react-icons/fa";
 import type { PolicyView } from "@/types/api";
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { ApiError } from "@/api/client";
 import { useStartRun, useStopRun } from "@/hooks/useRuns";
 import { useRunEvents } from "@/hooks/useRunEvents";
@@ -64,7 +64,7 @@ export const PolicyRow = ({ policy }: PolicyRowProps) => {
   const startRun = useStartRun();
   const stopRun = useStopRun();
 
-  const activeRunId = policy.is_running ? policy.last_run?.run_id ?? null : null;
+  const activeRunId = policy.active_run_id ?? null;
   const runState = useRunEvents(activeRunId, policy.name);
 
   const [policyRowState, setPolicyRowState] = useState<PolicyRowState>("ready");
@@ -85,19 +85,36 @@ export const PolicyRow = ({ policy }: PolicyRowProps) => {
     else setPolicyRowState("ready");
   }, [policy.is_running, policy.last_run, runState?.status]);
 
-  // Auto-open MFA modal when a run is awaiting_mfa
+  // Auto-open MFA modal when a run is awaiting_mfa; auto-close it when it
+  // transitions out (icloudpd accepted the code, the run failed, or the
+  // user stopped the run).
   useEffect(() => {
     if (policyRowState === "awaiting_mfa" && !isMfaOpen) {
       onMfaOpen();
+    } else if (policyRowState !== "awaiting_mfa" && isMfaOpen) {
+      onMfaClose();
     }
-  }, [policyRowState, isMfaOpen, onMfaOpen]);
+  }, [policyRowState, isMfaOpen, onMfaOpen, onMfaClose]);
 
-  // Derive progress either from live events or last_run snapshot
-  const { progressPct, downloaded, total } = useMemo(() => {
+  // Track whether the current awaiting_mfa is a re-prompt after a previously
+  // submitted code. If we ever leave awaiting_mfa and come back, it means
+  // icloudpd rejected the first code.
+  const [mfaPromptCount, setMfaPromptCount] = useState(0);
+  const wasAwaitingRef = React.useRef(false);
+  useEffect(() => {
+    const isAwaiting = policyRowState === "awaiting_mfa";
+    if (isAwaiting && !wasAwaitingRef.current) {
+      setMfaPromptCount((c) => c + 1);
+    }
+    wasAwaitingRef.current = isAwaiting;
+  }, [policyRowState]);
+
+  // Derive raw counters for the status text. The progress bar itself is
+  // indeterminate while running, so we no longer compute a percentage.
+  const { downloaded, total } = useMemo(() => {
     const down = runState?.downloaded ?? policy.last_run?.downloaded ?? 0;
     const tot = runState?.total ?? policy.last_run?.total ?? 0;
-    const pct = tot > 0 ? Math.min(100, Math.round((down / tot) * 100)) : 0;
-    return { progressPct: pct, downloaded: down, total: tot };
+    return { downloaded: down, total: tot };
   }, [runState?.downloaded, runState?.total, policy.last_run?.downloaded, policy.last_run?.total]);
 
   const liveLogText = useMemo(() => {
@@ -140,9 +157,10 @@ export const PolicyRow = ({ policy }: PolicyRowProps) => {
   };
 
   const handleInterruptConfirmed = async () => {
-    if (!policy.last_run?.run_id) return;
+    const runId = policy.active_run_id ?? policy.last_run?.run_id;
+    if (!runId) return;
     try {
-      await stopRun.mutateAsync(policy.last_run.run_id);
+      await stopRun.mutateAsync(runId);
       pushSuccess(`Stopped "${policy.name}"`);
     } catch (err) {
       if (err instanceof ApiError) pushError(err.message, err.errorId);
@@ -308,12 +326,32 @@ export const PolicyRow = ({ policy }: PolicyRowProps) => {
               <Text fontSize="12px" color="gray.600" fontWeight="medium">
                 {policyRowState === "running"
                   ? total > 0
-                    ? `${downloaded}/${total} (${progressPct}%)`
-                    : "…"
-                  : "IDLE"}
+                    ? `running • ${downloaded}/${total}`
+                    : downloaded > 0
+                      ? `running • ${downloaded}`
+                      : "running…"
+                  : policyRowState === "awaiting_mfa"
+                    ? "awaiting 2FA"
+                    : policyRowState === "errored"
+                      ? "failed"
+                      : policyRowState === "done"
+                        ? total > 0
+                          ? `done • ${downloaded}/${total}`
+                          : "done"
+                        : "idle"}
               </Text>
               <Progress
-                value={progressPct}
+                isIndeterminate={
+                  policyRowState === "running" ||
+                  policyRowState === "awaiting_mfa"
+                }
+                value={
+                  policyRowState === "done" || policyRowState === "errored"
+                    ? 100
+                    : policyRowState === "ready"
+                      ? 0
+                      : undefined
+                }
                 size="sm"
                 colorScheme={getProgressColor(policyRowState)}
                 borderRadius="full"
@@ -353,6 +391,8 @@ export const PolicyRow = ({ policy }: PolicyRowProps) => {
       <PolicyDialogs
         policy={policy}
         onInterruptConfirmed={handleInterruptConfirmed}
+        onMfaCancel={handleInterruptConfirmed}
+        mfaRejectedPrevious={mfaPromptCount > 1}
         dialogs={{
           delete: { isOpen: isDeleteOpen, onClose: onDeleteClose },
           interrupt: { isOpen: isInterruptOpen, onClose: onInterruptClose },

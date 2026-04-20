@@ -67,7 +67,6 @@ def test_wf3_failure_path(
                 "enabled": True,
                 "timezone": None,
                 "icloudpd": {},
-                "notifications": {"on_start": False, "on_success": True, "on_failure": True},
                 "aws": None,
             },
         )
@@ -107,7 +106,6 @@ def test_wf4_interrupt_midrun(
                 "enabled": True,
                 "timezone": None,
                 "icloudpd": {},
-                "notifications": {"on_start": False, "on_success": True, "on_failure": True},
                 "aws": None,
             },
         )
@@ -150,7 +148,6 @@ def test_wf5_sse_resume(
                 "enabled": True,
                 "timezone": None,
                 "icloudpd": {},
-                "notifications": {"on_start": False, "on_success": True, "on_failure": True},
                 "aws": None,
             },
         )
@@ -212,7 +209,6 @@ def test_wf7_scheduler_cron_tick(
                 "enabled": True,
                 "timezone": None,
                 "icloudpd": {},
-                "notifications": {"on_start": False, "on_success": True, "on_failure": True},
                 "aws": None,
             },
         )
@@ -262,7 +258,6 @@ def test_wf8_apprise_emitted_on_completion(
                 "enabled": True,
                 "timezone": None,
                 "icloudpd": {},
-                "notifications": {"on_start": False, "on_success": True, "on_failure": True},
                 "aws": None,
             },
         )
@@ -304,7 +299,6 @@ def test_wf9_aws_sync_invoked_on_success(
                 "enabled": True,
                 "timezone": None,
                 "icloudpd": {},
-                "notifications": {"on_start": False, "on_success": True, "on_failure": True},
                 "aws": {
                     "enabled": True,
                     "bucket": "b",
@@ -357,7 +351,6 @@ def test_wf10_filter_lines_in_log(
                 "enabled": True,
                 "timezone": None,
                 "icloudpd": {},
-                "notifications": {"on_start": False, "on_success": True, "on_failure": True},
                 "aws": None,
                 "filters": {
                     "file_suffixes": [".heic"],

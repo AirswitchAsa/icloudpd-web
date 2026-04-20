@@ -66,22 +66,28 @@ def _check_exif(path: Path, filters: Filters) -> FilterDecision | None:
     make, model = _read_exif_make_model(path)
 
     if filters.device_makes:
-        wanted_makes = {x.strip().lower() for x in filters.device_makes}
+        wanted_makes = [x.strip().lower() for x in filters.device_makes if x.strip()]
         if make is None:
             return FilterDecision(
                 path, False, "EXIF Make unreadable; device_makes filter configured"
             )
-        if make.lower() not in wanted_makes:
-            return FilterDecision(path, False, f"Make {make!r} not in {sorted(wanted_makes)}")
+        make_lc = make.lower()
+        if not any(w in make_lc for w in wanted_makes):
+            return FilterDecision(
+                path, False, f"Make {make!r} contains none of {sorted(wanted_makes)}"
+            )
 
     if filters.device_models:
-        wanted_models = {x.strip().lower() for x in filters.device_models}
+        wanted_models = [x.strip().lower() for x in filters.device_models if x.strip()]
         if model is None:
             return FilterDecision(
                 path, False, "EXIF Model unreadable; device_models filter configured"
             )
-        if model.lower() not in wanted_models:
-            return FilterDecision(path, False, f"Model {model!r} not in {sorted(wanted_models)}")
+        model_lc = model.lower()
+        if not any(w in model_lc for w in wanted_models):
+            return FilterDecision(
+                path, False, f"Model {model!r} contains none of {sorted(wanted_models)}"
+            )
 
     return None
 

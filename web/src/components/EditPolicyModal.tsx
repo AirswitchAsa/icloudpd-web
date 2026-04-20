@@ -130,7 +130,7 @@ export function EditPolicyModal({
                 <FormControl isRequired>
                   <FieldWithInfo
                     label="Policy Name"
-                    info="A unique name to identify this policy"
+                    info="Unique identifier used as the policy's primary key in storage. Cannot be changed after creation — delete and recreate if you need a different name."
                   >
                     <Input
                       value={formData.name}
@@ -212,16 +212,21 @@ export function EditPolicyModal({
                   </FieldWithInfo>
                 </FormControl>
 
-                <FormControl isRequired>
+                <FormControl isRequired={formData.enabled}>
                   <FieldWithInfo
                     label="Cron Schedule"
-                    info="Cron expression for when the policy should run (e.g. '0 * * * *' for hourly)."
+                    info={
+                      formData.enabled
+                        ? "Cron expression for when the policy should run (e.g. '0 * * * *' for hourly)."
+                        : "Only applies when Enabled is on. Stored for when you turn scheduling back on."
+                    }
                   >
                     <Input
                       value={formData.cron}
                       onChange={(e) => update("cron", e.target.value)}
                       maxW="200px"
                       placeholder="0 * * * *"
+                      isDisabled={!formData.enabled}
                     />
                   </FieldWithInfo>
                 </FormControl>
@@ -238,6 +243,7 @@ export function EditPolicyModal({
                       }
                       maxW="200px"
                       placeholder="UTC"
+                      isDisabled={!formData.enabled}
                     />
                   </FieldWithInfo>
                 </FormControl>
@@ -345,54 +351,6 @@ export function EditPolicyModal({
               </VStack>
             </Box>
 
-            {/* Notifications */}
-            <Box>
-              <Text fontSize="lg" fontWeight="semibold" mb={4}>
-                Notifications
-              </Text>
-              <VStack spacing={4} align="stretch">
-                <FormControl>
-                  <FieldWithInfo
-                    label="Notify on Start"
-                    info="Send a notification when a run starts."
-                  >
-                    <Switch
-                      isChecked={formData.on_start_notify}
-                      onChange={(e) =>
-                        update("on_start_notify", e.target.checked)
-                      }
-                    />
-                  </FieldWithInfo>
-                </FormControl>
-                <FormControl>
-                  <FieldWithInfo
-                    label="Notify on Success"
-                    info="Send a notification when a run succeeds."
-                  >
-                    <Switch
-                      isChecked={formData.on_success_notify}
-                      onChange={(e) =>
-                        update("on_success_notify", e.target.checked)
-                      }
-                    />
-                  </FieldWithInfo>
-                </FormControl>
-                <FormControl>
-                  <FieldWithInfo
-                    label="Notify on Failure"
-                    info="Send a notification when a run fails."
-                  >
-                    <Switch
-                      isChecked={formData.on_failure_notify}
-                      onChange={(e) =>
-                        update("on_failure_notify", e.target.checked)
-                      }
-                    />
-                  </FieldWithInfo>
-                </FormControl>
-              </VStack>
-            </Box>
-
             {/* Download Options */}
             <Box>
               <Text fontSize="lg" fontWeight="semibold" mb={4}>
@@ -406,22 +364,20 @@ export function EditPolicyModal({
                 <FormControl>
                   <FieldWithInfo
                     label="Library"
-                    info="The library to download from. Personal Library will be used if you do not have a shared library. Default: Personal Library"
+                    info="Which iCloud library to download from. Shared library resolution happens on the server — you never need to deal with the underlying identifier."
                   >
                     <Select
-                      value={formData.library}
+                      value={formData.library_kind}
                       onChange={(e) =>
                         update(
-                          "library",
-                          e.target.value as
-                            | "Personal Library"
-                            | "Shared Library"
+                          "library_kind",
+                          e.target.value as "personal" | "shared"
                         )
                       }
                       maxW="200px"
                     >
-                      <option value="Personal Library">Personal Library</option>
-                      <option value="Shared Library">Shared Library</option>
+                      <option value="personal">Personal Library</option>
+                      <option value="shared">Shared Library</option>
                     </Select>
                   </FieldWithInfo>
                 </FormControl>
@@ -612,8 +568,8 @@ export function EditPolicyModal({
 
                 <FormControl>
                   <FieldWithInfo
-                    label="Delete from iCloud After Download (keep N days)"
-                    info="After downloading, delete photos from iCloud that are older than the specified number of days. Set to 0 to delete all. Leave empty to never delete from iCloud."
+                    label="Delete from iCloud after download"
+                    info="After a successful download, delete photos FROM iCloud that are older than N days. Set to 0 to delete everything downloaded. Leave empty to never delete from iCloud. This is an icloudpd-side feature (--keep-icloud-recent-days), NOT log retention — for that, see Settings → Integrations → Run log retention."
                   >
                     <NumberInput
                       value={formData.keep_icloud_recent_days ?? ""}

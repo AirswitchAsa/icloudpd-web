@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from icloudpd_web.runner.runner import Runner
-from icloudpd_web.store.models import NotificationConfig, Policy
+from icloudpd_web.store.models import Policy
 
 
 def _policy() -> Policy:
@@ -15,7 +15,6 @@ def _policy() -> Policy:
         cron="0 * * * *",
         enabled=True,
         icloudpd={},
-        notifications=NotificationConfig(),
         aws=None,
     )
 

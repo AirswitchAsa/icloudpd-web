@@ -15,7 +15,6 @@ const baseView: PolicyView = {
   enabled: true,
   timezone: null,
   icloudpd: {},
-  notifications: { on_start: false, on_success: true, on_failure: true },
   aws: null,
   filters: {
     file_suffixes: [],
@@ -81,15 +80,6 @@ describe("fromPolicyView", () => {
     expect(f.name).toBe("p");
   });
 
-  it("notification booleans come through with the new key names", () => {
-    const f = fromPolicyView({
-      ...baseView,
-      notifications: { on_start: true, on_success: false, on_failure: true },
-    });
-    expect(f.on_start_notify).toBe(true);
-    expect(f.on_success_notify).toBe(false);
-    expect(f.on_failure_notify).toBe(true);
-  });
 });
 
 describe("toBackendPolicy", () => {

@@ -13,6 +13,8 @@ const EditPolicyModal = lazy(() =>
 interface PolicyDialogsProps {
   policy: PolicyView;
   onInterruptConfirmed: () => void;
+  onMfaCancel: () => Promise<void> | void;
+  mfaRejectedPrevious: boolean;
   dialogs: {
     delete: { isOpen: boolean; onClose: () => void };
     interrupt: { isOpen: boolean; onClose: () => void };
@@ -28,6 +30,8 @@ interface PolicyDialogsProps {
 export function PolicyDialogs({
   policy,
   onInterruptConfirmed,
+  onMfaCancel,
+  mfaRejectedPrevious,
   dialogs,
 }: PolicyDialogsProps) {
   return (
@@ -54,7 +58,9 @@ export function PolicyDialogs({
           <MFAModal
             isOpen={dialogs.mfa.isOpen}
             onClose={dialogs.mfa.onClose}
+            onCancel={onMfaCancel}
             policyName={policy.name}
+            rejectedPrevious={mfaRejectedPrevious}
           />
         )}
 

@@ -18,7 +18,6 @@ const server = setupServer(
         cron: "0 * * * *",
         enabled: true,
         icloudpd: {},
-        notifications: { on_start: false, on_success: true, on_failure: true },
         aws: null,
         is_running: false,
         has_password: false,

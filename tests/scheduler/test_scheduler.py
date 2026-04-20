@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest  # noqa: F401
 
 from icloudpd_web.scheduler.scheduler import Scheduler
-from icloudpd_web.store.models import NotificationConfig, Policy
+from icloudpd_web.store.models import Policy
 
 
 class FakeStore:
@@ -37,7 +37,6 @@ def _p(name: str, cron: str, enabled: bool = True, tz: str | None = None) -> Pol
         enabled=enabled,
         timezone=tz,
         icloudpd={},
-        notifications=NotificationConfig(),
         aws=None,
     )
 

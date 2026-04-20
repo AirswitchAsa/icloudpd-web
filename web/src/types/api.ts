@@ -1,9 +1,3 @@
-export interface PolicyNotifications {
-  on_start: boolean;
-  on_success: boolean;
-  on_failure: boolean;
-}
-
 export interface PolicyAwsConfig {
   bucket: string;
   prefix?: string;
@@ -19,6 +13,8 @@ export interface Filters {
   device_models: string[];
 }
 
+export type LibraryKind = "personal" | "shared";
+
 export interface Policy {
   name: string;
   username: string;
@@ -27,7 +23,7 @@ export interface Policy {
   enabled: boolean;
   timezone?: string | null;
   icloudpd: Record<string, unknown>;
-  notifications: PolicyNotifications;
+  library_kind?: LibraryKind | null;
   aws: PolicyAwsConfig | null;
   filters: Filters;
 }
@@ -53,6 +49,7 @@ export interface RunSummary {
 
 export interface PolicyView extends Policy {
   is_running: boolean;
+  active_run_id?: string | null;
   next_run_at?: string | null;
   last_run?: RunSummary | null;
   has_password: boolean;

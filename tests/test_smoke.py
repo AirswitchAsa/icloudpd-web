@@ -38,7 +38,6 @@ def test_end_to_end(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
                 "cron": "0 * * * *",
                 "enabled": True,
                 "icloudpd": {},
-                "notifications": {"on_start": False, "on_success": True, "on_failure": True},
                 "aws": None,
             },
         )

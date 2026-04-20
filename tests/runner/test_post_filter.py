@@ -135,6 +135,32 @@ def test_device_make_case_insensitive(tmp_path: Path) -> None:
         assert evaluate(img, f).kept is True
 
 
+def test_device_make_substring_match(tmp_path: Path) -> None:
+    """Filter tokens are matched as substrings, case-insensitively — so the
+    user can type 'ricoh' and it still matches 'RICOH IMAGING COMPANY, LTD.'."""
+    img = tmp_path / "photo.jpg"
+    img.write_bytes(b"fake")
+    f = Filters(device_makes=["ricoh"])
+    with patch(
+        "icloudpd_web.runner.post_filter._read_exif_make_model",
+        side_effect=_make_exif_mock("RICOH IMAGING COMPANY, LTD.", "GR III"),
+    ):
+        assert evaluate(img, f).kept is True
+
+
+def test_device_make_substring_no_false_positives(tmp_path: Path) -> None:
+    img = tmp_path / "photo.jpg"
+    img.write_bytes(b"fake")
+    f = Filters(device_makes=["ricoh"])
+    with patch(
+        "icloudpd_web.runner.post_filter._read_exif_make_model",
+        side_effect=_make_exif_mock("Apple", "iPhone 15"),
+    ):
+        d = evaluate(img, f)
+        assert d.kept is False
+        assert "Apple" in d.reason
+
+
 def test_device_make_exif_unreadable(tmp_path: Path) -> None:
     img = tmp_path / "photo.jpg"
     img.write_bytes(b"fake")
