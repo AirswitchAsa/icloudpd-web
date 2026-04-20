@@ -18,7 +18,14 @@ import re
 # library) or "SharedSync-<hash>" (shared library). We match those
 # specific shapes rather than any bare token, so spurious log words
 # like `Authenticated` can never pollute the result.
-_LIBRARY_NAME_RE = re.compile(r"^(?:PrimarySync|SharedSync-[A-Za-z0-9_\-]+)$")
+#
+# Lines in our log files are prefixed with "YYYY-MM-DD HH:MM:SS " by
+# Run._emit_log (for consistency across our own and icloudpd's output),
+# so we accept an optional leading timestamp before the identifier.
+_LIBRARY_NAME_RE = re.compile(
+    r"^(?:\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\s+)?"
+    r"(PrimarySync|SharedSync-[A-Za-z0-9_\-]+)$"
+)
 
 
 def parse_library_names(log_text: str) -> list[str]:
@@ -26,10 +33,14 @@ def parse_library_names(log_text: str) -> list[str]:
     seen: set[str] = set()
     for raw in log_text.splitlines():
         line = raw.strip()
-        if not line or line in seen:
+        if not line:
             continue
-        if not _LIBRARY_NAME_RE.match(line):
+        m = _LIBRARY_NAME_RE.match(line)
+        if not m:
             continue
-        names.append(line)
-        seen.add(line)
+        name = m.group(1)
+        if name in seen:
+            continue
+        names.append(name)
+        seen.add(name)
     return names

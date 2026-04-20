@@ -1,29 +1,39 @@
-version: "3.8"
-
 services:
   icloudpd-web:
-    build: .
+    image: spicadust/icloudpd-web:latest
+    # Uncomment to build locally instead of pulling:
+    # build:
+    #   context: .
+    #   args:
+    #     VERSION: 2026.4.21
+    container_name: icloudpd-web
+    restart: unless-stopped
     ports:
       - "5000:5000"
     environment:
-      - HOST=0.0.0.0
-      - PORT=5000
-      # Uncomment and modify these as needed
-      # - TOML_PATH=/path/to/policies.toml
-      # - ALLOWED_ORIGINS=http://localhost:3000
-      # - SECRET_HASH_PATH=/path/to/secret_hash
-      # - COOKIE_DIRECTORY=/path/to/cookie_directory
-      # - APPRISE_CONFIG_PATH=/path/to/apprise.yml
-      # - MAX_SESSIONS=10
-      # - GUEST_TIMEOUT_SECONDS=300
-      # - NO_PASSWORD=false
-      # - ALWAYS_GUEST=false
-      # - DISABLE_GUEST=false
-      # - SERVER_ONLY=false
-      # - RELOAD=false
+      # Server binding. Defaults shown — override as needed.
+      HOST: 0.0.0.0
+      PORT: 5000
+
+      # REQUIRED to enable authentication. Generate with:
+      #   docker run --rm spicadust/icloudpd-web:latest icloudpd-web init-password 'yourpw'
+      # If omitted, the server runs PASSWORDLESS (warning logged on startup).
+      PASSWORD_HASH: ${ICLOUDPD_WEB_PASSWORD_HASH:-}
+
+      # Optional: stable session secret across restarts (else a random one
+      # is generated each boot and all sessions are invalidated on restart).
+      # Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"
+      SESSION_SECRET: ${ICLOUDPD_WEB_SESSION_SECRET:-}
+
     volumes:
-      # Mount configuration files if needed
-      # - ./policies.toml:/path/to/policies.toml
-      # - ./secret_hash:/path/to/secret_hash
-      # Mount a directory for downloads
-      - ./downloads:/app/downloads
+      # Persistent state: policies (TOML), passwords, cookies, run logs,
+      # run sidecars, settings. MUST be mounted or all config is lost on
+      # container recreate.
+      - ./data:/data
+
+      # Photo download destinations. Mount any directories your policies
+      # write to — the `directory` field on each policy must match a path
+      # visible inside the container. Example: a policy with
+      #   directory = /downloads/main
+      # writes to the host path ./downloads/main.
+      - ./downloads:/downloads

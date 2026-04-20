@@ -1,25 +1,19 @@
 #!/bin/bash
+set -euo pipefail
 
-# Initialize command with base executable
-CMD="icloudpd-web"
+# Map env vars to icloudpd-web CLI flags. Only flags that actually exist
+# on the current CLI are forwarded. Anything unset is omitted so the CLI
+# falls back to its built-in defaults.
+#
+# Also recognized directly by the CLI (no mapping needed):
+#   ICLOUDPD_WEB_PASSWORD_HASH
+#   ICLOUDPD_WEB_SESSION_SECRET
 
-# Map environment variables to CLI arguments
-[[ ! -z "$HOST" ]] && CMD="$CMD --host $HOST"
-[[ ! -z "$PORT" ]] && CMD="$CMD --port $PORT"
-[[ ! -z "$TOML_PATH" ]] && CMD="$CMD --toml-path $TOML_PATH"
-[[ ! -z "$ALLOWED_ORIGINS" ]] && CMD="$CMD --allowed-origins $ALLOWED_ORIGINS"
-[[ ! -z "$SECRET_HASH_PATH" ]] && CMD="$CMD --secret-hash-path $SECRET_HASH_PATH"
-[[ ! -z "$MAX_SESSIONS" ]] && CMD="$CMD --max-sessions $MAX_SESSIONS"
-[[ ! -z "$GUEST_TIMEOUT_SECONDS" ]] && CMD="$CMD --guest-timeout-seconds $GUEST_TIMEOUT_SECONDS"
-[[ ! -z "$COOKIE_DIRECTORY" ]] && CMD="$CMD --cookie-directory $COOKIE_DIRECTORY"
-[[ ! -z "$APPRISE_CONFIG_PATH" ]] && CMD="$CMD --apprise-config-path $APPRISE_CONFIG_PATH"
-[[ ! -z "$LOG_LOCATION" ]] && CMD="$CMD --log-location $LOG_LOCATION"
-# Handle boolean flags
-[[ "$NO_PASSWORD" == "true" ]] && CMD="$CMD --no-password"
-[[ "$ALWAYS_GUEST" == "true" ]] && CMD="$CMD --always-guest"
-[[ "$DISABLE_GUEST" == "true" ]] && CMD="$CMD --disable-guest"
-[[ "$SERVER_ONLY" == "true" ]] && CMD="$CMD --server-only"
-[[ "$RELOAD" == "true" ]] && CMD="$CMD --reload"
+args=()
+[[ -n "${HOST:-}" ]]            && args+=(--host "$HOST")
+[[ -n "${PORT:-}" ]]            && args+=(--port "$PORT")
+[[ -n "${DATA_DIR:-}" ]]        && args+=(--data-dir "$DATA_DIR")
+[[ -n "${PASSWORD_HASH:-}" ]]   && args+=(--password-hash "$PASSWORD_HASH")
+[[ -n "${SESSION_SECRET:-}" ]]  && args+=(--session-secret "$SESSION_SECRET")
 
-# Execute the command
-exec $CMD
+exec icloudpd-web "${args[@]}"

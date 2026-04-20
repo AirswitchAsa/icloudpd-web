@@ -184,3 +184,40 @@ def test_downloaded_re_matches_timestamp_prefixed_line() -> None:
     # Doesn't match unrelated lines.
     assert DOWNLOADED_RE.search("INFO     Skipping /foo.jpg") is None
     assert DOWNLOADED_RE.search("ERROR    Download failed") is None
+
+
+def test_emit_log_prepends_timestamp_for_inconsistent_lines(tmp_path: Path) -> None:
+    """All log lines should have a uniform YYYY-MM-DD HH:MM:SS prefix.
+
+    icloudpd emits timestamp-prefixed lines; our wrapper adds its own
+    lines (filter events, warnings) that must match the same shape so
+    users don't see a jumble of formats in the log view.
+    """
+    import re as _re
+
+    from icloudpd_web.runner.run import Run
+
+    run = Run(
+        run_id="policy-log",
+        policy_name="policy",
+        argv=["/bin/true"],
+        log_dir=tmp_path,
+        password="pw",
+    )
+    # Open the log file without starting the subprocess.
+    run._log_fh = open(run.log_path, "w", encoding="utf-8", buffering=1)  # noqa: SLF001, SIM115
+
+    # Line without a timestamp (our own wrapper output) → prefix added.
+    run._emit_log("INFO     Filter: deleted /foo.jpg")  # noqa: SLF001
+    # Line already carrying icloudpd's timestamp → passed through.
+    run._emit_log("2026-04-20 11:17:10 INFO     Downloaded /bar.jpg")  # noqa: SLF001
+
+    run._log_fh.close()  # noqa: SLF001
+
+    ts_re = _re.compile(r"^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}\s")
+    lines = run.log_path.read_text().splitlines()
+    assert len(lines) == 2
+    for line in lines:
+        assert ts_re.match(line), f"no timestamp prefix: {line!r}"
+    # Second line kept its original timestamp (not double-prefixed).
+    assert lines[1].startswith("2026-04-20 11:17:10 INFO     Downloaded")

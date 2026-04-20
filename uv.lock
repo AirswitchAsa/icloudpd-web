@@ -322,7 +322,7 @@ wheels = [
 
 [[package]]
 name = "icloudpd-web"
-version = "2026.4.19"
+version = "2026.4.20"
 source = { editable = "." }
 dependencies = [
     { name = "apprise" },

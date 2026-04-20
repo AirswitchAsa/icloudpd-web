@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 
 PROGRESS_RE = re.compile(r"Downloading\s+(\d+)\s+of\s+(\d+)", re.IGNORECASE)
 MFA_PROMPT_RE = re.compile(r"Two-step|two.?factor", re.IGNORECASE)
+_TS_PREFIX_RE = re.compile(r"^\d{4}-\d{2}-\d{2}\s")
 # Match icloudpd's "Downloaded <path>" line anywhere on the line — real
 # output is timestamp-prefixed ("2026-04-20 11:17:10 INFO     Downloaded ...").
 DOWNLOADED_RE = re.compile(r"INFO\s+Downloaded\s+(.+?)\s*$")
@@ -200,6 +201,13 @@ class Run:
             self._emit_log(f"WARNING  Filter: could not delete {path}: {exc}")
 
     def _emit_log(self, text: str) -> None:
+        # Prepend a timestamp so our own log lines (filter events, wrapper
+        # warnings) match the shape of icloudpd's output, which looks like
+        # "2026-04-20 11:17:10 INFO     Downloaded ...". Lines that already
+        # start with a YYYY-MM-DD prefix are passed through unchanged.
+        if not _TS_PREFIX_RE.match(text):
+            stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            text = f"{stamp} {text}"
         if self._log_fh is not None:
             self._log_fh.write(text + "\n")
         self._publish("log", {"line": text})
