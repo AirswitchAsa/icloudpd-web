@@ -1,30 +1,37 @@
 # icloudpd-web Docker Image
 
-Current package version: 2025.3.18
+Current package version: 2026.4.20.post1
 
 ## Quick Start
 
 ```bash
-docker run -d --name icloudpd-web -p 5000:5000 -v /path/to/icloudpd-web:/app spicadust/icloudpd-web:latest
+docker run -d \
+  --name icloudpd-web \
+  -p 5000:5000 \
+  -v ./data:/data \
+  -v ./downloads:/downloads \
+  spicadust/icloudpd-web:latest
 ```
+
+`/data` holds policies, secrets, cookies and run logs. `/downloads` is where
+your policies write photos — mount any host directories your policies'
+`directory` field points at.
+
+The server starts passwordless unless `PASSWORD_HASH` is set (see below).
 
 ## Environment Variables
 
-The following environment variables can be used to configure the application:
-
-- `HOST`: Host to bind to (default: 0.0.0.0)
-- `PORT`: Port to bind to (default: 5000)
-- `TOML_PATH`: Path to the TOML file containing policies definition. In most cases you can leave it empty.
-- `SECRET_HASH_PATH`: Path to the secret hash file. In most cases you can leave it empty.
-- `COOKIE_DIRECTORY`: Path to store icloud session files.
-- `APPRISE_CONFIG_PATH`: Path to store AppRise assets.
-- `LOG_LOCATION`: Path to store the logs (both server and client)
-- `ALLOWED_ORIGINS`: Comma-separated list of allowed CORS origins. Use `*` to allow all origins, otherwise use the address that you will use to access the web interface.
-- `MAX_SESSIONS`: Maximum number of websocket sessions to allow. (default: 10)
-- `GUEST_TIMEOUT_SECONDS`: Timeout for guest users in seconds.
-- `NO_PASSWORD`: Set to "true" to disable server password authentication.
-- `ALWAYS_GUEST`: Set to "true" to always login users as guests.
-- `DISABLE_GUEST`: Set to "true" to disable guest login.
+- `HOST`: host to bind to (default: `0.0.0.0`)
+- `PORT`: port to bind to (default: `5000`)
+- `DATA_DIR`: path for persistent state inside the container (default: `/data`)
+- `PASSWORD_HASH`: scrypt hash of the server password. Generate with:
+  ```bash
+  docker run --rm spicadust/icloudpd-web:latest icloudpd-web init-password 'yourpw'
+  ```
+  If unset, the server runs passwordless and logs a warning on startup.
+- `SESSION_SECRET`: stable session secret across restarts. If unset, a random
+  one is generated on each boot and all sessions are invalidated on restart.
+  Generate with: `python -c "import secrets; print(secrets.token_urlsafe(32))"`
 
 ## Using Docker Compose
 

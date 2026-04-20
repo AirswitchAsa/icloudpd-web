@@ -5,7 +5,7 @@ services:
     # build:
     #   context: .
     #   args:
-    #     VERSION: 2026.4.21
+    #     VERSION: 2026.4.20.post1
     container_name: icloudpd-web
     restart: unless-stopped
     ports:

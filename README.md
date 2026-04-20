@@ -10,7 +10,7 @@
 - **Warning**: This is a public software from personal project that comes without any warranties. You may use it for personal usages at your own risk. You can contribute to the project by submitting a feature request or a bug report via Github issues.
 - [icloud-photos-downloader](https://github.com/icloud-photos-downloader/icloud_photos_downloader) is a CLI tool for downloading iCloud photos and videos.
 - `icloudpd-web` is an application that provides a web UI wrapper around the icloudpd Python library.
-- The application allows managing multiple icloudpd settings ("policies" in `icloupd-web`) through the web UI and monitoring the progress of the downloads.
+- The application allows managing multiple icloudpd settings ("policies" in `icloudpd-web`) through the web UI and monitoring the progress of the downloads.
 - The application bundles a static next.js application in a fastapi server. Therefore, you can spin up the server and use the web UI using the python distribution.
 
 ## Screenshots
