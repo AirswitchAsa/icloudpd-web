@@ -1,6 +1,6 @@
 [project]
 name = "icloudpd-web"
-version = "2026.4.20"
+version = "2026.4.20.post1"
 description = "Web UI for icloud-photos-downloader"
 requires-python = ">=3.12"
 readme = "README.md"

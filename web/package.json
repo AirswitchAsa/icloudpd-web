@@ -1,7 +1,7 @@
 {
   "name": "icloudpd-web-ui",
   "private": true,
-  "version": "2026.4.20",
+  "version": "2026.4.20.post1",
   "type": "module",
   "scripts": {
     "dev": "vite",
