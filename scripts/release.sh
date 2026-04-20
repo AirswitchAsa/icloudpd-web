@@ -217,8 +217,18 @@ cmd_publish() {
     ls "dist/icloudpd_web-$version"*.tar.gz >/dev/null 2>&1 \
         || die "no sdist for $version in dist/"
 
+    # Auto-source .env at the repo root so secrets stay out of the shell history.
+    # .env is gitignored; format is `export UV_PUBLISH_TOKEN=...` (or plain KEY=VAL).
+    if [[ -f .env ]]; then
+        log "Sourcing .env"
+        set -a
+        # shellcheck disable=SC1091
+        source .env
+        set +a
+    fi
+
     [[ -n "${UV_PUBLISH_TOKEN:-}" ]] \
-        || die "UV_PUBLISH_TOKEN not set — export your PyPI token first"
+        || die "UV_PUBLISH_TOKEN not set — add it to .env or export it"
 
     docker info >/dev/null 2>&1 \
         || die "docker daemon unreachable"

@@ -4,6 +4,9 @@ node_modules
 __pycache__
 out
 web/.env.local
+.env
+.env.*
+!.env.example
 src/icloudpd_web/webapp
 src/icloudpd_web/web_dist/*
 !src/icloudpd_web/web_dist/.gitkeep
