@@ -127,7 +127,7 @@ export function fromPolicyView(view: PolicyView): FormPolicy {
     enabled: view.enabled,
     timezone: view.timezone ?? null,
     library_kind: view.library_kind ?? "personal",
-    upload_to_aws_s3: view.aws !== null,
+    upload_to_aws_s3: view.aws != null && view.aws.enabled !== false,
     aws_bucket: view.aws?.bucket ?? "",
     aws_prefix: view.aws?.prefix ?? "",
     aws_region: view.aws?.region ?? "",
@@ -165,6 +165,7 @@ export function toBackendPolicy(form: FormPolicy): BackendPolicy {
     library_kind: form.library_kind,
     aws: form.upload_to_aws_s3
       ? {
+          enabled: true,
           bucket: form.aws_bucket,
           prefix: form.aws_prefix || undefined,
           region: form.aws_region || undefined,

@@ -81,26 +81,6 @@ def test_set_and_delete_password(client: TestClient) -> None:
     assert r2.status_code == 204
 
 
-def test_discover_libraries_requires_stored_password(client: TestClient) -> None:
-    client.put("/policies/a", json=_policy_body())
-    r = client.post("/policies/a/libraries/discover")
-    assert r.status_code == 400
-    assert "password" in r.json()["error"].lower()
-
-
-def test_discover_libraries_returns_names(client: TestClient) -> None:
-    client.put("/policies/a", json=_policy_body())
-    client.post("/policies/a/password", json={"password": "pw"})
-    r = client.post("/policies/a/libraries/discover")
-    assert r.status_code == 200, r.text
-    assert "PrimarySync" in r.json()["libraries"]
-
-
-def test_discover_libraries_404_for_missing_policy(client: TestClient) -> None:
-    r = client.post("/policies/nope/libraries/discover")
-    assert r.status_code == 404
-
-
 # ── export / import ──────────────────────────────────────────────────────
 
 
@@ -185,6 +165,20 @@ def test_import_rejects_invalid_toml(client: TestClient) -> None:
 def test_import_rejects_empty_body(client: TestClient) -> None:
     r = client.post("/policies/import", content="")
     assert r.status_code == 400
+
+
+def test_import_rejects_non_utf8(client: TestClient) -> None:
+    r = client.post("/policies/import", content=b"\xff\xfe\xfd")
+    assert r.status_code == 400
+
+
+def test_import_skips_non_table_entry(client: TestClient) -> None:
+    # policy = ["not a table"] — bundle-shaped but element is not a dict
+    r = client.post("/policies/import", content='policy = ["bogus"]\n')
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["created"] == []
+    assert body["errors"] == [{"name": None, "error": "entry is not a table"}]
 
 
 def test_requires_auth(tmp_path: Path) -> None:

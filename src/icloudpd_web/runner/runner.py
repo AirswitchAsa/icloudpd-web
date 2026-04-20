@@ -227,7 +227,18 @@ class Runner:
             with contextlib.suppress(Exception):
                 self._mfa_registry.cleanup(run.policy_name)
         prune_logs(run.log_dir, keep=self._retention)
+        # Free the active slot so _summary stops reporting a completed run
+        # as the "active" run. Only clear if we're still the current active
+        # run — a concurrent start() may have replaced us (can't happen
+        # today since start() rejects when is_running, but keeps the
+        # invariant tight if that changes).
+        if self._active.get(run.policy_name) is run:
+            self._active.pop(run.policy_name, None)
         self._on_event(run, "completed")
+
+    def active_run(self, name: str) -> Run | None:
+        """Return the currently-active Run for a policy, or None."""
+        return self._active.get(name)
 
 
 def _mk_run_id(policy_name: str) -> str:

@@ -169,6 +169,9 @@ class Run:
         # Dry-run writes no files, so filter evaluation would fail; skip.
         if self._filters is None or self._filters.is_empty() or self._dry_run:
             return
+        # Prune completed tasks so this list doesn't grow unboundedly during
+        # a long run (one task per downloaded file).
+        self._filter_tasks = [t for t in self._filter_tasks if not t.done()]
         self._filter_tasks.append(asyncio.create_task(self._filter_one(path)))
 
     async def _filter_one(self, path: Path) -> None:

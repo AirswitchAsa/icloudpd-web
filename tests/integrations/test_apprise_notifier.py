@@ -10,15 +10,19 @@ def test_empty_urls_no_op() -> None:
 
 
 def test_emit_respects_event_toggles() -> None:
-    settings = AppriseSettings(urls=["mailto://x"], on_success=False, on_failure=True)
+    settings = AppriseSettings(
+        urls=["mailto://x"], on_start=True, on_success=False, on_failure=True
+    )
     with patch("icloudpd_web.integrations.apprise_notifier.apprise.Apprise") as cls:
         inst = MagicMock()
         cls.return_value = inst
         n = AppriseNotifier(settings)
         n.emit("success", policy_name="p", summary="ok")
         inst.notify.assert_not_called()
+        n.emit("start", policy_name="p", summary="starting")
+        assert inst.notify.call_count == 1
         n.emit("failure", policy_name="p", summary="boom")
-        inst.notify.assert_called_once()
+        assert inst.notify.call_count == 2
 
 
 def test_notify_error_never_raises() -> None:

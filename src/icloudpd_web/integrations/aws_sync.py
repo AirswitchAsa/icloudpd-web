@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -24,10 +25,18 @@ class AwsSync:
             return AwsSyncResult(skipped=True)
         dest = f"s3://{cfg.bucket}/{cfg.prefix}".rstrip("/")
         argv = self._argv_fn(str(source), dest)
+        env = os.environ.copy()
+        if cfg.access_key_id:
+            env["AWS_ACCESS_KEY_ID"] = cfg.access_key_id
+        if cfg.secret_access_key:
+            env["AWS_SECRET_ACCESS_KEY"] = cfg.secret_access_key
+        if cfg.region:
+            env["AWS_DEFAULT_REGION"] = cfg.region
         proc = await asyncio.create_subprocess_exec(
             *argv,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
+            env=env,
         )
         out_bytes, _ = await proc.communicate()
         return AwsSyncResult(

@@ -14,10 +14,11 @@ from __future__ import annotations
 import re
 
 
-# A library identifier is a non-whitespace token with no colons/slashes.
-# Everything logged by icloudpd (INFO, ERROR, date-prefixed lines, prompts)
-# contains at least one space or colon, so we filter those out.
-_LIBRARY_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_\-]*$")
+# icloudpd emits library identifiers as either "PrimarySync" (personal
+# library) or "SharedSync-<hash>" (shared library). We match those
+# specific shapes rather than any bare token, so spurious log words
+# like `Authenticated` can never pollute the result.
+_LIBRARY_NAME_RE = re.compile(r"^(?:PrimarySync|SharedSync-[A-Za-z0-9_\-]+)$")
 
 
 def parse_library_names(log_text: str) -> list[str]:
@@ -28,9 +29,6 @@ def parse_library_names(log_text: str) -> list[str]:
         if not line or line in seen:
             continue
         if not _LIBRARY_NAME_RE.match(line):
-            continue
-        # Guard against matching log level tokens that might appear bare.
-        if line.upper() in {"INFO", "ERROR", "WARNING", "DEBUG", "CRITICAL"}:
             continue
         names.append(line)
         seen.add(line)

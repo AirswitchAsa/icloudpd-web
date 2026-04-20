@@ -40,6 +40,8 @@ class AwsConfig(BaseModel):
     bucket: str | None = None
     prefix: str = ""
     region: str | None = None
+    access_key_id: str | None = None
+    secret_access_key: str | None = None
 
     @model_validator(mode="after")
     def _check(self) -> AwsConfig:

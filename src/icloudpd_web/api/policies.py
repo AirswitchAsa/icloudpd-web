@@ -69,9 +69,14 @@ def _summary(p: Policy, request: Request) -> dict:
     else:
         data["next_run_at"] = None
     data["is_running"] = runner.is_running(p.name)
-    active = runner._active.get(p.name)  # noqa: SLF001
+    active = runner.active_run(p.name)
+    # Only report an active_run_id if the run is still in-flight (running
+    # or awaiting MFA). Terminal statuses (success/failed/stopped) leave
+    # the slot cleared by _on_complete, but guard here for races.
     data["active_run_id"] = (
-        active.run_id if active is not None and active.status != "success" else None
+        active.run_id
+        if active is not None and active.status in ("running", "awaiting_mfa")
+        else None
     )
     last_run = _load_last_run(p.name, data_dir)
     data["last_run"] = last_run.model_dump(mode="json") if last_run is not None else None
@@ -196,20 +201,3 @@ def set_password(name: str, body: PasswordBody, request: Request) -> Response:
 def delete_password(name: str, request: Request) -> Response:
     request.app.state.secret_store.delete(name)
     return Response(status_code=204)
-
-
-@router.post("/{name}/libraries/discover")
-async def discover_libraries(name: str, request: Request) -> dict:
-    store = request.app.state.policy_store
-    policy = store.get(name)
-    if policy is None:
-        raise ApiError("Policy not found", status_code=404)
-    password = request.app.state.secret_store.get(name)
-    if password is None:
-        raise ApiError("Set a password for this policy first", status_code=400, field="password")
-    runner = request.app.state.runner
-    try:
-        names = await runner.discover_libraries(policy, password=password)
-    except RuntimeError as e:
-        raise ApiError(str(e), status_code=500) from None
-    return {"libraries": names}

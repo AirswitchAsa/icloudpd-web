@@ -39,6 +39,11 @@ def test_wf1_happy_path(client: TestClient) -> None:
     assert "Downloading 1 of 2" in log.text
     assert "Downloading 2 of 2" in log.text
 
+    # Once the run has terminated, active_run_id must be cleared so the
+    # frontend stops subscribing to a dead stream.
+    assert summary["active_run_id"] is None
+    assert summary["is_running"] is False
+
     # SSE stream (after completion) replays recorded events ending with a status.
     sse = client.get(f"/runs/{run_id}/events")
     assert sse.status_code == 200

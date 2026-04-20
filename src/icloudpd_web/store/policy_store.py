@@ -10,7 +10,7 @@ from typing import Any
 import tomli_w
 import tomllib
 
-from .models import AwsConfig, Filters, Policy
+from .models import Policy
 
 
 log = logging.getLogger(__name__)
@@ -86,15 +86,8 @@ class PolicyStore:
 
     @staticmethod
     def _from_toml(data: dict[str, Any]) -> Policy:
-        return Policy(
-            name=data["name"],
-            username=data["username"],
-            directory=Path(data["directory"]),
-            cron=data["cron"],
-            enabled=data.get("enabled", True),
-            timezone=data.get("timezone"),
-            icloudpd=data.get("icloudpd", {}),
-            library_kind=data.get("library_kind"),
-            aws=AwsConfig(**data["aws"]) if "aws" in data else None,
-            filters=Filters(**data["filters"]) if "filters" in data else Filters(),
-        )
+        # Let Pydantic handle field population (including defaults, nested
+        # AwsConfig/Filters, and future fields) rather than listing fields
+        # here. Runtime-only fields like `next_run_at` / `last_run` are not
+        # in the TOML so they default to None.
+        return Policy.model_validate(data)

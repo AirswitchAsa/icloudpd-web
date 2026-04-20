@@ -1,4 +1,5 @@
 export interface PolicyAwsConfig {
+  enabled?: boolean;
   bucket: string;
   prefix?: string;
   region?: string;

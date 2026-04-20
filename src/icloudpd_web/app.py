@@ -76,6 +76,9 @@ def create_app(
 
     def _on_run_event(run: Run, event: str) -> None:
         policy_store.bump()
+        if event == "started":
+            notifier.emit("start", policy_name=run.policy_name, summary=_summarize(run))
+            return
         if event != "completed":
             return
         summary = _summarize(run)

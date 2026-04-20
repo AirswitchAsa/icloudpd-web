@@ -18,11 +18,6 @@ export const policiesApi = {
     }),
   clearPassword: (name: string) =>
     apiFetch<void>(`/policies/${encodeURIComponent(name)}/password`, { method: "DELETE" }),
-  discoverLibraries: (name: string) =>
-    apiFetch<{ libraries: string[] }>(
-      `/policies/${encodeURIComponent(name)}/libraries/discover`,
-      { method: "POST" }
-    ),
   exportUrl: () => "/policies/export",
   importToml: async (
     toml: string
