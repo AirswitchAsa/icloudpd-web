@@ -16,6 +16,13 @@ const NON_ICLOUDPD_OLD_FIELDS = new Set([
   "scheduled",
   "waiting_mfa",
   "upload_to_aws_s3",
+  // Immich optional-value flag UI helpers — handled manually in toBackendPolicy
+  "immich_stack_media_enabled",
+  "immich_stack_media",
+  "immich_favorite_enabled",
+  "immich_favorite",
+  "associate_live_enabled",
+  "associate_live_with_extra_sizes",
 ]);
 
 const NEW_BACKEND_EXTRAS = new Set([
@@ -54,6 +61,14 @@ export interface FormPolicy extends OldPolicy {
   filter_match_patterns: string[];
   filter_device_makes: string[];
   filter_device_models: string[];
+  // Immich optional-value flags: stored as bool|string in backend, split into
+  // an _enabled toggle + a sizes string in the UI for clarity.
+  immich_stack_media_enabled: boolean;
+  immich_stack_media: string[];
+  immich_favorite_enabled: boolean;
+  immich_favorite: string[];
+  associate_live_enabled: boolean;
+  associate_live_with_extra_sizes: string[];
   filter_exif_fallback: "keep" | "delete";
 }
 
@@ -67,7 +82,7 @@ export function defaultFormPolicy(): FormPolicy {
     progress: 0,
     authenticated: false,
     domain: "com",
-    folder_structure: "{:%Y/%m/%d}",
+    folder_structure: "none",
     size: ["original"],
     live_photo_size: "original",
     force_size: false,
@@ -75,9 +90,11 @@ export function defaultFormPolicy(): FormPolicy {
     keep_unicode_in_filenames: false,
     set_exif_datetime: false,
     live_photo_mov_filename_policy: "suffix",
-    file_match_policy: "name-size-dedup-with-suffix",
+    file_match_policy: "name-id7",
     xmp_sidecar: false,
     use_os_locale: false,
+    favorite_to_rating: null,
+    until_skip_created_before: false,
     album: "",
     library: "",
     recent: null,
@@ -95,6 +112,19 @@ export function defaultFormPolicy(): FormPolicy {
     waiting_mfa: false,
     log_level: "info",
     upload_to_aws_s3: false,
+    // plugin system:
+    plugin: [],
+    // immich plugin:
+    immich_server_url: "",
+    immich_api_key: "",
+    immich_library_id: "",
+    immich_album: [],
+    immich_process_existing: false,
+    process_existing_favorites: false,
+    immich_batch_process: null,
+    immich_batch_log_file: "",
+    immich_scan_timeout: null,
+    immich_poll_interval: null,
     // new-backend additions:
     cron: "0 * * * *",
     enabled: true,
@@ -110,6 +140,13 @@ export function defaultFormPolicy(): FormPolicy {
     filter_match_patterns: [],
     filter_device_makes: [],
     filter_device_models: [],
+    // immich optional-value flag UI helpers:
+    immich_stack_media_enabled: false,
+    immich_stack_media: [],
+    immich_favorite_enabled: false,
+    immich_favorite: [],
+    associate_live_enabled: false,
+    associate_live_with_extra_sizes: [],
     filter_exif_fallback: "keep",
   };
 }
@@ -141,6 +178,19 @@ export function fromPolicyView(view: PolicyView): FormPolicy {
     filter_match_patterns: view.filters?.match_patterns ?? [],
     filter_device_makes: view.filters?.device_makes ?? [],
     filter_device_models: view.filters?.device_models ?? [],
+    // Optional-value immich flags: backend stores bool|string, UI splits into toggle + sizes array
+    immich_stack_media_enabled: !!icloudpd.immich_stack_media,
+    immich_stack_media: typeof icloudpd.immich_stack_media === "string"
+      ? icloudpd.immich_stack_media.split(",").filter(Boolean)
+      : [],
+    immich_favorite_enabled: !!icloudpd.immich_favorite,
+    immich_favorite: typeof icloudpd.immich_favorite === "string"
+      ? icloudpd.immich_favorite.split(",").filter(Boolean)
+      : [],
+    associate_live_enabled: !!icloudpd.associate_live_with_extra_sizes,
+    associate_live_with_extra_sizes: typeof icloudpd.associate_live_with_extra_sizes === "string"
+      ? icloudpd.associate_live_with_extra_sizes.split(",").filter(Boolean)
+      : [],
     filter_exif_fallback: view.filters?.exif_fallback ?? "keep",
   };
 }
@@ -158,6 +208,23 @@ export function toBackendPolicy(form: FormPolicy): BackendPolicy {
   // it to a real icloudpd identifier at run time. Never include `library` in
   // the icloudpd dict — the backend validator strips it anyway.
   delete icloudpd.library;
+  // Optional-value flags: enabled+no sizes → bool true (flag with no arg = "all"),
+  // enabled+sizes → comma-separated string, disabled → omit.
+  if (form.immich_stack_media_enabled) {
+    icloudpd.immich_stack_media = form.immich_stack_media.length > 0
+      ? form.immich_stack_media.join(",")
+      : true;
+  }
+  if (form.immich_favorite_enabled) {
+    icloudpd.immich_favorite = form.immich_favorite.length > 0
+      ? form.immich_favorite.join(",")
+      : true;
+  }
+  if (form.associate_live_enabled) {
+    icloudpd.associate_live_with_extra_sizes = form.associate_live_with_extra_sizes.length > 0
+      ? form.associate_live_with_extra_sizes.join(",")
+      : true;
+  }
   return {
     name: form.name,
     username: form.username,

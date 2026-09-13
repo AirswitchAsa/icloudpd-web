@@ -10,11 +10,12 @@ set -euo pipefail
 #   ICLOUDPD_WEB_SESSION_SECRET
 
 args=()
-[[ -n "${HOST:-}" ]]            && args+=(--host "$HOST")
-[[ -n "${PORT:-}" ]]            && args+=(--port "$PORT")
-[[ -n "${DATA_DIR:-}" ]]        && args+=(--data-dir "$DATA_DIR")
-[[ -n "${PASSWORD_HASH:-}" ]]   && args+=(--password-hash "$PASSWORD_HASH")
-[[ -n "${SESSION_SECRET:-}" ]]  && args+=(--session-secret "$SESSION_SECRET")
+[[ -n "${HOST:-}" ]]                && args+=(--host "$HOST")
+[[ -n "${PORT:-}" ]]                && args+=(--port "$PORT")
+[[ -n "${DATA_DIR:-}" ]]            && args+=(--data-dir "$DATA_DIR")
+[[ -n "${PASSWORD_HASH:-}" ]]       && args+=(--password-hash "$PASSWORD_HASH")
+[[ -n "${SESSION_SECRET:-}" ]]      && args+=(--session-secret "$SESSION_SECRET")
+[[ -n "${ICLOUDPD_COOKIE_DIR:-}" ]] && args+=(--cookie-dir "$ICLOUDPD_COOKIE_DIR")
 
 # Running as root (the image default): remap appuser to PUID/PGID, take
 # ownership of the mount points, and drop privileges. This makes bind

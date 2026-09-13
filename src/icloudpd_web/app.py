@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 
 from fastapi import FastAPI
 
+from icloudpd_web import __version__
 from icloudpd_web.api import auth as auth_router
 from icloudpd_web.api import mfa as mfa_router
 from icloudpd_web.api import policies as policies_router
@@ -28,6 +30,7 @@ from icloudpd_web.store.secrets import SecretStore
 
 
 ICLOUDPD_BINARY = "icloudpd"
+DEFAULT_COOKIE_DIR = "/.pyicloud"
 
 # Disable a policy's schedule after this many consecutive wrong-password
 # failures — each cron retry with a bad password risks an Apple lockout.
@@ -46,8 +49,14 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
             await app.state.scheduler_task
 
 
-def _default_icloudpd_argv(argv_tail: list[str]) -> list[str]:
-    return [ICLOUDPD_BINARY, *argv_tail]
+def _make_icloudpd_argv(cookie_dir: str) -> Callable[[list[str]], list[str]]:
+    """Build an argv factory that injects --cookie-directory unless the policy already sets it."""
+    def _argv(argv_tail: list[str]) -> list[str]:
+        base = [ICLOUDPD_BINARY]
+        if "--cookie-directory" not in argv_tail:
+            base += ["--cookie-directory", cookie_dir]
+        return base + argv_tail
+    return _argv
 
 
 def create_app(
@@ -55,10 +64,21 @@ def create_app(
     data_dir: Path,
     authenticator: Authenticator,
     session_secret: str,
-    icloudpd_argv: Callable[[list[str]], list[str]] = _default_icloudpd_argv,
+    cookie_dir: str = DEFAULT_COOKIE_DIR,
+    icloudpd_argv: Callable[[list[str]], list[str]] | None = None,
     static_dir: Path | None = None,
 ) -> FastAPI:
     app = FastAPI(title="icloudpd-web", lifespan=_lifespan)
+
+    @app.get("/version")
+    def version() -> dict[str, str]:
+        return {
+            "version": os.environ.get("ICLOUDPD_WEB_VERSION", __version__),
+        }
+
+    if icloudpd_argv is None:
+        icloudpd_argv = _make_icloudpd_argv(cookie_dir)
+
     install_handlers(app)
     install_session_middleware(app, secret=session_secret)
 

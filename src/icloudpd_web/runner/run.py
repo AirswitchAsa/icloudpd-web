@@ -6,6 +6,7 @@ import contextlib
 import json
 import os
 import re
+import shlex
 import signal
 import time
 from collections.abc import AsyncIterator, Callable
@@ -117,6 +118,7 @@ class Run:
         self.started_at = datetime.now(UTC)
         self.status = "running"
         self._log_fh = open(self.log_path, "w", encoding="utf-8", buffering=1)  # noqa: SIM115, ASYNC230
+        self._emit_log("INFO     [icloudpd-web] Command: " + shlex.join(self._argv))
         # PYTHONUNBUFFERED forces line-buffered stdout/stderr in the child.
         # Without it, icloudpd's output sits in a 4KB buffer (PIPE isn't a tty)
         # and our readline() sees nothing until the process exits.

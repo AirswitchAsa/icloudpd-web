@@ -28,6 +28,9 @@ def test_end_to_end(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         icloudpd_argv=_argv,
     )
     with TestClient(app) as c:
+        version = c.get("/version")
+        assert version.status_code == 200
+        assert version.json()["version"] == "2026.4.20.post1"
         c.post("/auth/login", json={"password": "pw"})
         c.put(
             "/policies/p",

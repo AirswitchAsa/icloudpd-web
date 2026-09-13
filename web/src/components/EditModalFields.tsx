@@ -20,8 +20,9 @@ import {
   VStack,
   Alert,
   AlertIcon,
+  Select,
 } from "@chakra-ui/react";
-import { ChevronDownIcon, ChevronUpIcon } from "@chakra-ui/icons";
+import { AddIcon, ChevronDownIcon, ChevronUpIcon } from "@chakra-ui/icons";
 
 interface FieldWithInfoProps {
   label: string;
@@ -301,6 +302,88 @@ interface PostDownloadFiltersSectionProps {
    * (delete_after_download / keep_icloud_recent_days). That combination is
    * rejected by the server: the filter would delete the only remaining copy. */
   icloudDeleteConfigured?: boolean;
+}
+
+interface PluginsFieldProps {
+  value: string[];
+  onChange: (value: string[]) => void;
+  availablePlugins: Array<{ id: string; label: string }>;
+}
+
+export function PluginsField({ value, onChange, availablePlugins }: PluginsFieldProps) {
+  const [pending, setPending] = useState("");
+  const { isOpen, onToggle } = useDisclosure();
+  const remaining = availablePlugins.filter((p) => !value.includes(p.id));
+
+  const handleAdd = () => {
+    if (pending && !value.includes(pending)) {
+      onChange([...value, pending]);
+      setPending("");
+    }
+  };
+
+  return (
+    <FormControl>
+      <HStack spacing={2} align="center" h="40px">
+        <IconButton
+          aria-label="Toggle info"
+          icon={isOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
+          size="sm"
+          variant="ghost"
+          onClick={onToggle}
+        />
+        <FormLabel flex="1" mb="0">
+          Plugins
+        </FormLabel>
+        <Select
+          value={pending}
+          onChange={(e) => setPending(e.target.value)}
+          placeholder={remaining.length === 0 ? "All plugins active" : "Select plugin…"}
+          maxW="170px"
+          size="sm"
+          isDisabled={remaining.length === 0}
+        >
+          {remaining.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.label}
+            </option>
+          ))}
+        </Select>
+        <IconButton
+          aria-label="Add plugin"
+          icon={<AddIcon />}
+          size="sm"
+          variant="ghost"
+          onClick={handleAdd}
+          isDisabled={!pending}
+        />
+      </HStack>
+      <Collapse in={isOpen}>
+        <Box pl={10} pr={4} py={2} bg="gray.50" borderRadius="md" mb={2}>
+          <Text fontSize="sm" color="gray.600">
+            Enable icloudpd plugins. Adding a plugin reveals its configuration section below.
+          </Text>
+        </Box>
+      </Collapse>
+      {value.length > 0 && (
+        <Wrap mt={2} pl={10}>
+          {value.map((pluginId) => {
+            const plugin = availablePlugins.find((p) => p.id === pluginId);
+            return (
+              <WrapItem key={pluginId}>
+                <Tag colorScheme="blue" borderRadius="full" size="md">
+                  <TagLabel>{plugin?.label ?? pluginId}</TagLabel>
+                  <TagCloseButton
+                    onClick={() => onChange(value.filter((v) => v !== pluginId))}
+                  />
+                </Tag>
+              </WrapItem>
+            );
+          })}
+        </Wrap>
+      )}
+    </FormControl>
+  );
 }
 
 export function PostDownloadFiltersSection({

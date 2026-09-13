@@ -59,6 +59,25 @@ ALLOWED_ICLOUDPD_KEYS: frozenset[str] = frozenset(
         "use_os_locale",
         "watch_with_interval",
         "threads_num",
+        # Added in icloudpd >= 1.32.x
+        "favorite_to_rating",
+        "until_skip_created_before",
+        # Plugin system
+        "plugin",
+        # Immich plugin parameters
+        "immich_server_url",
+        "immich_api_key",
+        "immich_library_id",
+        "immich_stack_media",
+        "immich_favorite",
+        "immich_album",
+        "associate_live_with_extra_sizes",
+        "immich_process_existing",
+        "process_existing_favorites",
+        "immich_batch_process",
+        "immich_batch_log_file",
+        "immich_scan_timeout",
+        "immich_poll_interval",
     }
 )
 
