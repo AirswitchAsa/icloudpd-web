@@ -2,4 +2,4 @@
 icloudpd-web package.
 """
 
-__version__ = "2026.7.24"
+__version__ = "2026.11.12"
