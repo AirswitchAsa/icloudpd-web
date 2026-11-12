@@ -1,4 +1,5 @@
 import asyncio
+import json
 from pathlib import Path
 
 import pytest
@@ -60,6 +61,34 @@ async def test_fail_run(
     assert run.status == "failed"
     assert run.exit_code == 2
     assert run.error_id == "policy-B"
+
+
+@pytest.mark.asyncio
+async def test_wrong_domain_failure(
+    tmp_path: Path, fake_icloudpd_cmd: list[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("FAKE_ICLOUDPD_MODE", "wrong_domain")
+    run = Run(
+        run_id="policy-domain",
+        policy_name="policy",
+        argv=_argv(fake_icloudpd_cmd),
+        log_dir=tmp_path,
+        password="pw",
+    )
+    await run.start()
+    await run.wait()
+
+    assert run.status == "failed"
+    assert run.failure_reason == "wrong_domain"
+    assert run.error_id == run.run_id
+    assert "set Domain to cn" in run.log_path.read_text()
+    meta = json.loads(run.log_path.with_suffix(".meta.json").read_text())
+    assert meta["failure_reason"] == "wrong_domain"
+    events = [event async for event in run.subscribe(since=0)]
+    assert any(
+        event.kind == "status" and event.data.get("failure_reason") == "wrong_domain"
+        for event in events
+    )
 
 
 @pytest.mark.asyncio

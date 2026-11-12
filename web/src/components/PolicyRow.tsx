@@ -108,7 +108,9 @@ export const PolicyRow = ({ policy }: PolicyRowProps) => {
           ? "legacy two-step auth (2sa) is not supported"
           : failureReason === "bad_password"
             ? "wrong iCloud password — update it in the policy"
-            : "failed";
+            : failureReason === "wrong_domain"
+              ? "Apple requires iCloud.com.cn — set Domain to cn in the policy"
+              : "failed";
 
   // Localized "next scheduled run" text (server sends an ISO timestamp with
   // offset; Date renders it in the viewer's zone).

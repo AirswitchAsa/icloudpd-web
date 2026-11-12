@@ -12,7 +12,7 @@ from icloudpd_web.store.models import Policy
 from .config_builder import build_argv
 from .folder_structure import check_or_raise as _folder_check
 from .log_retention import prune_logs
-from .run import Run
+from .run import WRONG_DOMAIN_HINT, Run
 
 
 if TYPE_CHECKING:
@@ -192,7 +192,7 @@ class Runner:
         await run.stop()
         return True
 
-    async def discover_libraries(
+    async def discover_libraries(  # noqa: C901
         self,
         policy: Policy,
         *,
@@ -230,6 +230,10 @@ class Runner:
                 "console",
                 "--list-libraries",
             ]
+            # Discovery must use the same iCloud region as the download.
+            domain = policy.icloudpd.get("domain")
+            if domain:
+                argv_tail += ["--domain", str(domain)]
             # Same cookie handling as a download run: policy override wins,
             # else the persistent default (so discovery reuses the session).
             cookie_dir = policy.icloudpd.get("cookie_directory") or self._ensure_cookie_directory()
@@ -278,6 +282,8 @@ class Runner:
             self._release_user(policy.username, policy.name)
 
         if run.exit_code != 0:
+            if run.failure_reason == "wrong_domain":
+                raise RuntimeError(f"library discovery failed: {WRONG_DOMAIN_HINT}")
             raise RuntimeError(
                 f"library discovery failed (exit {run.exit_code}); check the run log"
             )

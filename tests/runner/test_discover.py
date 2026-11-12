@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -10,6 +11,58 @@ from icloudpd_web.store.models import Policy
 
 
 FAKE = Path(__file__).resolve().parent.parent / "fixtures" / "fake_icloudpd.py"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("domain", ["cn", "com", None])
+async def test_shared_run_preserves_domain(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, domain: str | None
+) -> None:
+    monkeypatch.setenv("FAKE_ICLOUDPD_SHARED_LIB", "SharedSync-XYZ")
+    commands: list[list[str]] = []
+
+    def capture_argv(tail: list[str]) -> list[str]:
+        commands.append(tail)
+        return _fake_argv(tail)
+
+    policy = _policy().model_copy(
+        update={
+            "directory": tmp_path / "photos",
+            "library_kind": "shared",
+            "icloudpd": {"domain": domain} if domain is not None else {},
+        }
+    )
+    runner = Runner(runs_base=tmp_path / "runs", icloudpd_argv=capture_argv)
+    run = await runner.start(policy, password="pw", trigger="manual")
+    await run.wait()
+
+    assert run.status == "success"
+    assert len(commands) == 2
+    discovery, download = commands
+    assert "--list-libraries" in discovery
+    assert download[download.index("--library") + 1] == "SharedSync-XYZ"
+    for command in commands:
+        if domain is None:
+            assert "--domain" not in command
+        else:
+            assert command.count("--domain") == 1
+            assert command[command.index("--domain") + 1] == domain
+
+
+@pytest.mark.asyncio
+async def test_discovery_wrong_domain_has_actionable_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("FAKE_ICLOUDPD_MODE", "wrong_domain")
+    runner = Runner(runs_base=tmp_path, icloudpd_argv=_fake_argv)
+    with pytest.raises(RuntimeError, match="set Domain to cn"):
+        await runner.discover_libraries(_policy(), password="pw", timeout=10.0)
+
+    [sidecar] = (tmp_path / "p").glob("*.meta.json")
+    meta = json.loads(sidecar.read_text())
+    assert meta["status"] == "failed"
+    assert meta["failure_reason"] == "wrong_domain"
+    assert meta["error_id"] == meta["run_id"]
 
 
 def _fake_argv(argv_tail: list[str]) -> list[str]:
