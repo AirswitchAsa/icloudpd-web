@@ -17,7 +17,7 @@ Faithful to the real icloudpd 1.32.3 console flow:
 
 Behavior driven by env vars:
   FAKE_ICLOUDPD_MODE: one of 'success', 'fail', 'slow', 'mfa', 'mfa_reject',
-    'mfa_2sa', 'bad_password', 'filter_demo'
+    'mfa_2sa', 'bad_password', 'wrong_domain', 'filter_demo'
   FAKE_ICLOUDPD_TOTAL: default 5
   FAKE_ICLOUDPD_SLEEP: seconds between progress lines (default 0.01)
   FAKE_ICLOUDPD_DIR: target directory for filter_demo mode
@@ -117,6 +117,15 @@ def main() -> int:  # noqa: C901, PLR0911, PLR0912
         import getpass
 
         _password = getpass.getpass("Enter iCloud password: ")
+
+    if mode == "wrong_domain":
+        print(
+            "ERROR    PyiCloudConnectionException: Apple insists on using "
+            "iCloud.com.cn for your request. Please use --domain parameter",
+            file=sys.stderr,
+            flush=True,
+        )
+        return 1
 
     if getattr(args, "list_libraries", False):
         # Mirror real icloudpd: print library names, one per line, then exit 0.
