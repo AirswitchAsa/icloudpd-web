@@ -1,11 +1,13 @@
 services:
   icloudpd-web:
     image: spicadust/icloudpd-web:latest
-    # Uncomment to build locally instead of pulling:
-    # build:
-    #   context: .
-    #   args:
-    #     VERSION: 2026.4.20.post1
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VERSION: ${VERSION:-2026.4.20.post1}
+        ICLOUDPD_REPO: https://github.com/spmp/icloud_photos_downloader.git
+        ICLOUDPD_BRANCH: feature/until-skip-created-before
     container_name: icloudpd-web
     restart: unless-stopped
     ports:
@@ -31,11 +33,19 @@ services:
       # Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"
       SESSION_SECRET: ${ICLOUDPD_WEB_SESSION_SECRET:-}
 
+      # iCloud authentication cookie directory. Shared across all policies /
+      # Apple IDs — icloudpd keys cookies by account within this directory.
+      # MUST be volume-mounted for persistence; losing it forces re-auth + 2FA.
+      ICLOUDPD_COOKIE_DIR: /.pyicloud
+
     volumes:
-      # Persistent state: policies (TOML), passwords, cookies, run logs,
-      # run sidecars, settings. MUST be mounted or all config is lost on
-      # container recreate.
+      # Persistent state: policies (TOML), passwords, run logs, settings.
+      # MUST be mounted or all config is lost on container recreate.
       - ./data:/data
+
+      # iCloud authentication cookies. Shared by all policies / Apple IDs.
+      # Mount persistently so re-auth is not required on every restart.
+      - ./pyicloud:/.pyicloud
 
       # Photo download destinations. Mount any directories your policies
       # write to — the `directory` field on each policy must match a path

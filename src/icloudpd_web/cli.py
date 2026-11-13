@@ -25,6 +25,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--data-dir", default=str(Path.home() / ".icloudpd-web"))
     parser.add_argument("--password-hash", default=os.environ.get("ICLOUDPD_WEB_PASSWORD_HASH"))
     parser.add_argument("--session-secret", default=os.environ.get("ICLOUDPD_WEB_SESSION_SECRET"))
+    parser.add_argument(
+        "--cookie-dir",
+        default=os.environ.get("ICLOUDPD_COOKIE_DIR", "/.pyicloud"),
+        help="Directory for iCloud authentication cookies/tokens. "
+             "Mount as a persistent volume in Docker. Env: ICLOUDPD_COOKIE_DIR",
+    )
 
     sub = parser.add_subparsers(dest="cmd")
     init_pw = sub.add_parser("init-password", help="Hash a password and print it")
@@ -54,6 +60,7 @@ def main(argv: list[str] | None = None) -> int:
         data_dir=Path(args.data_dir),
         authenticator=Authenticator(password_hash=args.password_hash or None),
         session_secret=session_secret,
+        cookie_dir=args.cookie_dir,
         static_dir=_default_static_dir(),
     )
     uvicorn.run(app, host=args.host, port=args.port)

@@ -21,8 +21,11 @@ import {
   NumberInputField,
   Box,
   Text,
+  Collapse,
+  useDisclosure,
+  HStack,
 } from "@chakra-ui/react";
-import { ViewIcon, ViewOffIcon } from "@chakra-ui/icons";
+import { ViewIcon, ViewOffIcon, ChevronDownIcon, ChevronUpIcon } from "@chakra-ui/icons";
 import type { PolicyView } from "@/types/api";
 import { ApiError } from "@/api/client";
 import {
@@ -41,8 +44,40 @@ import {
   AlbumField,
   DownloadSizesField,
   IntegrationField,
+  PluginsField,
   PostDownloadFiltersSection,
 } from "@/components/EditModalFields";
+import { PLUGINS } from "@/plugins";
+
+function shellQuote(s: string): string {
+  if (/[^a-zA-Z0-9@_./:=+,-]/.test(s)) {
+    return '"' + s.replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"';
+  }
+  return s;
+}
+
+function buildCommandPreview(form: FormPolicy): string {
+  const policy = toBackendPolicy(form);
+  const parts: string[] = ["icloudpd"];
+  parts.push("--username", shellQuote(form.username || "<username>"));
+  parts.push("--directory", shellQuote(form.directory || "<directory>"));
+  parts.push("--cookie-directory", "<server-configured>");
+  parts.push("--mfa-provider", "console");
+  parts.push("--password-provider", "console");
+  for (const [key, value] of Object.entries(policy.icloudpd)) {
+    const flag = "--" + key.replace(/_/g, "-");
+    if (typeof value === "boolean") {
+      if (value) parts.push(flag);
+    } else if (Array.isArray(value)) {
+      for (const item of value) {
+        parts.push(flag, shellQuote(String(item)));
+      }
+    } else if (value !== null && value !== undefined) {
+      parts.push(flag, shellQuote(String(value)));
+    }
+  }
+  return parts.join(" \\\n  ");
+}
 
 interface EditPolicyModalProps {
   isOpen: boolean;
@@ -66,6 +101,7 @@ export function EditPolicyModal({
 
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const cmdPreview = useDisclosure();
   const [nameError, setNameError] = useState<string | null>(null);
 
   const update = <K extends keyof FormPolicy>(key: K, value: FormPolicy[K]) =>
@@ -407,7 +443,7 @@ export function EditPolicyModal({
                 <FormControl>
                   <FieldWithInfo
                     label="Folder Structure"
-                    info="The folder structure pattern using Python's strftime format."
+                    info="Subfolder naming scheme using Python strftime format. Use 'none' for a flat directory (all files in the root). Examples: {:%Y/%m/%d}, {:%Y/%m}, {:%Y}."
                   >
                     <Input
                       value={formData.folder_structure}
@@ -415,7 +451,29 @@ export function EditPolicyModal({
                         update("folder_structure", e.target.value)
                       }
                       maxW="200px"
+                      placeholder="{:%Y/%m/%d}"
                     />
+                  </FieldWithInfo>
+                </FormControl>
+
+                <FormControl>
+                  <FieldWithInfo
+                    label="File Match Policy"
+                    info="How icloudpd deduplicates files that already exist on disk. 'name-size-dedup-with-suffix' appends a counter suffix when a same-named file differs by size. 'name-id7' uses the last 7 chars of the iCloud asset ID as suffix — useful when you have many files with the same name."
+                  >
+                    <Select
+                      value={formData.file_match_policy}
+                      onChange={(e) =>
+                        update(
+                          "file_match_policy",
+                          e.target.value as "name-size-dedup-with-suffix" | "name-id7"
+                        )
+                      }
+                      maxW="260px"
+                    >
+                      <option value="name-size-dedup-with-suffix">name-size-dedup-with-suffix</option>
+                      <option value="name-id7">name-id7</option>
+                    </Select>
                   </FieldWithInfo>
                 </FormControl>
 
@@ -474,6 +532,41 @@ export function EditPolicyModal({
                     >
                       <NumberInputField />
                     </NumberInput>
+                  </FieldWithInfo>
+                </FormControl>
+
+                <FormControl>
+                  <FieldWithInfo
+                    label="Favorite to Rating"
+                    info="Set EXIF Rating on favorited iCloud photos (0–5). Leave blank to disable. The rating is also written to XMP sidecar if that option is enabled."
+                  >
+                    <NumberInput
+                      value={formData.favorite_to_rating ?? ""}
+                      onChange={(valueString) =>
+                        update(
+                          "favorite_to_rating",
+                          valueString === "" ? null : parseInt(valueString)
+                        )
+                      }
+                      min={0}
+                      max={5}
+                      maxW="100px"
+                    >
+                      <NumberInputField placeholder="off" />
+                    </NumberInput>
+                  </FieldWithInfo>
+                </FormControl>
+
+                <FormControl>
+                  <FieldWithInfo
+                    label="Process Existing Favorites"
+                    info="Re-check already-downloaded files and add/update their EXIF favorite ratings. Requires 'Favorite to Rating' to be set. Use with 'Download Until Found X' or 'Download Recent X' for efficiency."
+                  >
+                    <Switch
+                      isChecked={formData.process_existing_favorites}
+                      onChange={(e) => update("process_existing_favorites", e.target.checked)}
+                      isDisabled={formData.favorite_to_rating === null}
+                    />
                   </FieldWithInfo>
                 </FormControl>
 
@@ -549,22 +642,52 @@ export function EditPolicyModal({
 
                 <FormControl>
                   <FieldWithInfo
-                    label="Threads"
-                    info="Number of download threads. Leave blank for default."
+                    label="Stop at Skip Created Before"
+                    info="Stop the run as soon as an asset is skipped by 'Skip Created Before'. Avoids iterating the whole library on incremental runs. Requires Skip Created Before to be set."
                   >
-                    <NumberInput
-                      value={formData.threads_num ?? ""}
-                      onChange={(valueString) =>
-                        update(
-                          "threads_num",
-                          valueString === "" ? null : parseInt(valueString)
-                        )
+                    <Switch
+                      isChecked={formData.until_skip_created_before}
+                      onChange={(e) =>
+                        update("until_skip_created_before", e.target.checked)
                       }
-                      min={1}
-                      maxW="100px"
-                    >
-                      <NumberInputField />
-                    </NumberInput>
+                      isDisabled={!formData.skip_created_before}
+                    />
+                  </FieldWithInfo>
+                </FormControl>
+
+                <FormControl>
+                  <FieldWithInfo
+                    label="Set EXIF DateTime"
+                    info="Write iCloud creation date into the EXIF DateTimeOriginal tag of downloaded photos."
+                  >
+                    <Switch
+                      isChecked={formData.set_exif_datetime}
+                      onChange={(e) => update("set_exif_datetime", e.target.checked)}
+                    />
+                  </FieldWithInfo>
+                </FormControl>
+
+                <FormControl>
+                  <FieldWithInfo
+                    label="XMP Sidecar"
+                    info="Write an XMP sidecar file alongside each downloaded photo containing metadata (rating, keywords, etc.)."
+                  >
+                    <Switch
+                      isChecked={formData.xmp_sidecar}
+                      onChange={(e) => update("xmp_sidecar", e.target.checked)}
+                    />
+                  </FieldWithInfo>
+                </FormControl>
+
+                <FormControl>
+                  <FieldWithInfo
+                    label="Keep Unicode in Filenames"
+                    info="Preserve Unicode characters in filenames rather than replacing them with ASCII equivalents."
+                  >
+                    <Switch
+                      isChecked={formData.keep_unicode_in_filenames}
+                      onChange={(e) => update("keep_unicode_in_filenames", e.target.checked)}
+                    />
                   </FieldWithInfo>
                 </FormControl>
               </VStack>
@@ -682,6 +805,70 @@ export function EditPolicyModal({
                 </FormControl>
               </VStack>
             </Box>
+            {/* Plugins */}
+            <Box>
+              <Text fontSize="lg" fontWeight="semibold" mb={4}>
+                Plugins
+              </Text>
+              <PluginsField
+                value={formData.plugin}
+                onChange={(v) => update("plugin", v)}
+                availablePlugins={PLUGINS}
+              />
+            </Box>
+
+            {/* Command Preview */}
+            <Box>
+              <HStack
+                spacing={2}
+                cursor="pointer"
+                onClick={cmdPreview.onToggle}
+                _hover={{ color: "gray.600" }}
+              >
+                <IconButton
+                  aria-label="Toggle command preview"
+                  icon={cmdPreview.isOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
+                  size="sm"
+                  variant="ghost"
+                  pointerEvents="none"
+                />
+                <Text fontSize="lg" fontWeight="semibold">
+                  Command Preview
+                </Text>
+              </HStack>
+              <Collapse in={cmdPreview.isOpen}>
+                <Text fontSize="xs" color="gray.500" mt={2} mb={1}>
+                  Reconstructed icloudpd command. Password is delivered via stdin and is not shown. Cookie directory is configured server-side.
+                </Text>
+                <Box
+                  p={3}
+                  bg="gray.900"
+                  color="green.300"
+                  borderRadius="md"
+                  fontFamily="mono"
+                  fontSize="xs"
+                  whiteSpace="pre"
+                  overflowX="auto"
+                >
+                  {buildCommandPreview(formData)}
+                </Box>
+              </Collapse>
+            </Box>
+
+            {/* Active plugin configuration sections */}
+            {PLUGINS.filter((p) => formData.plugin.includes(p.id)).map((plugin) => (
+              <Box key={plugin.id}>
+                <Text fontSize="lg" fontWeight="semibold" mb={4}>
+                  {plugin.label} Integration
+                </Text>
+                <plugin.ConfigSection
+                  values={formData as unknown as Record<string, unknown>}
+                  onChange={(key, value) =>
+                    update(key as keyof FormPolicy, value as never)
+                  }
+                />
+              </Box>
+            ))}
           </VStack>
         </ModalBody>
         <ModalFooter>

@@ -1,4 +1,4 @@
-import { Box, Text, BoxProps, Flex, Spacer } from '@chakra-ui/react';
+import { Box, Text, BoxProps, Flex, Spacer } from "@chakra-ui/react";
 
 interface PanelProps extends BoxProps {
   title: string;
@@ -19,7 +19,7 @@ export function Panel({ title, children, headerRight, ...props }: PanelProps) {
         flexDirection="column"
       >
         <Flex
-          px={12}
+          px={{ base: 4, md: 12 }}
           borderBottom="1px"
           borderColor="gray.100"
           height="56px"
@@ -40,7 +40,7 @@ export function Panel({ title, children, headerRight, ...props }: PanelProps) {
         <Box
           pt={2}
           pb={10}
-          px={12}
+          px={{ base: 4, md: 12 }}
           flex="1"
           minH="200px"
           display="flex"

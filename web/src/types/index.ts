@@ -23,6 +23,8 @@ export interface Policy {
   file_match_policy: "name-size-dedup-with-suffix" | "name-id7";
   xmp_sidecar: boolean;
   use_os_locale: boolean;
+  favorite_to_rating: number | null;
+  until_skip_created_before: boolean;
 
   // Filter options
   album: string;
@@ -52,4 +54,19 @@ export interface Policy {
 
   // integration options
   upload_to_aws_s3: boolean;
+
+  // Plugin system
+  plugin: string[];
+
+  // Immich plugin (straightforward flags — optional-value flags handled only in FormPolicy)
+  immich_server_url: string;
+  immich_api_key: string;
+  immich_library_id: string;
+  immich_album: string[];
+  immich_process_existing: boolean;
+  process_existing_favorites: boolean;
+  immich_batch_process: number | null;
+  immich_batch_log_file: string;
+  immich_scan_timeout: number | null;
+  immich_poll_interval: number | null;
 }
